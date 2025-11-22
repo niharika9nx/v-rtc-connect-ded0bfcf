@@ -202,6 +202,23 @@ const BusDetails = () => {
                       )}
                     </div>
                   )}
+                  {passData && (
+                    <div className="p-4 rounded-lg bg-muted/50 md:col-span-2">
+                      <p className="text-sm text-muted-foreground mb-2">Pass Verification Status</p>
+                      {passData.verified === false ? (
+                        <div className="flex items-center gap-2">
+                          <Badge variant="destructive" className="text-sm px-4 py-2 animate-pulse">
+                            ⚠️ UNVERIFIED - Duplicate Pass ID
+                          </Badge>
+                          <p className="text-sm text-destructive">Please contact admin immediately</p>
+                        </div>
+                      ) : (
+                        <Badge className="text-sm px-4 py-2 bg-green-500 hover:bg-green-600">
+                          ✓ VERIFIED
+                        </Badge>
+                      )}
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
