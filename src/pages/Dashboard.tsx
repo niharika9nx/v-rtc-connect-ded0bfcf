@@ -35,6 +35,8 @@ const Dashboard = () => {
     isExpiringSoon: boolean;
   } | null>(null);
   const [routeImageUrl, setRouteImageUrl] = useState<string | null>(null);
+  const [showPassButton, setShowPassButton] = useState(false);
+  const [passData, setPassData] = useState<any>(null);
 
   useEffect(() => {
     if (user) {
@@ -59,6 +61,35 @@ const Dashboard = () => {
               isExpiringSoon: daysUntilExpiry >= 0 && daysUntilExpiry <= 5
             });
           }
+
+          // Fetch pass data
+          const { data: passInfo } = await supabase
+            .from('passes')
+            .select('*')
+            .eq('user_id', user.id)
+            .maybeSingle();
+          
+          setPassData(passInfo);
+
+          // Check if PASS button should be displayed
+          // Show if: fee is paid AND (no monthly pass OR pass expired)
+          const currentMonth = new Date().toLocaleString('default', { month: 'long' });
+          const currentYear = new Date().getFullYear();
+          
+          const { data: feeData } = await supabase
+            .from('fee_history')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('month', currentMonth)
+            .eq('year', currentYear)
+            .eq('status', 'paid')
+            .maybeSingle();
+
+          const hasNoPass = !passInfo?.monthly_pass_url;
+          const hasExpiredPass = passInfo?.expiry_date && new Date(passInfo.expiry_date) < new Date();
+          const feePaid = !!feeData;
+
+          setShowPassButton(feePaid && (hasNoPass || hasExpiredPass));
 
           // Fetch route image if bus_number exists
           if (data?.bus_number) {
@@ -193,6 +224,31 @@ const Dashboard = () => {
               </Button>
             </AlertDescription>
           </Alert>
+        )}
+
+        {/* PASS Button for Fee Paid but No Pass */}
+        {showPassButton && (
+          <Card className="glass animate-slide-up shadow-glow border-primary/50">
+            <CardContent className="py-6">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <h3 className="font-bold text-lg mb-2 text-foreground font-display">
+                    Bus Pass Required
+                  </h3>
+                  <p className="text-muted-foreground">
+                    Your monthly fee is paid, but {passData?.monthly_pass_url ? 'your pass has expired' : 'no bus pass has been uploaded'}. 
+                    Please upload your monthly pass to continue using bus services.
+                  </p>
+                </div>
+                <Button 
+                  onClick={() => navigate('/expired-pass-letter')}
+                  className="ml-4 bg-gradient-primary hover:shadow-glow font-bold text-lg px-8 py-6 h-auto"
+                >
+                  PASS
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {passExpiryStatus?.isExpiringSoon && !passExpiryStatus?.isExpired && (
