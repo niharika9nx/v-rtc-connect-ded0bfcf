@@ -150,6 +150,7 @@ export type Database = {
           created_at: string
           id: string
           month: string | null
+          name: string | null
           status: string | null
           user_id: string | null
           year: number | null
@@ -160,6 +161,7 @@ export type Database = {
           created_at?: string
           id?: string
           month?: string | null
+          name?: string | null
           status?: string | null
           user_id?: string | null
           year?: number | null
@@ -170,6 +172,7 @@ export type Database = {
           created_at?: string
           id?: string
           month?: string | null
+          name?: string | null
           status?: string | null
           user_id?: string | null
           year?: number | null
@@ -181,6 +184,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "bus_details"
             referencedColumns: ["bus_number"]
+          },
+          {
+            foreignKeyName: "fee_history_name_fkey"
+            columns: ["name"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["name"]
           },
           {
             foreignKeyName: "fee_history_user_id_fkey"

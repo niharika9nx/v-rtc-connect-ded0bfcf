@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Edit2, X } from 'lucide-react';
+import { ArrowLeft, Edit2, X, User } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -124,29 +124,46 @@ const Profile = () => {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-lg">Loading...</div>
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="text-lg text-foreground">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="border-b bg-card">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <Button variant="ghost" onClick={() => navigate('/dashboard')} className="mb-2">
+    <div className="min-h-screen bg-background bg-mesh">
+      <div className="relative overflow-hidden border-b border-border/30 glass">
+        <div className="absolute inset-0 bg-gradient-accent opacity-10" />
+        <div className="relative max-w-7xl mx-auto px-4 py-4">
+          <Button 
+            variant="ghost" 
+            onClick={() => navigate('/dashboard')} 
+            className="mb-2 hover:bg-primary/10 border-primary/30"
+          >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Dashboard
           </Button>
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold">My Profile</h1>
+            <div className="flex items-center gap-3">
+              <User className="h-6 w-6 text-primary" />
+              <h1 className="text-2xl font-bold font-display text-foreground">My Profile</h1>
+            </div>
             {!isEditing ? (
-              <Button onClick={() => setIsEditing(true)} size="sm">
+              <Button 
+                onClick={() => setIsEditing(true)} 
+                size="sm"
+                className="bg-primary hover:bg-primary/90 hover:shadow-glow"
+              >
                 <Edit2 className="h-4 w-4 mr-2" />
                 Edit Profile
               </Button>
             ) : (
-              <Button onClick={() => setIsEditing(false)} variant="ghost" size="sm">
+              <Button 
+                onClick={() => setIsEditing(false)} 
+                variant="ghost" 
+                size="sm"
+                className="hover:bg-destructive/10"
+              >
                 <X className="h-4 w-4 mr-2" />
                 Cancel
               </Button>
@@ -156,92 +173,92 @@ const Profile = () => {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-6">
-        <Card>
+        <Card className="glass border-border/50 shadow-lg hover:shadow-glow transition-all animate-slide-up">
           <CardHeader>
-            <CardTitle>Personal Information</CardTitle>
+            <CardTitle className="text-foreground">Personal Information</CardTitle>
           </CardHeader>
           <CardContent>
             {profile && !isEditing && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Name</p>
-                  <p className="font-medium">{profile.name || 'N/A'}</p>
+                  <p className="font-medium text-foreground">{profile.name || 'N/A'}</p>
                 </div>
-                <div>
+                <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Role</p>
-                  <p className="font-medium capitalize">{profile.role || 'N/A'}</p>
+                  <p className="font-medium text-foreground capitalize">{profile.role || 'N/A'}</p>
                 </div>
-                <div>
+                <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Phone</p>
-                  <p className="font-medium">{profile.phone || 'N/A'}</p>
+                  <p className="font-medium text-foreground">{profile.phone || 'N/A'}</p>
                 </div>
-                <div>
+                <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Gender</p>
-                  <p className="font-medium capitalize">{profile.gender || 'N/A'}</p>
+                  <p className="font-medium text-foreground capitalize">{profile.gender || 'N/A'}</p>
                 </div>
                 
                 {profile.role === 'student' && (
                   <>
-                    <div>
+                    <div className="space-y-1">
                       <p className="text-sm text-muted-foreground">Registration ID</p>
-                      <p className="font-medium">{profile.registration_id || 'N/A'}</p>
+                      <p className="font-medium text-foreground">{profile.registration_id || 'N/A'}</p>
                     </div>
-                    <div>
+                    <div className="space-y-1">
                       <p className="text-sm text-muted-foreground">College</p>
-                      <p className="font-medium capitalize">{profile.college || 'N/A'}</p>
+                      <p className="font-medium text-foreground capitalize">{profile.college || 'N/A'}</p>
                     </div>
-                    <div>
+                    <div className="space-y-1">
                       <p className="text-sm text-muted-foreground">Branch</p>
-                      <p className="font-medium uppercase">{profile.branch || 'N/A'}</p>
+                      <p className="font-medium text-foreground uppercase">{profile.branch || 'N/A'}</p>
                     </div>
-                    <div>
+                    <div className="space-y-1">
                       <p className="text-sm text-muted-foreground">Year</p>
-                      <p className="font-medium">{profile.year ? `${profile.year}${profile.year === '1' ? 'st' : profile.year === '2' ? 'nd' : profile.year === '3' ? 'rd' : 'th'} Year` : 'N/A'}</p>
+                      <p className="font-medium text-foreground">{profile.year ? `${profile.year}${profile.year === '1' ? 'st' : profile.year === '2' ? 'nd' : profile.year === '3' ? 'rd' : 'th'} Year` : 'N/A'}</p>
                     </div>
-                    <div>
+                    <div className="space-y-1">
                       <p className="text-sm text-muted-foreground">Section</p>
-                      <p className="font-medium">Section {profile.section || 'N/A'}</p>
+                      <p className="font-medium text-foreground">Section {profile.section || 'N/A'}</p>
                     </div>
                   </>
                 )}
 
                 {profile.role === 'faculty' && (
                   <>
-                    <div>
+                    <div className="space-y-1">
                       <p className="text-sm text-muted-foreground">College</p>
-                      <p className="font-medium capitalize">{profile.college || 'N/A'}</p>
+                      <p className="font-medium text-foreground capitalize">{profile.college || 'N/A'}</p>
                     </div>
-                    <div>
+                    <div className="space-y-1">
                       <p className="text-sm text-muted-foreground">Department</p>
-                      <p className="font-medium uppercase">{profile.department || 'N/A'}</p>
+                      <p className="font-medium text-foreground uppercase">{profile.department || 'N/A'}</p>
                     </div>
                   </>
                 )}
 
                 {profile.role === 'admin' && (
                   <>
-                    <div>
+                    <div className="space-y-1">
                       <p className="text-sm text-muted-foreground">College</p>
-                      <p className="font-medium capitalize">{profile.college || 'N/A'}</p>
+                      <p className="font-medium text-foreground capitalize">{profile.college || 'N/A'}</p>
                     </div>
-                    <div>
+                    <div className="space-y-1">
                       <p className="text-sm text-muted-foreground">Department</p>
-                      <p className="font-medium uppercase">{profile.department || 'N/A'}</p>
+                      <p className="font-medium text-foreground uppercase">{profile.department || 'N/A'}</p>
                     </div>
                   </>
                 )}
 
                 {profile.bus_number && (
-                  <div>
+                  <div className="space-y-1">
                     <p className="text-sm text-muted-foreground">Bus Number</p>
-                    <p className="font-medium">{profile.bus_number}</p>
+                    <p className="font-medium text-foreground">{profile.bus_number}</p>
                   </div>
                 )}
 
                 {profile.pass_expiry_date && (
-                  <div>
+                  <div className="space-y-1">
                     <p className="text-sm text-muted-foreground">Pass Expiry Date</p>
-                    <p className="font-medium">{new Date(profile.pass_expiry_date).toLocaleDateString()}</p>
+                    <p className="font-medium text-foreground">{new Date(profile.pass_expiry_date).toLocaleDateString()}</p>
                   </div>
                 )}
               </div>
@@ -256,9 +273,9 @@ const Profile = () => {
                       name="name"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Name</FormLabel>
+                          <FormLabel className="text-foreground">Name</FormLabel>
                           <FormControl>
-                            <Input {...field} />
+                            <Input {...field} className="bg-muted/30 border-border/50" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -270,9 +287,9 @@ const Profile = () => {
                       name="phone"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Phone</FormLabel>
+                          <FormLabel className="text-foreground">Phone</FormLabel>
                           <FormControl>
-                            <Input {...field} />
+                            <Input {...field} className="bg-muted/30 border-border/50" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -284,10 +301,10 @@ const Profile = () => {
                       name="gender"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Gender</FormLabel>
+                          <FormLabel className="text-foreground">Gender</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
-                              <SelectTrigger>
+                              <SelectTrigger className="bg-muted/30 border-border/50">
                                 <SelectValue placeholder="Select gender" />
                               </SelectTrigger>
                             </FormControl>
@@ -307,10 +324,10 @@ const Profile = () => {
                       name="college"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>College</FormLabel>
+                          <FormLabel className="text-foreground">College</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
-                              <SelectTrigger>
+                              <SelectTrigger className="bg-muted/30 border-border/50">
                                 <SelectValue placeholder="Select college" />
                               </SelectTrigger>
                             </FormControl>
@@ -332,9 +349,9 @@ const Profile = () => {
                           name="registration_id"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Registration ID</FormLabel>
+                              <FormLabel className="text-foreground">Registration ID</FormLabel>
                               <FormControl>
-                                <Input {...field} />
+                                <Input {...field} className="bg-muted/30 border-border/50" />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -346,10 +363,10 @@ const Profile = () => {
                           name="branch"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Branch</FormLabel>
+                              <FormLabel className="text-foreground">Branch</FormLabel>
                               <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
-                                  <SelectTrigger>
+                                  <SelectTrigger className="bg-muted/30 border-border/50">
                                     <SelectValue placeholder="Select branch" />
                                   </SelectTrigger>
                                 </FormControl>
@@ -371,10 +388,10 @@ const Profile = () => {
                           name="year"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Year</FormLabel>
+                              <FormLabel className="text-foreground">Year</FormLabel>
                               <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
-                                  <SelectTrigger>
+                                  <SelectTrigger className="bg-muted/30 border-border/50">
                                     <SelectValue placeholder="Select year" />
                                   </SelectTrigger>
                                 </FormControl>
@@ -395,10 +412,10 @@ const Profile = () => {
                           name="section"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Section</FormLabel>
+                              <FormLabel className="text-foreground">Section</FormLabel>
                               <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
-                                  <SelectTrigger>
+                                  <SelectTrigger className="bg-muted/30 border-border/50">
                                     <SelectValue placeholder="Select section" />
                                   </SelectTrigger>
                                 </FormControl>
@@ -421,10 +438,10 @@ const Profile = () => {
                         name="department"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Department</FormLabel>
+                            <FormLabel className="text-foreground">Department</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
-                                <SelectTrigger>
+                                <SelectTrigger className="bg-muted/30 border-border/50">
                                   <SelectValue placeholder="Select department" />
                                 </SelectTrigger>
                               </FormControl>
@@ -434,35 +451,9 @@ const Profile = () => {
                                 <SelectItem value="eee">EEE</SelectItem>
                                 <SelectItem value="mech">MECH</SelectItem>
                                 <SelectItem value="civil">CIVIL</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    )}
-
-                    {profile.role === 'admin' && (
-                      <FormField
-                        control={form.control}
-                        name="department"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Department</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select department" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="cse">CSE</SelectItem>
-                                <SelectItem value="ece">ECE</SelectItem>
-                                <SelectItem value="eee">EEE</SelectItem>
-                                <SelectItem value="mech">MECH</SelectItem>
-                                <SelectItem value="civil">CIVIL</SelectItem>
-                                <SelectItem value="administration">Administration</SelectItem>
-                                <SelectItem value="transport">Transport</SelectItem>
+                                <SelectItem value="mathematics">Mathematics</SelectItem>
+                                <SelectItem value="physics">Physics</SelectItem>
+                                <SelectItem value="chemistry">Chemistry</SelectItem>
                               </SelectContent>
                             </Select>
                             <FormMessage />
@@ -472,12 +463,20 @@ const Profile = () => {
                     )}
                   </div>
 
-                  <div className="flex justify-end gap-2 pt-4">
-                    <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>
-                      Cancel
-                    </Button>
-                    <Button type="submit">
+                  <div className="flex gap-3 pt-4">
+                    <Button 
+                      type="submit" 
+                      className="bg-primary hover:bg-primary/90 hover:shadow-glow"
+                    >
                       Save Changes
+                    </Button>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => setIsEditing(false)}
+                      className="border-border/50 hover:bg-muted/30"
+                    >
+                      Cancel
                     </Button>
                   </div>
                 </form>

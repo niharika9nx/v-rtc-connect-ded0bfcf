@@ -159,15 +159,16 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-mesh">
+    <div className="min-h-screen bg-background bg-mesh">
       {/* Modern Header with gradient */}
-      <div className="border-b glass sticky top-0 z-50 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+      <div className="border-b border-border/30 glass sticky top-0 z-50 backdrop-blur-xl">
+        <div className="absolute inset-0 bg-gradient-primary opacity-10" />
+        <div className="relative max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-display font-bold bg-gradient-primary bg-clip-text text-transparent">VBus</h1>
+            <h1 className="text-2xl font-display font-bold text-foreground">VBus</h1>
             <p className="text-sm text-muted-foreground">Welcome back, {profile?.name || 'User'}</p>
           </div>
-          <Button onClick={signOut} variant="outline" className="hover:shadow-glow transition-all">
+          <Button onClick={signOut} variant="outline" className="border-primary/30 hover:bg-primary/10 hover:shadow-glow transition-all">
             Logout
           </Button>
         </div>

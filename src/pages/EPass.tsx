@@ -118,29 +118,37 @@ const EPass = () => {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-lg">Loading...</div>
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="text-lg text-foreground">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="border-b bg-card">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <Button variant="ghost" onClick={() => navigate('/dashboard')} className="mb-2">
+    <div className="min-h-screen bg-background bg-mesh">
+      <div className="relative overflow-hidden border-b border-border/30 glass">
+        <div className="absolute inset-0 bg-gradient-accent opacity-10" />
+        <div className="relative max-w-7xl mx-auto px-4 py-4">
+          <Button 
+            variant="ghost" 
+            onClick={() => navigate('/dashboard')} 
+            className="mb-2 hover:bg-primary/10 border-primary/30"
+          >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Dashboard
           </Button>
-          <h1 className="text-2xl font-bold">E-Pass Management</h1>
+          <div className="flex items-center gap-3">
+            <CreditCard className="h-6 w-6 text-primary" />
+            <h1 className="text-2xl font-bold font-display text-foreground">E-Pass Management</h1>
+          </div>
         </div>
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-6">
-        <Card>
+        <Card className="glass border-border/50 shadow-lg hover:shadow-glow transition-all animate-slide-up">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5" />
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <CreditCard className="h-5 w-5 text-primary" />
               Your E-Pass
             </CardTitle>
           </CardHeader>
@@ -149,7 +157,7 @@ const EPass = () => {
               {/* Upload Section */}
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="identity-card">IDENTITY CARD</Label>
+                  <Label htmlFor="identity-card" className="text-foreground font-semibold">IDENTITY CARD</Label>
                   <div className="flex gap-2">
                     <Input
                       id="identity-card"
@@ -157,6 +165,7 @@ const EPass = () => {
                       accept="image/*"
                       onChange={(e) => setIdentityCardFile(e.target.files?.[0] || null)}
                       disabled={uploading}
+                      className="bg-muted/30 border-border/50 text-foreground"
                     />
                   </div>
                   {pass?.identity_card_url && (
@@ -164,14 +173,14 @@ const EPass = () => {
                       <img 
                         src={pass.identity_card_url} 
                         alt="Identity Card" 
-                        className="max-w-full h-auto rounded-lg border"
+                        className="max-w-full h-auto rounded-lg border border-border/50 shadow-md"
                       />
                     </div>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="monthly-pass">MONTHLY PASS</Label>
+                  <Label htmlFor="monthly-pass" className="text-foreground font-semibold">MONTHLY PASS</Label>
                   <div className="flex gap-2">
                     <Input
                       id="monthly-pass"
@@ -179,6 +188,7 @@ const EPass = () => {
                       accept="image/*"
                       onChange={(e) => setMonthlyPassFile(e.target.files?.[0] || null)}
                       disabled={uploading}
+                      className="bg-muted/30 border-border/50 text-foreground"
                     />
                   </div>
                   {pass?.monthly_pass_url && (
@@ -186,7 +196,7 @@ const EPass = () => {
                       <img 
                         src={pass.monthly_pass_url} 
                         alt="Monthly Pass" 
-                        className="max-w-full h-auto rounded-lg border"
+                        className="max-w-full h-auto rounded-lg border border-border/50 shadow-md"
                       />
                     </div>
                   )}
@@ -195,7 +205,7 @@ const EPass = () => {
                 <Button 
                   onClick={handleUpload} 
                   disabled={uploading || (!identityCardFile && !monthlyPassFile)}
-                  className="w-full"
+                  className="w-full bg-primary hover:bg-primary/90 hover:shadow-glow"
                 >
                   <Upload className="h-4 w-4 mr-2" />
                   {uploading ? 'Uploading...' : 'Upload Documents'}
@@ -204,18 +214,18 @@ const EPass = () => {
 
               {/* Pass Info Section */}
               {pass && (
-                <div className="space-y-4 pt-4 border-t">
+                <div className="space-y-4 pt-4 border-t border-border/50">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {pass.buss_pass_id && (
-                      <div>
+                      <div className="space-y-1">
                         <p className="text-sm text-muted-foreground">Bus Pass ID</p>
-                        <p className="font-medium">{pass.buss_pass_id}</p>
+                        <p className="font-medium text-foreground">{pass.buss_pass_id}</p>
                       </div>
                     )}
                     {pass.expiry_date && (
-                      <div>
+                      <div className="space-y-1">
                         <p className="text-sm text-muted-foreground">Expiry Date</p>
-                        <p className="font-medium">{new Date(pass.expiry_date).toLocaleDateString()}</p>
+                        <p className="font-medium text-foreground">{new Date(pass.expiry_date).toLocaleDateString()}</p>
                       </div>
                     )}
                   </div>

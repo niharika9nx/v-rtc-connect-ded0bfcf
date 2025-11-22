@@ -84,21 +84,22 @@ const BusDetails = () => {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-mesh">
-        <div className="text-lg font-display">Loading...</div>
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="text-lg font-display text-foreground">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-mesh">
-      <div className="border-b glass sticky top-0 z-50 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <Button variant="ghost" onClick={() => navigate('/dashboard')} className="mb-2 hover:bg-primary/10">
+    <div className="min-h-screen bg-background bg-mesh">
+      <div className="border-b border-border/30 glass sticky top-0 z-50 backdrop-blur-xl">
+        <div className="absolute inset-0 bg-gradient-secondary opacity-10" />
+        <div className="relative max-w-7xl mx-auto px-4 py-4">
+          <Button variant="ghost" onClick={() => navigate('/dashboard')} className="mb-2 hover:bg-primary/10 border-primary/30">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Dashboard
           </Button>
-          <h1 className="text-2xl font-display font-bold bg-gradient-primary bg-clip-text text-transparent">Bus Details</h1>
+          <h1 className="text-2xl font-display font-bold text-foreground">Bus Details</h1>
         </div>
       </div>
 
