@@ -54,6 +54,8 @@ const AdminUserProfile = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [feeHistory, setFeeHistory] = useState<FeeHistory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedMonths, setSelectedMonths] = useState<Set<string>>(new Set());
+  const [selectAll, setSelectAll] = useState(false);
 
   const months = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -192,6 +194,93 @@ const AdminUserProfile = () => {
     fetchFeeHistory();
   };
 
+  const handleBulkStatusChange = async (newStatus: 'paid' | 'due') => {
+    if (!profile || selectedMonths.size === 0) {
+      toast({
+        title: 'Error',
+        description: 'Please select at least one month',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const currentYear = new Date().getFullYear();
+    const inserts: any[] = [];
+
+    try {
+      // Process each selected month
+      for (const month of Array.from(selectedMonths)) {
+        const fee = feeHistory.find(f => f.month === month);
+        
+        if (fee?.id) {
+          // Update existing record
+          const { error } = await supabase
+            .from('fee_history')
+            .update({ status: newStatus })
+            .eq('id', fee.id);
+          
+          if (error) throw error;
+        } else {
+          // Prepare new record
+          inserts.push({
+            user_id: userId,
+            month: month,
+            year: currentYear,
+            status: newStatus,
+            amount: 0,
+            bus_number: profile.bus_number,
+          });
+        }
+      }
+      
+      // Execute all inserts
+      if (inserts.length > 0) {
+        const { error: insertError } = await supabase
+          .from('fee_history')
+          .insert(inserts);
+        
+        if (insertError) throw insertError;
+      }
+
+      toast({
+        title: 'Success',
+        description: `${selectedMonths.size} month(s) marked as ${newStatus}`,
+      });
+
+      // Clear selection and refresh
+      setSelectedMonths(new Set());
+      setSelectAll(false);
+      fetchFeeHistory();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to update fee status',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const toggleMonthSelection = (month: string) => {
+    const newSelection = new Set(selectedMonths);
+    if (newSelection.has(month)) {
+      newSelection.delete(month);
+    } else {
+      newSelection.add(month);
+    }
+    setSelectedMonths(newSelection);
+    setSelectAll(newSelection.size === feeHistory.length);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectAll) {
+      setSelectedMonths(new Set());
+      setSelectAll(false);
+    } else {
+      setSelectedMonths(new Set(feeHistory.map(f => f.month)));
+      setSelectAll(true);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -292,7 +381,27 @@ const AdminUserProfile = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Fee History</CardTitle>
+            <div className="flex justify-between items-center">
+              <CardTitle>Fee History</CardTitle>
+              {selectedMonths.size > 0 && (
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="default"
+                    onClick={() => handleBulkStatusChange('paid')}
+                  >
+                    Mark {selectedMonths.size} as Paid
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => handleBulkStatusChange('due')}
+                  >
+                    Mark {selectedMonths.size} as Due
+                  </Button>
+                </div>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             {feeHistory.length === 0 ? (
@@ -303,6 +412,14 @@ const AdminUserProfile = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12">
+                      <input
+                        type="checkbox"
+                        checked={selectAll}
+                        onChange={toggleSelectAll}
+                        className="rounded border-input"
+                      />
+                    </TableHead>
                     <TableHead>Month</TableHead>
                     <TableHead>Year</TableHead>
                     <TableHead>Status</TableHead>
@@ -315,6 +432,14 @@ const AdminUserProfile = () => {
                       key={index}
                       className={fee.isCurrentMonth ? 'bg-accent/50' : ''}
                     >
+                      <TableCell>
+                        <input
+                          type="checkbox"
+                          checked={selectedMonths.has(fee.month)}
+                          onChange={() => toggleMonthSelection(fee.month)}
+                          className="rounded border-input"
+                        />
+                      </TableCell>
                       <TableCell className="font-medium">
                         {fee.month}
                         {fee.isCurrentMonth && (
