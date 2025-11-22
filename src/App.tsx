@@ -10,6 +10,9 @@ import Login from "./pages/Login";
 import SignupStudent from "./pages/SignupStudent";
 import SignupFaculty from "./pages/SignupFaculty";
 import Dashboard from "./pages/Dashboard";
+import Profile from "./pages/Profile";
+import BusDetails from "./pages/BusDetails";
+import EPass from "./pages/EPass";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 
@@ -32,6 +35,30 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['student', 'faculty']}>
                   <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute allowedRoles={['student', 'faculty']}>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/bus-details"
+              element={
+                <ProtectedRoute allowedRoles={['student', 'faculty']}>
+                  <BusDetails />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/epass"
+              element={
+                <ProtectedRoute allowedRoles={['student', 'faculty']}>
+                  <EPass />
                 </ProtectedRoute>
               }
             />
