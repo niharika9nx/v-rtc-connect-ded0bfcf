@@ -62,7 +62,7 @@ const Dashboard = () => {
 
           // Fetch route image if bus_number exists
           if (data?.bus_number) {
-            // Try to get the route image (try bus-specific file first, then general route.png)
+            // Since route bucket is public, get public URL directly
             const possibleFileNames = [
               `bus-${data.bus_number}.png`,
               `${data.bus_number}.png`,
@@ -70,13 +70,22 @@ const Dashboard = () => {
             ];
 
             for (const fileName of possibleFileNames) {
-              const { data: urlData, error } = await supabase.storage
+              const { data: publicUrl } = supabase.storage
                 .from('route')
-                .createSignedUrl(fileName, 3600); // 1 hour expiry
+                .getPublicUrl(fileName);
               
-              if (urlData?.signedUrl && !error) {
-                setRouteImageUrl(urlData.signedUrl);
-                break;
+              if (publicUrl?.publicUrl) {
+                // Verify the file exists by checking if we can access it
+                try {
+                  const response = await fetch(publicUrl.publicUrl, { method: 'HEAD' });
+                  if (response.ok) {
+                    setRouteImageUrl(publicUrl.publicUrl);
+                    break;
+                  }
+                } catch (error) {
+                  // Continue to next file name
+                  continue;
+                }
               }
             }
           }
