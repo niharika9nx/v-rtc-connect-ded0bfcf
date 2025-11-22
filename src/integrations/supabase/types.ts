@@ -88,7 +88,7 @@ export type Database = {
           capacity: number | null
           created_at: string
           departure_time: string | null
-          id: number
+          ID: string
           route: string | null
         }
         Insert: {
@@ -97,7 +97,7 @@ export type Database = {
           capacity?: number | null
           created_at?: string
           departure_time?: string | null
-          id?: number
+          ID: string
           route?: string | null
         }
         Update: {
@@ -106,10 +106,18 @@ export type Database = {
           capacity?: number | null
           created_at?: string
           departure_time?: string | null
-          id?: number
+          ID?: string
           route?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "bus_details_ID_fkey"
+            columns: ["ID"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       complaints: {
         Row: {
@@ -292,19 +300,19 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
-          role: Database["public"]["Enums"]["app_role"]
+          role: Database["public"]["Enums"]["app_role"] | null
           user_id: string
         }
         Insert: {
           created_at?: string | null
           id?: string
-          role: Database["public"]["Enums"]["app_role"]
+          role?: Database["public"]["Enums"]["app_role"] | null
           user_id: string
         }
         Update: {
           created_at?: string | null
           id?: string
-          role?: Database["public"]["Enums"]["app_role"]
+          role?: Database["public"]["Enums"]["app_role"] | null
           user_id?: string
         }
         Relationships: []
