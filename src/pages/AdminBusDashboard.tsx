@@ -17,6 +17,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 
 interface BusDetail {
   bus_number: string;
@@ -34,6 +38,7 @@ interface Profile {
   branch?: string;
   year?: string;
   phone: string;
+  feeStatus?: 'paid' | 'due';
 }
 
 interface Stats {
@@ -66,6 +71,9 @@ const AdminBusDashboard = () => {
   const [showUserList, setShowUserList] = useState(false);
   const [userListType, setUserListType] = useState<string>('');
   const [userList, setUserList] = useState<Profile[]>([]);
+  const [showAlertDialog, setShowAlertDialog] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
+  const [alertMessage, setAlertMessage] = useState('');
 
   useEffect(() => {
     if (busNumber) {
@@ -205,13 +213,16 @@ const AdminBusDashboard = () => {
 
       const { data: feeData } = await supabase
         .from('fee_history')
-        .select('user_id')
+        .select('user_id, status')
         .eq('month', currentMonth)
         .eq('year', currentYear)
         .eq('status', status);
 
       const feeUserIds = feeData?.map((f) => f.user_id) || [];
-      const filteredProfiles = profiles?.filter((p) => feeUserIds.includes(p.id)) || [];
+      const filteredProfiles = profiles?.filter((p) => feeUserIds.includes(p.id)).map(p => ({
+        ...p,
+        feeStatus: status as 'paid' | 'due'
+      })) || [];
       setUserList(filteredProfiles);
     } else if (type === 'expiringPasses') {
       const fiveDaysFromNow = new Date();
@@ -231,6 +242,85 @@ const AdminBusDashboard = () => {
 
     setUserListType(type);
     setShowUserList(true);
+  };
+
+  const handleFeeStatusChange = async (userId: string, newStatus: 'paid' | 'due') => {
+    const currentMonth = new Date().toLocaleString('default', { month: 'long' });
+    const currentYear = new Date().getFullYear();
+
+    const { error } = await supabase
+      .from('fee_history')
+      .upsert({
+        user_id: userId,
+        month: currentMonth,
+        year: currentYear,
+        status: newStatus,
+        amount: 0,
+        bus_number: busNumber,
+      }, {
+        onConflict: 'user_id,month,year'
+      });
+
+    if (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to update fee status',
+        variant: 'destructive',
+      });
+    } else {
+      toast({
+        title: 'Success',
+        description: 'Fee status updated successfully',
+      });
+      // Update local state
+      setUserList(userList.map(u => 
+        u.id === userId ? { ...u, feeStatus: newStatus } : u
+      ));
+      // Refresh stats
+      fetchStats();
+    }
+  };
+
+  const handleSendAlert = (user: Profile) => {
+    setSelectedUser(user);
+    setAlertMessage('');
+    setShowAlertDialog(true);
+  };
+
+  const submitAlert = async () => {
+    if (!selectedUser || !alertMessage.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Please enter an alert message',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const { error } = await supabase
+      .from('alerts')
+      .insert({
+        user_id: selectedUser.id,
+        type: 'custom',
+        message: alertMessage,
+        status: 'unread',
+      });
+
+    if (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to send alert',
+        variant: 'destructive',
+      });
+    } else {
+      toast({
+        title: 'Success',
+        description: `Alert sent to ${selectedUser.name}`,
+      });
+      setShowAlertDialog(false);
+      setAlertMessage('');
+      setSelectedUser(null);
+    }
   };
 
   if (loading && !busDetails) {
@@ -407,7 +497,7 @@ const AdminBusDashboard = () => {
       </div>
 
       <Dialog open={showUserList} onOpenChange={setShowUserList}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {userListType === 'students' && 'Students List'}
@@ -424,22 +514,80 @@ const AdminBusDashboard = () => {
               userList.map((user) => (
                 <Card key={user.id}>
                   <CardContent className="pt-4">
-                    <div className="space-y-1">
-                      <p className="font-semibold">{user.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {user.role} | {user.college}
-                      </p>
-                      {user.branch && (
+                    <div className="flex justify-between items-start gap-4">
+                      <div className="space-y-1 flex-1">
+                        <p className="font-semibold">{user.name}</p>
                         <p className="text-sm text-muted-foreground">
-                          {user.branch} - Year {user.year}
+                          {user.role} | {user.college}
                         </p>
-                      )}
-                      <p className="text-sm">{user.phone}</p>
+                        {user.branch && (
+                          <p className="text-sm text-muted-foreground">
+                            {user.branch} - Year {user.year}
+                          </p>
+                        )}
+                        <p className="text-sm">{user.phone}</p>
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        {(userListType === 'feePaid' || userListType === 'feeDue') && (
+                          <div className="flex gap-2 items-center">
+                            <Badge variant={user.feeStatus === 'paid' ? 'default' : 'destructive'}>
+                              {user.feeStatus?.toUpperCase()}
+                            </Badge>
+                            <Select
+                              value={user.feeStatus}
+                              onValueChange={(value: 'paid' | 'due') =>
+                                handleFeeStatusChange(user.id, value)
+                              }
+                            >
+                              <SelectTrigger className="w-[100px] bg-background">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="bg-background z-50">
+                                <SelectItem value="paid">Paid</SelectItem>
+                                <SelectItem value="due">Due</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleSendAlert(user)}
+                        >
+                          Send Alert
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
               ))
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showAlertDialog} onOpenChange={setShowAlertDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Send Alert to {selectedUser?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="alert-message">Alert Message</Label>
+              <Textarea
+                id="alert-message"
+                placeholder="Enter your custom alert message..."
+                value={alertMessage}
+                onChange={(e) => setAlertMessage(e.target.value)}
+                rows={5}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowAlertDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={submitAlert}>Send Alert</Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
