@@ -231,12 +231,24 @@ const EPass = () => {
                     />
                   </div>
                   {pass?.monthly_pass_url && (
-                    <div className="mt-2">
+                    <div className="mt-2 relative">
                       <img 
                         src={pass.monthly_pass_url} 
                         alt="Monthly Pass" 
                         className="max-w-full h-auto rounded-lg border border-border/50 shadow-md"
                       />
+                      {pass.expiry_date && new Date(pass.expiry_date) < new Date() && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-lg backdrop-blur-sm">
+                          <div className="text-center">
+                            <p className="text-red-500 text-4xl font-bold font-display animate-pulse drop-shadow-lg">
+                              PASS EXPIRED
+                            </p>
+                            <p className="text-white text-lg mt-2 font-semibold">
+                              Expired on: {new Date(pass.expiry_date).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
