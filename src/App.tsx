@@ -16,6 +16,7 @@ import EPass from "./pages/EPass";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminBuses from "./pages/AdminBuses";
 import AdminBusDashboard from "./pages/AdminBusDashboard";
+import ExpiredPassLetter from "./pages/ExpiredPassLetter";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -61,6 +62,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['student', 'faculty']}>
                   <EPass />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/expired-pass-letter"
+              element={
+                <ProtectedRoute allowedRoles={['student', 'faculty']}>
+                  <ExpiredPassLetter />
                 </ProtectedRoute>
               }
             />
