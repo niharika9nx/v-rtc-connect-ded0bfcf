@@ -18,6 +18,7 @@ import AdminBuses from "./pages/AdminBuses";
 import AdminBusDashboard from "./pages/AdminBusDashboard";
 import AdminUserProfile from "./pages/AdminUserProfile";
 import ExpiredPassLetter from "./pages/ExpiredPassLetter";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<SignupStudent />} />
             <Route path="/signup-faculty" element={<SignupFaculty />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route
               path="/dashboard"
               element={

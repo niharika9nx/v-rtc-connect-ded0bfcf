@@ -8,11 +8,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Bus } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [showResetDialog, setShowResetDialog] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -69,6 +80,34 @@ const Login = () => {
     setLoading(false);
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetLoading(true);
+
+    const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+
+    if (error) {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+      setResetLoading(false);
+      return;
+    }
+
+    toast({
+      title: 'Check Your Email',
+      description: 'A password reset link has been sent to your email address.',
+    });
+
+    setShowResetDialog(false);
+    setResetEmail('');
+    setResetLoading(false);
+  };
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background bg-mesh p-4">
       <div className="absolute inset-0 bg-gradient-primary opacity-5" />
@@ -116,6 +155,44 @@ const Login = () => {
               {loading ? 'Logging in...' : 'Login'}
             </Button>
           </form>
+          <div className="mt-4 text-center">
+            <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+              <DialogTrigger asChild>
+                <button className="text-sm text-primary hover:text-primary/90 underline">
+                  Forgot Password?
+                </button>
+              </DialogTrigger>
+              <DialogContent className="glass border-border/50">
+                <DialogHeader>
+                  <DialogTitle className="text-foreground">Reset Password</DialogTitle>
+                  <DialogDescription className="text-muted-foreground">
+                    Enter your email address and we'll send you a link to reset your password.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleForgotPassword} className="space-y-4 mt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="resetEmail" className="text-foreground">Email</Label>
+                    <Input
+                      id="resetEmail"
+                      type="email"
+                      placeholder="you@example.com"
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      required
+                      className="bg-muted/30 border-border/50 text-foreground"
+                    />
+                  </div>
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-primary hover:bg-primary/90" 
+                    disabled={resetLoading}
+                  >
+                    {resetLoading ? 'Sending...' : 'Send Reset Link'}
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
           <div className="mt-4 text-center text-sm">
             <p className="text-muted-foreground">
               Don't have an account?{' '}
