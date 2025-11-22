@@ -95,7 +95,7 @@ const Profile = () => {
         updateData.branch = data.branch;
         updateData.year = data.year;
         updateData.section = data.section;
-      } else if (profile.role === 'faculty') {
+      } else if (profile.role === 'faculty' || profile.role === 'admin') {
         updateData.department = data.department;
       }
 
@@ -206,6 +206,19 @@ const Profile = () => {
                 )}
 
                 {profile.role === 'faculty' && (
+                  <>
+                    <div>
+                      <p className="text-sm text-muted-foreground">College</p>
+                      <p className="font-medium capitalize">{profile.college || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Department</p>
+                      <p className="font-medium uppercase">{profile.department || 'N/A'}</p>
+                    </div>
+                  </>
+                )}
+
+                {profile.role === 'admin' && (
                   <>
                     <div>
                       <p className="text-sm text-muted-foreground">College</p>
@@ -421,6 +434,35 @@ const Profile = () => {
                                 <SelectItem value="eee">EEE</SelectItem>
                                 <SelectItem value="mech">MECH</SelectItem>
                                 <SelectItem value="civil">CIVIL</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+
+                    {profile.role === 'admin' && (
+                      <FormField
+                        control={form.control}
+                        name="department"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Department</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select department" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="cse">CSE</SelectItem>
+                                <SelectItem value="ece">ECE</SelectItem>
+                                <SelectItem value="eee">EEE</SelectItem>
+                                <SelectItem value="mech">MECH</SelectItem>
+                                <SelectItem value="civil">CIVIL</SelectItem>
+                                <SelectItem value="administration">Administration</SelectItem>
+                                <SelectItem value="transport">Transport</SelectItem>
                               </SelectContent>
                             </Select>
                             <FormMessage />
