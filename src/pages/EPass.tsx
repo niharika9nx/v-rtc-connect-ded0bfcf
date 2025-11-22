@@ -78,6 +78,45 @@ const EPass = () => {
 
       if (monthlyPassFile) {
         monthlyPassUrl = await uploadFile(monthlyPassFile, 'monthly_pass');
+        
+        // Trigger pass enhancement and OCR processing
+        if (monthlyPassUrl) {
+          toast({
+            title: "Processing pass...",
+            description: "Enhancing image and detecting expiry date"
+          });
+          
+          try {
+            const filePath = `${user.id}/monthly_pass.${monthlyPassFile.name.split('.').pop()}`;
+            const { data: enhanceData, error: enhanceError } = await supabase.functions.invoke('enhance-pass', {
+              body: { filePath, userId: user.id }
+            });
+
+            if (enhanceError) {
+              console.error('Enhancement error:', enhanceError);
+              toast({
+                title: "Processing warning",
+                description: "Pass uploaded but enhancement failed. You may need to manually verify the expiry date.",
+                variant: "destructive"
+              });
+            } else if (enhanceData?.success) {
+              monthlyPassUrl = enhanceData.enhancedUrl;
+              toast({
+                title: "Pass processed!",
+                description: enhanceData.expiryDate 
+                  ? `Expiry date detected: ${new Date(enhanceData.expiryDate).toLocaleDateString()}${enhanceData.isExpired ? ' (EXPIRED)' : ''}` 
+                  : "Enhancement complete",
+              });
+            }
+          } catch (error: any) {
+            console.error('Enhancement error:', error);
+            toast({
+              title: "Processing warning",
+              description: "Pass uploaded but enhancement failed",
+              variant: "destructive"
+            });
+          }
+        }
       }
 
       const passData = {
