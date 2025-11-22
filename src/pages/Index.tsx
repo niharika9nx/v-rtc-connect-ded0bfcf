@@ -9,9 +9,19 @@ interface Ripple {
   y: number;
 }
 
+interface Particle {
+  id: number;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+}
+
 const Index = () => {
   const [ripples, setRipples] = useState<Ripple[]>([]);
   const [rippleId, setRippleId] = useState(0);
+  const [particles, setParticles] = useState<Particle[]>([]);
+  const [particleId, setParticleId] = useState(0);
 
   const createRipple = (e: React.MouseEvent | React.TouchEvent) => {
     let x: number, y: number;
@@ -41,8 +51,46 @@ const Index = () => {
     }, 1000);
   };
 
+  const createParticle = (x: number, y: number) => {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = Math.random() * 2 + 1;
+    const newParticle: Particle = {
+      id: particleId,
+      x,
+      y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+    };
+
+    setParticles((prev) => [...prev, newParticle]);
+    setParticleId((prev) => prev + 1);
+
+    setTimeout(() => {
+      setParticles((prev) => prev.filter((p) => p.id !== newParticle.id));
+    }, 800);
+  };
+
   useEffect(() => {
-    // Add passive event listener for better scroll performance
+    let lastTime = Date.now();
+    
+    const handleMove = (x: number, y: number) => {
+      const now = Date.now();
+      if (now - lastTime > 30) {
+        createParticle(x, y);
+        lastTime = now;
+      }
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      handleMove(e.clientX, e.clientY);
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches[0]) {
+        handleMove(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    };
+
     const handleTouch = (e: TouchEvent) => {
       const syntheticEvent = {
         touches: e.touches,
@@ -52,12 +100,16 @@ const Index = () => {
       createRipple(syntheticEvent);
     };
 
+    document.addEventListener('mousemove', handleMouseMove, { passive: true });
+    document.addEventListener('touchmove', handleTouchMove, { passive: true });
     document.addEventListener('touchstart', handleTouch, { passive: true });
     
     return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('touchmove', handleTouchMove);
       document.removeEventListener('touchstart', handleTouch);
     };
-  }, [rippleId]);
+  }, [rippleId, particleId]);
 
   return (
     <div 
@@ -67,6 +119,19 @@ const Index = () => {
     >
       {/* Animated gradient overlay */}
       <div className="absolute inset-0 bg-gradient-primary opacity-5 animate-pulse" style={{ animationDuration: '4s' }} />
+      
+      {/* Particle trail effects */}
+      {particles.map((particle) => (
+        <div
+          key={particle.id}
+          className="absolute pointer-events-none w-2 h-2 rounded-full bg-primary/40 animate-fade-out"
+          style={{
+            left: particle.x,
+            top: particle.y,
+            transform: 'translate(-50%, -50%)',
+          }}
+        />
+      ))}
       
       {/* Touch ripple effects */}
       {ripples.map((ripple) => (
@@ -156,6 +221,21 @@ const Index = () => {
             height: 20rem;
             opacity: 0;
           }
+        }
+        
+        @keyframes fade-out {
+          0% {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+          }
+          100% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.5);
+          }
+        }
+        
+        .animate-fade-out {
+          animation: fade-out 0.8s ease-out forwards;
         }
       `}</style>
     </div>
