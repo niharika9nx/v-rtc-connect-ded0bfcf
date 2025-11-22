@@ -16,6 +16,7 @@ import EPass from "./pages/EPass";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminBuses from "./pages/AdminBuses";
 import AdminBusDashboard from "./pages/AdminBusDashboard";
+import AdminUserProfile from "./pages/AdminUserProfile";
 import ExpiredPassLetter from "./pages/ExpiredPassLetter";
 import NotFound from "./pages/NotFound";
 
@@ -94,6 +95,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <AdminBusDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/user/:userId"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminUserProfile />
                 </ProtectedRoute>
               }
             />

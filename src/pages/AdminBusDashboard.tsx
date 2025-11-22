@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -516,7 +516,12 @@ const AdminBusDashboard = () => {
                   <CardContent className="pt-4">
                     <div className="flex justify-between items-start gap-4">
                       <div className="space-y-1 flex-1">
-                        <p className="font-semibold">{user.name}</p>
+                        <Link
+                          to={`/admin/user/${user.id}`}
+                          className="font-semibold text-primary hover:underline"
+                        >
+                          {user.name}
+                        </Link>
                         <p className="text-sm text-muted-foreground">
                           {user.role} | {user.college}
                         </p>
