@@ -13,6 +13,7 @@ const BusDetails = () => {
   const [profile, setProfile] = useState<any>(null);
   const [busDetails, setBusDetails] = useState<any>(null);
   const [feeStatus, setFeeStatus] = useState<any>(null);
+  const [passData, setPassData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -63,6 +64,15 @@ const BusDetails = () => {
         .maybeSingle();
       
       setBusDetails(busData);
+
+      // Fetch pass data
+      const { data: passInfo } = await supabase
+        .from('passes')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      setPassData(passInfo);
 
       // Fetch current month fee status
       const currentMonth = new Date().toLocaleString('default', { month: 'long' });
@@ -164,6 +174,26 @@ const BusDetails = () => {
                     <div className="p-4 rounded-lg bg-muted/50">
                       <p className="text-sm text-muted-foreground mb-1">Bus Capacity</p>
                       <p className="font-medium text-lg">{busDetails.capacity} seats</p>
+                    </div>
+                  )}
+                  {profile?.seat_number && (
+                    <div className="p-4 rounded-lg bg-gradient-accent/5 border border-accent/10">
+                      <p className="text-sm text-muted-foreground mb-1">Your Seat Number</p>
+                      <p className="font-bold text-2xl font-display text-accent">{profile.seat_number}</p>
+                    </div>
+                  )}
+                  {(profile?.pass_expiry_date || passData?.expiry_date) && (
+                    <div className="p-4 rounded-lg bg-muted/50">
+                      <p className="text-sm text-muted-foreground flex items-center gap-1 mb-1">
+                        <Calendar className="h-4 w-4 text-primary" />
+                        Pass Expiry Date
+                      </p>
+                      <p className="font-medium text-lg">
+                        {new Date(profile?.pass_expiry_date || passData?.expiry_date).toLocaleDateString()}
+                      </p>
+                      {new Date(profile?.pass_expiry_date || passData?.expiry_date) < new Date() && (
+                        <Badge variant="destructive" className="mt-2">Expired</Badge>
+                      )}
                     </div>
                   )}
                 </div>

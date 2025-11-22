@@ -246,6 +246,7 @@ export type Database = {
           phone: string | null
           registration_id: string | null
           role: string | null
+          seat_number: number | null
           section: string | null
           year: string | null
         }
@@ -263,6 +264,7 @@ export type Database = {
           phone?: string | null
           registration_id?: string | null
           role?: string | null
+          seat_number?: number | null
           section?: string | null
           year?: string | null
         }
@@ -280,6 +282,7 @@ export type Database = {
           phone?: string | null
           registration_id?: string | null
           role?: string | null
+          seat_number?: number | null
           section?: string | null
           year?: string | null
         }

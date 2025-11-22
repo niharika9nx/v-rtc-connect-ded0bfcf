@@ -189,6 +189,18 @@ serve(async (req) => {
       throw new Error('Failed to update pass data');
     }
 
+    // Also update profiles table with expiry date
+    if (expiryDate) {
+      const { error: profileUpdateError } = await supabase
+        .from('profiles')
+        .update({ pass_expiry_date: expiryDate })
+        .eq('id', userId);
+
+      if (profileUpdateError) {
+        console.error('Profile update error:', profileUpdateError);
+      }
+    }
+
     console.log('Pass data updated successfully');
 
     return new Response(
