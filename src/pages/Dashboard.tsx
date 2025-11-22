@@ -159,24 +159,24 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b bg-card">
+    <div className="min-h-screen bg-mesh">
+      {/* Modern Header with gradient */}
+      <div className="border-b glass sticky top-0 z-50 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold">VBus - College Transport</h1>
-            <p className="text-sm text-muted-foreground">Welcome, {profile?.name || 'User'}</p>
+            <h1 className="text-2xl font-display font-bold bg-gradient-primary bg-clip-text text-transparent">VBus</h1>
+            <p className="text-sm text-muted-foreground">Welcome back, {profile?.name || 'User'}</p>
           </div>
-          <Button onClick={signOut} variant="outline">
+          <Button onClick={signOut} variant="outline" className="hover:shadow-glow transition-all">
             Logout
           </Button>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+      <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
         {/* Pass Expiry Alert */}
         {passExpiryStatus?.isExpired && (
-          <Alert variant="destructive" className="border-destructive">
+          <Alert variant="destructive" className="border-destructive animate-slide-up shadow-lg">
             <AlertTriangle className="h-5 w-5" />
             <AlertDescription className="flex items-center justify-between">
               <div>
@@ -195,7 +195,7 @@ const Dashboard = () => {
         )}
 
         {passExpiryStatus?.isExpiringSoon && !passExpiryStatus?.isExpired && (
-          <Alert className="border-yellow-500 bg-yellow-500/10">
+          <Alert className="border-yellow-500 bg-yellow-500/10 animate-slide-up shadow-md">
             <AlertTriangle className="h-5 w-5 text-yellow-600" />
             <AlertDescription>
               <p className="font-semibold text-yellow-800 dark:text-yellow-300">
@@ -209,19 +209,19 @@ const Dashboard = () => {
           </Alert>
         )}
 
-        {/* Announcements Bar */}
+        {/* Announcements Bar with glassmorphism */}
         {announcements.length > 0 && (
-          <Card className="border-primary/20 bg-primary/5">
+          <Card className="glass animate-slide-up shadow-glow">
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Bell className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-2 text-lg font-display">
+                <Bell className="h-5 w-5 text-primary" />
                 Announcements
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              {announcements.map((announcement) => (
-                <Alert key={announcement.id} className="bg-background/50">
-                  <AlertCircle className="h-4 w-4" />
+              {announcements.map((announcement, index) => (
+                <Alert key={announcement.id} className="bg-background/50 border-primary/20" style={{ animationDelay: `${index * 0.1}s` }}>
+                  <AlertCircle className="h-4 w-4 text-primary" />
                   <AlertDescription>{announcement.message}</AlertDescription>
                 </Alert>
               ))}
@@ -229,15 +229,19 @@ const Dashboard = () => {
           </Card>
         )}
 
-        {/* Main Navigation Buttons */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Main Navigation Buttons with modern cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card 
-            className="hover:shadow-lg transition-all cursor-pointer hover:border-primary"
+            className="glass hover:shadow-glow transition-all duration-300 cursor-pointer group animate-slide-up hover:scale-105 overflow-hidden relative"
             onClick={() => navigate('/profile')}
+            style={{ animationDelay: '0.1s' }}
           >
+            <div className="absolute inset-0 bg-gradient-primary opacity-0 group-hover:opacity-10 transition-opacity" />
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-3 font-display">
+                <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                  <User className="h-6 w-6 text-primary" />
+                </div>
                 Profile
               </CardTitle>
             </CardHeader>
@@ -247,12 +251,16 @@ const Dashboard = () => {
           </Card>
 
           <Card 
-            className="hover:shadow-lg transition-all cursor-pointer hover:border-primary"
+            className="glass hover:shadow-glow transition-all duration-300 cursor-pointer group animate-slide-up hover:scale-105 overflow-hidden relative"
             onClick={() => navigate('/bus-details')}
+            style={{ animationDelay: '0.2s' }}
           >
+            <div className="absolute inset-0 bg-gradient-secondary opacity-0 group-hover:opacity-10 transition-opacity" />
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bus className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-3 font-display">
+                <div className="p-2 rounded-lg bg-accent/10 group-hover:bg-accent/20 transition-colors">
+                  <Bus className="h-6 w-6 text-accent" />
+                </div>
                 Bus Details
               </CardTitle>
             </CardHeader>
@@ -262,12 +270,16 @@ const Dashboard = () => {
           </Card>
 
           <Card 
-            className="hover:shadow-lg transition-all cursor-pointer hover:border-primary"
+            className="glass hover:shadow-glow transition-all duration-300 cursor-pointer group animate-slide-up hover:scale-105 overflow-hidden relative"
             onClick={() => navigate('/epass')}
+            style={{ animationDelay: '0.3s' }}
           >
+            <div className="absolute inset-0 bg-gradient-accent opacity-0 group-hover:opacity-10 transition-opacity" />
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CreditCard className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-3 font-display">
+                <div className="p-2 rounded-lg bg-secondary/10 group-hover:bg-secondary/20 transition-colors">
+                  <CreditCard className="h-6 w-6 text-secondary" />
+                </div>
                 E-Pass
               </CardTitle>
             </CardHeader>
@@ -277,28 +289,28 @@ const Dashboard = () => {
           </Card>
         </div>
 
-        {/* Bus Route Image */}
+        {/* Bus Route Image with modern styling */}
         {profile?.bus_number && (
-          <Card>
+          <Card className="glass animate-slide-up shadow-lg" style={{ animationDelay: '0.4s' }}>
             <CardHeader>
-              <CardTitle>Your Bus Route</CardTitle>
+              <CardTitle className="font-display">Your Bus Route</CardTitle>
             </CardHeader>
             <CardContent>
               {routeImageUrl ? (
-                <div className="rounded-lg overflow-hidden">
+                <div className="rounded-xl overflow-hidden shadow-md hover:shadow-glow transition-shadow">
                   <img 
                     src={routeImageUrl} 
                     alt={`Route map for bus ${profile.bus_number}`}
                     className="w-full h-auto"
                   />
-                  <p className="text-center text-sm text-muted-foreground mt-2">
+                  <p className="text-center text-sm text-muted-foreground mt-4 font-medium">
                     Bus Number: {profile.bus_number}
                   </p>
                 </div>
               ) : (
-                <div className="bg-muted rounded-lg p-8 text-center">
-                  <Bus className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-                  <p className="text-lg font-semibold mb-2">Bus Number: {profile.bus_number}</p>
+                <div className="bg-gradient-primary/5 rounded-xl p-12 text-center">
+                  <Bus className="h-20 w-20 mx-auto mb-4 text-primary animate-float" />
+                  <p className="text-lg font-semibold mb-2 font-display">Bus Number: {profile.bus_number}</p>
                   <p className="text-sm text-muted-foreground">No route map available</p>
                 </div>
               )}
@@ -306,15 +318,15 @@ const Dashboard = () => {
           </Card>
         )}
 
-        {/* Report an Issue */}
-        <Card>
+        {/* Report an Issue with modern form styling */}
+        <Card className="glass animate-slide-up shadow-lg" style={{ animationDelay: '0.5s' }}>
           <CardHeader>
-            <CardTitle>Report an Issue</CardTitle>
+            <CardTitle className="font-display">Report an Issue</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleComplaintSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="complaint">Describe your issue</Label>
+                <Label htmlFor="complaint" className="font-medium">Describe your issue</Label>
                 <Textarea
                   id="complaint"
                   placeholder="Please describe the issue you're facing (minimum 10 characters)..."
@@ -325,16 +337,20 @@ const Dashboard = () => {
                   }}
                   rows={4}
                   maxLength={1000}
-                  className={validationError ? 'border-destructive' : ''}
+                  className={`resize-none transition-all ${validationError ? 'border-destructive' : 'focus:border-primary'}`}
                 />
                 {validationError && (
-                  <p className="text-sm text-destructive">{validationError}</p>
+                  <p className="text-sm text-destructive font-medium">{validationError}</p>
                 )}
                 <p className="text-xs text-muted-foreground">
                   {complaint.length}/1000 characters
                 </p>
               </div>
-              <Button type="submit" disabled={submitting || !complaint.trim()}>
+              <Button 
+                type="submit" 
+                disabled={submitting || !complaint.trim()}
+                className="bg-gradient-primary hover:shadow-glow transition-all font-medium"
+              >
                 {submitting ? 'Submitting...' : 'Submit Complaint'}
               </Button>
             </form>
