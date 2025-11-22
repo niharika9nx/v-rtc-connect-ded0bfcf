@@ -120,17 +120,22 @@ const Index = () => {
       {/* Animated gradient overlay */}
       <div className="absolute inset-0 bg-gradient-primary opacity-5 animate-pulse" style={{ animationDuration: '4s' }} />
       
-      {/* Particle trail effects */}
+      {/* Smoke trail effects */}
       {particles.map((particle) => (
         <div
           key={particle.id}
-          className="absolute pointer-events-none w-2 h-2 rounded-full bg-primary/40 animate-fade-out"
+          className="absolute pointer-events-none animate-smoke"
           style={{
             left: particle.x,
             top: particle.y,
             transform: 'translate(-50%, -50%)',
           }}
-        />
+        >
+          <div 
+            className="w-8 h-8 rounded-full bg-gradient-radial from-primary/30 via-primary/15 to-transparent"
+            style={{ filter: 'blur(8px)' }}
+          />
+        </div>
       ))}
       
       {/* Touch ripple effects */}
@@ -223,19 +228,23 @@ const Index = () => {
           }
         }
         
-        @keyframes fade-out {
+        @keyframes smoke {
           0% {
-            opacity: 1;
-            transform: translate(-50%, -50%) scale(1);
+            opacity: 0.8;
+            transform: translate(-50%, -50%) scale(0.5);
           }
           100% {
             opacity: 0;
-            transform: translate(-50%, -50%) scale(0.5);
+            transform: translate(-50%, -80%) scale(2.5);
           }
         }
         
-        .animate-fade-out {
-          animation: fade-out 0.8s ease-out forwards;
+        .animate-smoke {
+          animation: smoke 0.8s ease-out forwards;
+        }
+        
+        .bg-gradient-radial {
+          background: radial-gradient(circle, var(--tw-gradient-stops));
         }
       `}</style>
     </div>
