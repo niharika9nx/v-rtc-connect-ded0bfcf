@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { SessionTimeoutDialog } from "@/components/SessionTimeoutDialog";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import SignupStudent from "./pages/SignupStudent";
@@ -29,6 +30,7 @@ const App = () => (
       <AuthProvider>
         <Toaster />
         <Sonner />
+        <SessionTimeoutDialog />
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
