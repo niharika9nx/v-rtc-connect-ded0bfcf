@@ -210,6 +210,7 @@ export type Database = {
           identity_card_url: string | null
           monthly_pass_url: string | null
           user_id: string | null
+          verified: boolean | null
         }
         Insert: {
           buss_pass_id?: string | null
@@ -219,6 +220,7 @@ export type Database = {
           identity_card_url?: string | null
           monthly_pass_url?: string | null
           user_id?: string | null
+          verified?: boolean | null
         }
         Update: {
           buss_pass_id?: string | null
@@ -228,6 +230,7 @@ export type Database = {
           identity_card_url?: string | null
           monthly_pass_url?: string | null
           user_id?: string | null
+          verified?: boolean | null
         }
         Relationships: []
       }

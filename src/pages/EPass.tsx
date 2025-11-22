@@ -308,6 +308,17 @@ const EPass = () => {
                           </div>
                         </div>
                       )}
+                      <div className="mt-3 text-center">
+                        {pass.verified === false ? (
+                          <p className="text-red-500 text-2xl font-bold font-display animate-pulse drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]">
+                            ⚠️ UNVERIFIED - DUPLICATE PASS ID DETECTED
+                          </p>
+                        ) : (
+                          <p className="text-green-400 text-2xl font-bold font-display drop-shadow-[0_0_10px_rgba(74,222,128,0.8)]">
+                            ✓ VERIFIED
+                          </p>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>

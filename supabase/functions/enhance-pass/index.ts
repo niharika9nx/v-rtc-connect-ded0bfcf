@@ -183,6 +183,54 @@ serve(async (req) => {
 
     if (passId) {
       updateData.buss_pass_id = passId;
+      
+      // Check for duplicate pass IDs
+      const { data: duplicates, error: duplicateError } = await supabase
+        .from('passes')
+        .select('user_id, id')
+        .eq('buss_pass_id', passId)
+        .neq('user_id', userId);
+
+      if (duplicateError) {
+        console.error('Duplicate check error:', duplicateError);
+      }
+
+      if (duplicates && duplicates.length > 0) {
+        console.log('Duplicate pass ID detected:', passId);
+        
+        // Mark current pass as unverified
+        updateData.verified = false;
+        
+        // Mark all duplicate passes as unverified
+        for (const duplicate of duplicates) {
+          await supabase
+            .from('passes')
+            .update({ verified: false })
+            .eq('id', duplicate.id);
+        }
+
+        // Get admin user IDs
+        const { data: admins } = await supabase
+          .from('user_roles')
+          .select('user_id')
+          .eq('role', 'admin');
+
+        // Create alerts for all admins
+        if (admins && admins.length > 0) {
+          const alertPromises = admins.map(admin =>
+            supabase.from('alerts').insert({
+              user_id: admin.user_id,
+              type: 'duplicate_pass',
+              status: 'pending',
+              message: `Duplicate Bus Pass ID detected: ${passId}. Multiple users have the same pass ID. Please investigate immediately.`,
+              send_at: new Date().toISOString()
+            })
+          );
+          await Promise.all(alertPromises);
+        }
+
+        console.log('Admins notified about duplicate pass ID');
+      }
     }
 
     const { error: updateError } = await supabase
