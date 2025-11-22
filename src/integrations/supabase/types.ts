@@ -97,7 +97,7 @@ export type Database = {
           capacity?: number | null
           created_at?: string
           departure_time?: string | null
-          ID: string
+          ID?: string
           route?: string | null
         }
         Update: {
@@ -109,15 +109,7 @@ export type Database = {
           ID?: string
           route?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "bus_details_ID_fkey"
-            columns: ["ID"]
-            isOneToOne: true
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       complaints: {
         Row: {
@@ -227,15 +219,7 @@ export type Database = {
           monthly_pass_url?: string | null
           user_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "passes_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       profiles: {
         Row: {
