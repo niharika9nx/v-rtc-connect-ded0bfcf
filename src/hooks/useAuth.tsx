@@ -44,6 +44,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     try {
+      // Exit fullscreen if active (prevents navigation issues in fullscreen mode)
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      }
+      
       await supabase.auth.signOut();
       // Clear local state immediately
       setUser(null);
