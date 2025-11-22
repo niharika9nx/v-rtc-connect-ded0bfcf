@@ -4,27 +4,117 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, CreditCard } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ArrowLeft, CreditCard, Upload } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 const EPass = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [pass, setPass] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [identityCardFile, setIdentityCardFile] = useState<File | null>(null);
+  const [monthlyPassFile, setMonthlyPassFile] = useState<File | null>(null);
 
   useEffect(() => {
+    fetchPass();
+  }, [user]);
+
+  const fetchPass = async () => {
     if (user) {
-      supabase
+      const { data } = await supabase
         .from('passes')
         .select('*')
         .eq('user_id', user.id)
-        .maybeSingle()
-        .then(({ data }) => {
-          setPass(data);
-          setLoading(false);
-        });
+        .maybeSingle();
+      setPass(data);
+      setLoading(false);
     }
-  }, [user]);
+  };
+
+  const uploadFile = async (file: File, type: 'identity_card' | 'monthly_pass') => {
+    if (!user) return null;
+
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${user.id}/${type}.${fileExt}`;
+    const filePath = fileName;
+
+    const { error: uploadError } = await supabase.storage
+      .from('pass-documents')
+      .upload(filePath, file, { upsert: true });
+
+    if (uploadError) throw uploadError;
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('pass-documents')
+      .getPublicUrl(filePath);
+
+    return publicUrl;
+  };
+
+  const handleUpload = async () => {
+    if (!user) return;
+    if (!identityCardFile && !monthlyPassFile) {
+      toast({
+        title: "No files selected",
+        description: "Please select at least one file to upload",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      let identityCardUrl = pass?.identity_card_url;
+      let monthlyPassUrl = pass?.monthly_pass_url;
+
+      if (identityCardFile) {
+        identityCardUrl = await uploadFile(identityCardFile, 'identity_card');
+      }
+
+      if (monthlyPassFile) {
+        monthlyPassUrl = await uploadFile(monthlyPassFile, 'monthly_pass');
+      }
+
+      const passData = {
+        user_id: user.id,
+        identity_card_url: identityCardUrl,
+        monthly_pass_url: monthlyPassUrl
+      };
+
+      if (pass) {
+        await supabase
+          .from('passes')
+          .update(passData)
+          .eq('id', pass.id);
+      } else {
+        await supabase
+          .from('passes')
+          .insert(passData);
+      }
+
+      toast({
+        title: "Success",
+        description: "Documents uploaded successfully"
+      });
+
+      setIdentityCardFile(null);
+      setMonthlyPassFile(null);
+      fetchPass();
+    } catch (error: any) {
+      toast({
+        title: "Upload failed",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -55,48 +145,83 @@ const EPass = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {!pass ? (
-              <div className="text-center py-8">
-                <CreditCard className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-                <p className="text-lg font-medium mb-2">No E-Pass Found</p>
-                <p className="text-muted-foreground mb-4">You haven't uploaded your pass documents yet.</p>
-                <Button>Upload E-Pass Documents</Button>
-              </div>
-            ) : (
+            <div className="space-y-6">
+              {/* Upload Section */}
               <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {pass.buss_pass_id && (
-                    <div>
-                      <p className="text-sm text-muted-foreground">Bus Pass ID</p>
-                      <p className="font-medium">{pass.buss_pass_id}</p>
-                    </div>
-                  )}
-                  {pass.expiry_date && (
-                    <div>
-                      <p className="text-sm text-muted-foreground">Expiry Date</p>
-                      <p className="font-medium">{new Date(pass.expiry_date).toLocaleDateString()}</p>
+                <div className="space-y-2">
+                  <Label htmlFor="identity-card">IDENTITY CARD</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="identity-card"
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setIdentityCardFile(e.target.files?.[0] || null)}
+                      disabled={uploading}
+                    />
+                  </div>
+                  {pass?.identity_card_url && (
+                    <div className="mt-2">
+                      <img 
+                        src={pass.identity_card_url} 
+                        alt="Identity Card" 
+                        className="max-w-full h-auto rounded-lg border"
+                      />
                     </div>
                   )}
                 </div>
-                <div className="pt-4 border-t">
-                  <p className="text-sm text-muted-foreground mb-2">Pass Documents</p>
-                  <div className="space-y-2">
-                    {pass.identity_card_url && (
-                      <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                        <span className="text-sm">Identity Card</span>
-                        <Button size="sm" variant="outline">View</Button>
+
+                <div className="space-y-2">
+                  <Label htmlFor="monthly-pass">MONTHLY PASS</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="monthly-pass"
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setMonthlyPassFile(e.target.files?.[0] || null)}
+                      disabled={uploading}
+                    />
+                  </div>
+                  {pass?.monthly_pass_url && (
+                    <div className="mt-2">
+                      <img 
+                        src={pass.monthly_pass_url} 
+                        alt="Monthly Pass" 
+                        className="max-w-full h-auto rounded-lg border"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <Button 
+                  onClick={handleUpload} 
+                  disabled={uploading || (!identityCardFile && !monthlyPassFile)}
+                  className="w-full"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  {uploading ? 'Uploading...' : 'Upload Documents'}
+                </Button>
+              </div>
+
+              {/* Pass Info Section */}
+              {pass && (
+                <div className="space-y-4 pt-4 border-t">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {pass.buss_pass_id && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">Bus Pass ID</p>
+                        <p className="font-medium">{pass.buss_pass_id}</p>
                       </div>
                     )}
-                    {pass.monthly_pass_url && (
-                      <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                        <span className="text-sm">Monthly Pass</span>
-                        <Button size="sm" variant="outline">View</Button>
+                    {pass.expiry_date && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">Expiry Date</p>
+                        <p className="font-medium">{new Date(pass.expiry_date).toLocaleDateString()}</p>
                       </div>
                     )}
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
