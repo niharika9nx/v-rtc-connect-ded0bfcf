@@ -1,1 +1,4 @@
 project_id = "riqqyhaguckeijcownor"
+
+[functions.enhance-pass]
+verify_jwt = true
