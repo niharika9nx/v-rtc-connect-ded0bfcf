@@ -228,6 +228,7 @@ export type Database = {
           college: string | null
           created_at: string
           department: string | null
+          email: string | null
           gender: string | null
           id: string
           name: string | null
@@ -244,6 +245,7 @@ export type Database = {
           college?: string | null
           created_at?: string
           department?: string | null
+          email?: string | null
           gender?: string | null
           id: string
           name?: string | null
@@ -260,6 +262,7 @@ export type Database = {
           college?: string | null
           created_at?: string
           department?: string | null
+          email?: string | null
           gender?: string | null
           id?: string
           name?: string | null
