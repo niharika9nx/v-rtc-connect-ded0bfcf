@@ -176,6 +176,12 @@ const BusDetails = () => {
                       <p className="font-medium text-lg">{busDetails.capacity} seats</p>
                     </div>
                   )}
+                  {passData?.buss_pass_id && (
+                    <div className="p-4 rounded-lg bg-gradient-primary/5 border border-primary/10">
+                      <p className="text-sm text-muted-foreground mb-1">Bus Pass ID</p>
+                      <p className="font-bold text-xl font-display text-primary">{passData.buss_pass_id}</p>
+                    </div>
+                  )}
                   {profile?.seat_number !== null && profile?.seat_number !== undefined && (
                     <div className="p-4 rounded-lg bg-gradient-accent/5 border border-accent/10">
                       <p className="text-sm text-muted-foreground mb-1">Your Seat Number</p>

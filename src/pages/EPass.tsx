@@ -142,11 +142,13 @@ const EPass = () => {
             variant: "destructive"
           });
         } else if (enhanceData?.success) {
+          const details = [];
+          if (enhanceData.passId) details.push(`Pass ID: ${enhanceData.passId}`);
+          if (enhanceData.expiryDate) details.push(`Expiry: ${new Date(enhanceData.expiryDate).toLocaleDateString()}${enhanceData.isExpired ? ' (EXPIRED)' : ''}`);
+          
           toast({
             title: "Pass processed!",
-            description: enhanceData.expiryDate 
-              ? `Expiry date detected: ${new Date(enhanceData.expiryDate).toLocaleDateString()}${enhanceData.isExpired ? ' (EXPIRED)' : ''}` 
-              : "Enhancement complete",
+            description: details.length > 0 ? details.join(' | ') : "Enhancement complete",
           });
         }
       } catch (error: any) {
