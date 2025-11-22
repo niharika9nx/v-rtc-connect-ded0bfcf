@@ -51,6 +51,18 @@ const SignupFaculty = () => {
     }
 
     if (data.user) {
+      // Insert role into user_roles table
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .insert({
+          user_id: data.user.id,
+          role: 'faculty',
+        });
+
+      if (roleError) {
+        console.error('Role insert error:', roleError);
+      }
+
       // Update additional profile fields
       const { error: updateError } = await supabase
         .from('profiles')

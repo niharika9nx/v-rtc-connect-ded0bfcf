@@ -31,12 +31,9 @@ const Login = () => {
   // Redirect if already logged in
   if (user) {
     supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
+      .rpc('has_role', { _user_id: user.id, _role: 'admin' })
       .then(({ data }) => {
-        if (data?.role === 'admin') {
+        if (data) {
           navigate('/admin');
         } else {
           navigate('/dashboard');
@@ -64,13 +61,11 @@ const Login = () => {
     }
 
     if (data.user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', data.user.id)
-        .single();
+      // Check role from user_roles table (secure)
+      const { data: roleData } = await supabase
+        .rpc('has_role', { _user_id: data.user.id, _role: 'admin' });
 
-      if (profile?.role === 'admin') {
+      if (roleData) {
         navigate('/admin');
       } else {
         navigate('/dashboard');
