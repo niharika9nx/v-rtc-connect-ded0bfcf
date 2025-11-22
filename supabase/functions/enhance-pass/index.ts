@@ -36,7 +36,15 @@ serve(async (req) => {
     // Convert blob to array buffer and then to base64
     const arrayBuffer = await fileData.arrayBuffer();
     const uint8Array = new Uint8Array(arrayBuffer);
-    const base64Image = btoa(String.fromCharCode(...uint8Array));
+    
+    // Convert to base64 in chunks to avoid stack overflow
+    let binary = '';
+    const chunkSize = 8192;
+    for (let i = 0; i < uint8Array.length; i += chunkSize) {
+      const chunk = uint8Array.subarray(i, Math.min(i + chunkSize, uint8Array.length));
+      binary += String.fromCharCode.apply(null, Array.from(chunk));
+    }
+    const base64Image = btoa(binary);
     const dataUrl = `data:image/jpeg;base64,${base64Image}`;
 
     console.log('Starting OCR processing with Lovable AI...');
