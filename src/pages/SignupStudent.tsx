@@ -55,19 +55,7 @@ const SignupStudent = () => {
     }
 
     if (data.user) {
-      // Insert role into user_roles table
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({
-          user_id: data.user.id,
-          role: 'student',
-        });
-
-      if (roleError) {
-        console.error('Role insert error:', roleError);
-      }
-
-      // Update additional profile fields
+      // Update additional profile fields (role is handled by trigger)
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
@@ -81,6 +69,11 @@ const SignupStudent = () => {
 
       if (updateError) {
         console.error('Profile update error:', updateError);
+        toast({
+          title: 'Warning',
+          description: 'Account created but some details could not be saved. Please update your profile.',
+          variant: 'default',
+        });
       }
 
       toast({
