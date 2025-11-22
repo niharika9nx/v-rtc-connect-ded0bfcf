@@ -109,7 +109,9 @@ const ExpiredPassLetter = () => {
                     <div className="bg-muted/50 p-4 rounded-lg border">
                       <p className="font-semibold mb-2">Contact for Verification:</p>
                       <p>Palleswari Mam</p>
-                      <p className="font-semibold text-primary">Phone: 9000912477</p>
+                      <p className="font-semibold text-primary">
+                        Phone: <a href="tel:9000912477" className="hover:underline">9000912477</a>
+                      </p>
                     </div>
 
                     <p>Thank you for your cooperation.</p>
@@ -189,7 +191,9 @@ const ExpiredPassLetter = () => {
                     <div className="bg-muted/50 p-4 rounded-lg border">
                       <p className="font-semibold mb-2">ధృవీకరణ కోసం సంప్రదించండి:</p>
                       <p>పల్లేశ్వరి మేడం</p>
-                      <p className="font-semibold text-primary">ఫోన్: 9000912477</p>
+                      <p className="font-semibold text-primary">
+                        ఫోన్: <a href="tel:9000912477" className="hover:underline">9000912477</a>
+                      </p>
                     </div>
 
                     <p>మీ సహకారానికి ధన్యవాదాలు.</p>
