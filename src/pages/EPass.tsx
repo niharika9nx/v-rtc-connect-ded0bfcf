@@ -192,63 +192,7 @@ const EPass = () => {
     }
   };
 
-  const handleDeletePass = async (type: 'identity_card' | 'monthly_pass') => {
-    if (!user || !pass) return;
-
-    setUploading(true);
-
-    try {
-      const filePath = type === 'identity_card' 
-        ? pass.identity_card_url?.split('/').slice(-2).join('/')
-        : pass.monthly_pass_url?.split('/').slice(-2).join('/');
-
-      if (filePath) {
-        // Delete from storage
-        const { error: deleteError } = await supabase.storage
-          .from('pass-documents')
-          .remove([filePath]);
-
-        if (deleteError) {
-          console.error('Storage delete error:', deleteError);
-        }
-      }
-
-      // Update database
-      const updateData = type === 'identity_card'
-        ? { identity_card_url: null }
-        : { monthly_pass_url: null, expiry_date: null };
-
-      const { error: updateError } = await supabase
-        .from('passes')
-        .update(updateData)
-        .eq('id', pass.id);
-
-      if (updateError) throw updateError;
-
-      // If monthly pass deleted, also clear expiry date from profiles
-      if (type === 'monthly_pass') {
-        await supabase
-          .from('profiles')
-          .update({ pass_expiry_date: null })
-          .eq('id', user.id);
-      }
-
-      toast({
-        title: "Success",
-        description: `${type === 'identity_card' ? 'Identity card' : 'Monthly pass'} deleted successfully`
-      });
-
-      fetchPass();
-    } catch (error: any) {
-      toast({
-        title: "Delete failed",
-        description: error.message,
-        variant: "destructive"
-      });
-    } finally {
-      setUploading(false);
-    }
-  };
+  // Images persist until replaced with new uploads - delete functionality removed
 
   if (loading) {
     return (
@@ -313,21 +257,12 @@ const EPass = () => {
                     </Button>
                   </div>
                   {pass?.identity_card_url && (
-                    <div className="mt-2 relative group">
+                    <div className="mt-2">
                       <img 
                         src={pass.identity_card_url} 
                         alt="Identity Card" 
                         className="max-w-full h-auto rounded-lg border border-border/50 shadow-md"
                       />
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDeletePass('identity_card')}
-                        disabled={uploading}
-                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        Delete
-                      </Button>
                     </div>
                   )}
                 </div>
@@ -353,7 +288,7 @@ const EPass = () => {
                     </Button>
                   </div>
                   {pass?.monthly_pass_url && (
-                    <div className="mt-2 relative group">
+                    <div className="mt-2 relative">
                       <img 
                         src={pass.monthly_pass_url} 
                         alt="Monthly Pass" 
@@ -371,15 +306,6 @@ const EPass = () => {
                           </div>
                         </div>
                       )}
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDeletePass('monthly_pass')}
-                        disabled={uploading}
-                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                      >
-                        Delete
-                      </Button>
                     </div>
                   )}
                 </div>
