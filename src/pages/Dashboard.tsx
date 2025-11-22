@@ -9,7 +9,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
-import { Bell, User, Bus, CreditCard, AlertCircle } from 'lucide-react';
+import { Bell, User, Bus, CreditCard, AlertCircle, AlertTriangle } from 'lucide-react';
+import { differenceInDays, parseISO } from 'date-fns';
 
 const complaintSchema = z.object({
   message: z
@@ -28,6 +29,11 @@ const Dashboard = () => {
   const [complaint, setComplaint] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [passExpiryStatus, setPassExpiryStatus] = useState<{
+    daysUntilExpiry: number;
+    isExpired: boolean;
+    isExpiringSoon: boolean;
+  } | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -37,7 +43,22 @@ const Dashboard = () => {
         .select('*')
         .eq('id', user.id)
         .maybeSingle()
-        .then(({ data }) => setProfile(data));
+        .then(({ data }) => {
+          setProfile(data);
+          
+          // Calculate pass expiry status
+          if (data?.pass_expiry_date) {
+            const expiryDate = parseISO(data.pass_expiry_date);
+            const today = new Date();
+            const daysUntilExpiry = differenceInDays(expiryDate, today);
+            
+            setPassExpiryStatus({
+              daysUntilExpiry,
+              isExpired: daysUntilExpiry < 0,
+              isExpiringSoon: daysUntilExpiry >= 0 && daysUntilExpiry <= 5
+            });
+          }
+        });
 
       // Fetch announcements
       supabase
@@ -122,6 +143,41 @@ const Dashboard = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+        {/* Pass Expiry Alert */}
+        {passExpiryStatus?.isExpired && (
+          <Alert variant="destructive" className="border-destructive">
+            <AlertTriangle className="h-5 w-5" />
+            <AlertDescription className="flex items-center justify-between">
+              <div>
+                <p className="font-semibold mb-1">PASS EXPIRED</p>
+                <p>Your bus pass has expired. Please upload a new pass or contact admin.</p>
+              </div>
+              <Button 
+                variant="outline" 
+                className="ml-4 border-destructive-foreground hover:bg-destructive hover:text-destructive-foreground"
+                onClick={() => navigate('/expired-pass-letter')}
+              >
+                PASS Letter
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {passExpiryStatus?.isExpiringSoon && !passExpiryStatus?.isExpired && (
+          <Alert className="border-yellow-500 bg-yellow-500/10">
+            <AlertTriangle className="h-5 w-5 text-yellow-600" />
+            <AlertDescription>
+              <p className="font-semibold text-yellow-800 dark:text-yellow-300">
+                Pass Expiring Soon
+              </p>
+              <p className="text-yellow-700 dark:text-yellow-400">
+                Your bus pass will expire in {passExpiryStatus.daysUntilExpiry} day
+                {passExpiryStatus.daysUntilExpiry !== 1 ? 's' : ''}. Please renew it soon.
+              </p>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Announcements Bar */}
         {announcements.length > 0 && (
           <Card className="border-primary/20 bg-primary/5">
