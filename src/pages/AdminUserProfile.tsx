@@ -38,12 +38,13 @@ interface UserProfile {
 }
 
 interface FeeHistory {
-  id: string;
+  id?: string;
   month: string;
   year: number;
   status: string;
   amount: number;
-  created_at: string;
+  created_at?: string;
+  isCurrentMonth?: boolean;
 }
 
 const AdminUserProfile = () => {
@@ -53,6 +54,11 @@ const AdminUserProfile = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [feeHistory, setFeeHistory] = useState<FeeHistory[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
 
   useEffect(() => {
     if (userId) {
@@ -81,12 +87,14 @@ const AdminUserProfile = () => {
   };
 
   const fetchFeeHistory = async () => {
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().toLocaleString('default', { month: 'long' });
+
     const { data, error } = await supabase
       .from('fee_history')
       .select('*')
       .eq('user_id', userId)
-      .order('year', { ascending: false })
-      .order('created_at', { ascending: false });
+      .eq('year', currentYear);
 
     if (error) {
       toast({
@@ -94,34 +102,94 @@ const AdminUserProfile = () => {
         description: 'Failed to load fee history',
         variant: 'destructive',
       });
-    } else {
-      setFeeHistory(data || []);
+      return;
     }
+
+    // Create a map of existing fee records
+    const feeMap = new Map<string, FeeHistory>();
+    data?.forEach((fee) => {
+      feeMap.set(fee.month, {
+        id: fee.id,
+        month: fee.month,
+        year: fee.year,
+        status: fee.status,
+        amount: fee.amount,
+        created_at: fee.created_at,
+      });
+    });
+
+    // Generate all months with their status
+    const allMonthsFees: FeeHistory[] = months.map((month) => {
+      const existingFee = feeMap.get(month);
+      const isCurrentMonth = month === currentMonth;
+      
+      if (existingFee) {
+        return { ...existingFee, isCurrentMonth };
+      }
+      
+      return {
+        month,
+        year: currentYear,
+        status: 'due',
+        amount: 0,
+        isCurrentMonth,
+      };
+    });
+
+    setFeeHistory(allMonthsFees);
   };
 
-  const handleFeeStatusChange = async (feeId: string, newStatus: 'paid' | 'due') => {
-    const { error } = await supabase
-      .from('fee_history')
-      .update({ status: newStatus })
-      .eq('id', feeId);
+  const handleFeeStatusChange = async (month: string, newStatus: 'paid' | 'due') => {
+    if (!profile) return;
 
-    if (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to update fee status',
-        variant: 'destructive',
-      });
+    const currentYear = new Date().getFullYear();
+    const fee = feeHistory.find(f => f.month === month);
+
+    if (fee?.id) {
+      // Update existing record
+      const { error } = await supabase
+        .from('fee_history')
+        .update({ status: newStatus })
+        .eq('id', fee.id);
+
+      if (error) {
+        toast({
+          title: 'Error',
+          description: 'Failed to update fee status',
+          variant: 'destructive',
+        });
+        return;
+      }
     } else {
-      toast({
-        title: 'Success',
-        description: 'Fee status updated successfully',
-      });
-      setFeeHistory(
-        feeHistory.map((fee) =>
-          fee.id === feeId ? { ...fee, status: newStatus } : fee
-        )
-      );
+      // Create new record
+      const { error } = await supabase
+        .from('fee_history')
+        .insert({
+          user_id: userId,
+          month: month,
+          year: currentYear,
+          status: newStatus,
+          amount: 0,
+          bus_number: profile.bus_number,
+        });
+
+      if (error) {
+        toast({
+          title: 'Error',
+          description: 'Failed to create fee record',
+          variant: 'destructive',
+        });
+        return;
+      }
     }
+
+    toast({
+      title: 'Success',
+      description: 'Fee status updated successfully',
+    });
+
+    // Refresh fee history
+    fetchFeeHistory();
   };
 
   if (loading) {
@@ -237,17 +305,25 @@ const AdminUserProfile = () => {
                   <TableRow>
                     <TableHead>Month</TableHead>
                     <TableHead>Year</TableHead>
-                    <TableHead>Amount</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {feeHistory.map((fee) => (
-                    <TableRow key={fee.id}>
-                      <TableCell className="font-medium">{fee.month}</TableCell>
+                  {feeHistory.map((fee, index) => (
+                    <TableRow 
+                      key={index}
+                      className={fee.isCurrentMonth ? 'bg-accent/50' : ''}
+                    >
+                      <TableCell className="font-medium">
+                        {fee.month}
+                        {fee.isCurrentMonth && (
+                          <Badge variant="outline" className="ml-2">
+                            Current
+                          </Badge>
+                        )}
+                      </TableCell>
                       <TableCell>{fee.year}</TableCell>
-                      <TableCell>₹{fee.amount}</TableCell>
                       <TableCell>
                         <Badge
                           variant={fee.status === 'paid' ? 'default' : 'destructive'}
@@ -256,20 +332,39 @@ const AdminUserProfile = () => {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Select
-                          value={fee.status}
-                          onValueChange={(value: 'paid' | 'due') =>
-                            handleFeeStatusChange(fee.id, value)
-                          }
-                        >
-                          <SelectTrigger className="w-[100px] bg-background">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="bg-background z-50">
-                            <SelectItem value="paid">Paid</SelectItem>
-                            <SelectItem value="due">Due</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        {fee.isCurrentMonth ? (
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant={fee.status === 'paid' ? 'outline' : 'default'}
+                              onClick={() => handleFeeStatusChange(fee.month, 'paid')}
+                            >
+                              Mark Paid
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant={fee.status === 'due' ? 'outline' : 'default'}
+                              onClick={() => handleFeeStatusChange(fee.month, 'due')}
+                            >
+                              Mark Due
+                            </Button>
+                          </div>
+                        ) : (
+                          <Select
+                            value={fee.status}
+                            onValueChange={(value: 'paid' | 'due') =>
+                              handleFeeStatusChange(fee.month, value)
+                            }
+                          >
+                            <SelectTrigger className="w-[100px] bg-background">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-background z-50">
+                              <SelectItem value="paid">Paid</SelectItem>
+                              <SelectItem value="due">Due</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
