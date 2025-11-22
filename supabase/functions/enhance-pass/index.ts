@@ -6,6 +6,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -31,24 +33,49 @@ serve(async (req) => {
 
     console.log('Image downloaded successfully');
 
-    // Convert blob to array buffer
+    // Convert blob to array buffer and then to base64
     const arrayBuffer = await fileData.arrayBuffer();
     const uint8Array = new Uint8Array(arrayBuffer);
-
-    // Use Tesseract.js for OCR
-    const tesseractUrl = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
-    const { createWorker } = await import(tesseractUrl);
-
-    console.log('Starting OCR processing...');
-    const worker = await createWorker('eng');
-    
-    // Convert uint8array to base64 for Tesseract
-    const base64Image = btoa(String.fromCharCode.apply(null, Array.from(uint8Array)));
+    const base64Image = btoa(String.fromCharCode(...uint8Array));
     const dataUrl = `data:image/jpeg;base64,${base64Image}`;
 
-    const { data: { text } } = await worker.recognize(dataUrl);
-    await worker.terminate();
+    console.log('Starting OCR processing with Lovable AI...');
+    
+    // Use Lovable AI vision model to extract text
+    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: 'Extract all text from this bus pass image, especially look for expiry date or valid until date. Return the complete text you can read from the image.'
+              },
+              {
+                type: 'image_url',
+                image_url: { url: dataUrl }
+              }
+            ]
+          }
+        ],
+      }),
+    });
 
+    if (!aiResponse.ok) {
+      console.error('AI gateway error:', await aiResponse.text());
+      throw new Error('Failed to process image with AI');
+    }
+
+    const aiData = await aiResponse.json();
+    const text = aiData.choices?.[0]?.message?.content || '';
+    
     console.log('OCR text extracted:', text);
 
     // Extract expiry date using regex patterns
