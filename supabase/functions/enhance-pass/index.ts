@@ -131,9 +131,11 @@ serve(async (req) => {
     
     console.log('OCR text extracted:', text);
 
-    // Extract expiry date using regex patterns
+    // Extract expiry date and pass ID using regex patterns
     const expiryDate = extractExpiryDate(text);
+    const passId = extractPassId(text);
     console.log('Extracted expiry date:', expiryDate);
+    console.log('Extracted pass ID:', passId);
 
     // Check if pass is expired
     const isExpired = expiryDate ? new Date(expiryDate) < new Date() : false;
@@ -179,6 +181,10 @@ serve(async (req) => {
       updateData.expiry_date = expiryDate;
     }
 
+    if (passId) {
+      updateData.buss_pass_id = passId;
+    }
+
     const { error: updateError } = await supabase
       .from('passes')
       .update(updateData)
@@ -206,7 +212,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        expiryDate, 
+        expiryDate,
+        passId,
         isExpired,
         enhancedUrl: publicUrl 
       }),
@@ -243,6 +250,28 @@ function extractExpiryDate(text: string): string | null {
         }
       } catch (e) {
         console.log('Date parsing error:', e);
+      }
+    }
+  }
+
+  return null;
+}
+
+function extractPassId(text: string): string | null {
+  // Look for pass ID patterns like "Pass ID: XXXXX" or "ID: XXXXX" or just alphanumeric IDs
+  const patterns = [
+    /(?:bus\s*pass\s*id|pass\s*id|id\s*no|id)[:\s#]*([A-Z0-9\-]+)/i,
+    /(?:pass\s*number|ticket\s*number|number)[:\s#]*([A-Z0-9\-]+)/i,
+    /\b([A-Z]{2,}\d{4,}|\d{4,}[A-Z]{2,})\b/i, // Pattern like ABC1234 or 1234ABC
+  ];
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match) {
+      const id = match[1].trim();
+      // Ensure it's at least 4 characters long to avoid false positives
+      if (id.length >= 4) {
+        return id.toUpperCase();
       }
     }
   }
