@@ -176,22 +176,22 @@ const BusDetails = () => {
                       <p className="font-medium text-lg">{busDetails.capacity} seats</p>
                     </div>
                   )}
-                  {profile?.seat_number && (
+                  {profile?.seat_number !== null && profile?.seat_number !== undefined && (
                     <div className="p-4 rounded-lg bg-gradient-accent/5 border border-accent/10">
                       <p className="text-sm text-muted-foreground mb-1">Your Seat Number</p>
                       <p className="font-bold text-2xl font-display text-accent">{profile.seat_number}</p>
                     </div>
                   )}
-                  {(profile?.pass_expiry_date || passData?.expiry_date) && (
+                  {(passData?.expiry_date || profile?.pass_expiry_date) && (
                     <div className="p-4 rounded-lg bg-muted/50">
                       <p className="text-sm text-muted-foreground flex items-center gap-1 mb-1">
                         <Calendar className="h-4 w-4 text-primary" />
                         Pass Expiry Date
                       </p>
                       <p className="font-medium text-lg">
-                        {new Date(profile?.pass_expiry_date || passData?.expiry_date).toLocaleDateString()}
+                        {new Date(passData?.expiry_date || profile?.pass_expiry_date).toLocaleDateString()}
                       </p>
-                      {new Date(profile?.pass_expiry_date || passData?.expiry_date) < new Date() && (
+                      {new Date(passData?.expiry_date || profile?.pass_expiry_date) < new Date() && (
                         <Badge variant="destructive" className="mt-2">Expired</Badge>
                       )}
                     </div>
