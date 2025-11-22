@@ -53,15 +53,14 @@ const EPass = () => {
       .from('pass-documents')
       .getPublicUrl(filePath);
 
-    return publicUrl;
+    return { publicUrl, filePath };
   };
 
-  const handleUpload = async () => {
-    if (!user) return;
-    if (!identityCardFile && !monthlyPassFile) {
+  const handleIdentityCardUpload = async () => {
+    if (!user || !identityCardFile) {
       toast({
-        title: "No files selected",
-        description: "Please select at least one file to upload",
+        title: "No file selected",
+        description: "Please select an identity card to upload",
         variant: "destructive"
       });
       return;
@@ -70,66 +69,19 @@ const EPass = () => {
     setUploading(true);
 
     try {
-      let identityCardUrl = pass?.identity_card_url;
-      let monthlyPassUrl = pass?.monthly_pass_url;
-
-      if (identityCardFile) {
-        identityCardUrl = await uploadFile(identityCardFile, 'identity_card');
-      }
-
-      if (monthlyPassFile) {
-        monthlyPassUrl = await uploadFile(monthlyPassFile, 'monthly_pass');
-        
-        // Trigger pass enhancement and OCR processing
-        if (monthlyPassUrl) {
-          toast({
-            title: "Processing pass...",
-            description: "Enhancing image and detecting expiry date"
-          });
-          
-          try {
-            const filePath = `${user.id}/monthly_pass.${monthlyPassFile.name.split('.').pop()}`;
-            const { data: enhanceData, error: enhanceError } = await supabase.functions.invoke('enhance-pass', {
-              body: { filePath, userId: user.id }
-            });
-
-            if (enhanceError) {
-              console.error('Enhancement error:', enhanceError);
-              toast({
-                title: "Processing warning",
-                description: "Pass uploaded but enhancement failed. You may need to manually verify the expiry date.",
-                variant: "destructive"
-              });
-            } else if (enhanceData?.success) {
-              monthlyPassUrl = enhanceData.enhancedUrl;
-              toast({
-                title: "Pass processed!",
-                description: enhanceData.expiryDate 
-                  ? `Expiry date detected: ${new Date(enhanceData.expiryDate).toLocaleDateString()}${enhanceData.isExpired ? ' (EXPIRED)' : ''}` 
-                  : "Enhancement complete",
-              });
-            }
-          } catch (error: any) {
-            console.error('Enhancement error:', error);
-            toast({
-              title: "Processing warning",
-              description: "Pass uploaded but enhancement failed",
-              variant: "destructive"
-            });
-          }
-        }
-      }
+      const uploadResult = await uploadFile(identityCardFile, 'identity_card');
+      
+      if (!uploadResult) throw new Error('Upload failed');
 
       const passData = {
         user_id: user.id,
-        identity_card_url: identityCardUrl,
-        monthly_pass_url: monthlyPassUrl
+        identity_card_url: uploadResult.publicUrl
       };
 
       if (pass) {
         await supabase
           .from('passes')
-          .update(passData)
+          .update({ identity_card_url: uploadResult.publicUrl })
           .eq('id', pass.id);
       } else {
         await supabase
@@ -139,15 +91,157 @@ const EPass = () => {
 
       toast({
         title: "Success",
-        description: "Documents uploaded successfully"
+        description: "Identity card uploaded successfully"
       });
 
       setIdentityCardFile(null);
+      fetchPass();
+    } catch (error: any) {
+      toast({
+        title: "Upload failed",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleMonthlyPassUpload = async () => {
+    if (!user || !monthlyPassFile) {
+      toast({
+        title: "No file selected",
+        description: "Please select a monthly pass to upload",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      const uploadResult = await uploadFile(monthlyPassFile, 'monthly_pass');
+      
+      if (!uploadResult) throw new Error('Upload failed');
+
+      toast({
+        title: "Processing pass...",
+        description: "Enhancing image and detecting expiry date"
+      });
+      
+      try {
+        const { data: enhanceData, error: enhanceError } = await supabase.functions.invoke('enhance-pass', {
+          body: { filePath: uploadResult.filePath, userId: user.id }
+        });
+
+        if (enhanceError) {
+          console.error('Enhancement error:', enhanceError);
+          toast({
+            title: "Processing warning",
+            description: "Pass uploaded but enhancement failed. You may need to manually verify the expiry date.",
+            variant: "destructive"
+          });
+        } else if (enhanceData?.success) {
+          toast({
+            title: "Pass processed!",
+            description: enhanceData.expiryDate 
+              ? `Expiry date detected: ${new Date(enhanceData.expiryDate).toLocaleDateString()}${enhanceData.isExpired ? ' (EXPIRED)' : ''}` 
+              : "Enhancement complete",
+          });
+        }
+      } catch (error: any) {
+        console.error('Enhancement error:', error);
+        toast({
+          title: "Processing warning",
+          description: "Pass uploaded but enhancement failed",
+          variant: "destructive"
+        });
+      }
+
+      const passData = {
+        user_id: user.id,
+        monthly_pass_url: uploadResult.publicUrl
+      };
+
+      if (pass) {
+        await supabase
+          .from('passes')
+          .update({ monthly_pass_url: uploadResult.publicUrl })
+          .eq('id', pass.id);
+      } else {
+        await supabase
+          .from('passes')
+          .insert(passData);
+      }
+
+      toast({
+        title: "Success",
+        description: "Monthly pass uploaded successfully"
+      });
+
       setMonthlyPassFile(null);
       fetchPass();
     } catch (error: any) {
       toast({
         title: "Upload failed",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDeletePass = async (type: 'identity_card' | 'monthly_pass') => {
+    if (!user || !pass) return;
+
+    setUploading(true);
+
+    try {
+      const filePath = type === 'identity_card' 
+        ? pass.identity_card_url?.split('/').slice(-2).join('/')
+        : pass.monthly_pass_url?.split('/').slice(-2).join('/');
+
+      if (filePath) {
+        // Delete from storage
+        const { error: deleteError } = await supabase.storage
+          .from('pass-documents')
+          .remove([filePath]);
+
+        if (deleteError) {
+          console.error('Storage delete error:', deleteError);
+        }
+      }
+
+      // Update database
+      const updateData = type === 'identity_card'
+        ? { identity_card_url: null }
+        : { monthly_pass_url: null, expiry_date: null };
+
+      const { error: updateError } = await supabase
+        .from('passes')
+        .update(updateData)
+        .eq('id', pass.id);
+
+      if (updateError) throw updateError;
+
+      // If monthly pass deleted, also clear expiry date from profiles
+      if (type === 'monthly_pass') {
+        await supabase
+          .from('profiles')
+          .update({ pass_expiry_date: null })
+          .eq('id', user.id);
+      }
+
+      toast({
+        title: "Success",
+        description: `${type === 'identity_card' ? 'Identity card' : 'Monthly pass'} deleted successfully`
+      });
+
+      fetchPass();
+    } catch (error: any) {
+      toast({
+        title: "Delete failed",
         description: error.message,
         variant: "destructive"
       });
@@ -197,8 +291,8 @@ const EPass = () => {
           <CardContent>
             <div className="space-y-6">
               {/* Upload Section */}
-              <div className="space-y-4">
-                <div className="space-y-2">
+              <div className="space-y-6">
+                <div className="space-y-3">
                   <Label htmlFor="identity-card" className="text-foreground font-semibold">IDENTITY CARD</Label>
                   <div className="flex gap-2">
                     <Input
@@ -207,21 +301,38 @@ const EPass = () => {
                       accept="image/*"
                       onChange={(e) => setIdentityCardFile(e.target.files?.[0] || null)}
                       disabled={uploading}
-                      className="bg-muted/30 border-border/50 text-foreground"
+                      className="bg-muted/30 border-border/50 text-foreground flex-1"
                     />
+                    <Button 
+                      onClick={handleIdentityCardUpload} 
+                      disabled={uploading || !identityCardFile}
+                      className="bg-primary hover:bg-primary/90"
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      Upload
+                    </Button>
                   </div>
                   {pass?.identity_card_url && (
-                    <div className="mt-2">
+                    <div className="mt-2 relative group">
                       <img 
                         src={pass.identity_card_url} 
                         alt="Identity Card" 
                         className="max-w-full h-auto rounded-lg border border-border/50 shadow-md"
                       />
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDeletePass('identity_card')}
+                        disabled={uploading}
+                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        Delete
+                      </Button>
                     </div>
                   )}
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label htmlFor="monthly-pass" className="text-foreground font-semibold">MONTHLY PASS</Label>
                   <div className="flex gap-2">
                     <Input
@@ -230,11 +341,19 @@ const EPass = () => {
                       accept="image/*"
                       onChange={(e) => setMonthlyPassFile(e.target.files?.[0] || null)}
                       disabled={uploading}
-                      className="bg-muted/30 border-border/50 text-foreground"
+                      className="bg-muted/30 border-border/50 text-foreground flex-1"
                     />
+                    <Button 
+                      onClick={handleMonthlyPassUpload} 
+                      disabled={uploading || !monthlyPassFile}
+                      className="bg-primary hover:bg-primary/90"
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      Upload
+                    </Button>
                   </div>
                   {pass?.monthly_pass_url && (
-                    <div className="mt-2 relative">
+                    <div className="mt-2 relative group">
                       <img 
                         src={pass.monthly_pass_url} 
                         alt="Monthly Pass" 
@@ -252,18 +371,18 @@ const EPass = () => {
                           </div>
                         </div>
                       )}
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDeletePass('monthly_pass')}
+                        disabled={uploading}
+                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                      >
+                        Delete
+                      </Button>
                     </div>
                   )}
                 </div>
-
-                <Button 
-                  onClick={handleUpload} 
-                  disabled={uploading || (!identityCardFile && !monthlyPassFile)}
-                  className="w-full bg-primary hover:bg-primary/90 hover:shadow-glow"
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  {uploading ? 'Uploading...' : 'Upload Documents'}
-                </Button>
               </div>
 
               {/* Pass Info Section */}
