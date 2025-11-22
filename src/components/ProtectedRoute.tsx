@@ -10,24 +10,41 @@ interface ProtectedRouteProps {
 
 export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
   const { user, loading } = useAuth();
-  const [userRole, setUserRole] = useState<string | null>(null);
+  const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [checkingRole, setCheckingRole] = useState(true);
 
   useEffect(() => {
-    if (user) {
-      supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single()
-        .then(({ data }) => {
-          setUserRole(data?.role ?? null);
-          setCheckingRole(false);
+    const checkRoles = async () => {
+      if (!user) {
+        setCheckingRole(false);
+        return;
+      }
+
+      if (!allowedRoles || allowedRoles.length === 0) {
+        setHasAccess(true);
+        setCheckingRole(false);
+        return;
+      }
+
+      // Check each allowed role using the secure has_role function
+      let hasAnyRole = false;
+      for (const role of allowedRoles) {
+        const { data } = await supabase.rpc('has_role', {
+          _user_id: user.id,
+          _role: role as any,
         });
-    } else {
+        if (data) {
+          hasAnyRole = true;
+          break;
+        }
+      }
+
+      setHasAccess(hasAnyRole);
       setCheckingRole(false);
-    }
-  }, [user]);
+    };
+
+    checkRoles();
+  }, [user, allowedRoles]);
 
   if (loading || checkingRole) {
     return (
@@ -41,7 +58,7 @@ export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) 
     return <Navigate to="/login" replace />;
   }
 
-  if (allowedRoles && userRole && !allowedRoles.includes(userRole)) {
+  if (allowedRoles && allowedRoles.length > 0 && hasAccess === false) {
     return <Navigate to="/" replace />;
   }
 
