@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -6,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const AdminDashboard = () => {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<any>(null);
 
   useEffect(() => {
@@ -32,7 +34,10 @@ const AdminDashboard = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+          <Card 
+            className="hover:shadow-lg transition-shadow cursor-pointer"
+            onClick={() => navigate('/profile')}
+          >
             <CardHeader>
               <CardTitle>Profile</CardTitle>
             </CardHeader>
@@ -40,7 +45,10 @@ const AdminDashboard = () => {
               <p className="text-muted-foreground">View your admin profile</p>
             </CardContent>
           </Card>
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+          <Card 
+            className="hover:shadow-lg transition-shadow cursor-pointer"
+            onClick={() => navigate('/admin/buses')}
+          >
             <CardHeader>
               <CardTitle>Buses</CardTitle>
             </CardHeader>
