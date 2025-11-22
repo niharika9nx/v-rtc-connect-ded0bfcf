@@ -34,6 +34,7 @@ const Dashboard = () => {
     isExpired: boolean;
     isExpiringSoon: boolean;
   } | null>(null);
+  const [routeImageUrl, setRouteImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -43,7 +44,7 @@ const Dashboard = () => {
         .select('*')
         .eq('id', user.id)
         .maybeSingle()
-        .then(({ data }) => {
+        .then(async ({ data }) => {
           setProfile(data);
           
           // Calculate pass expiry status
@@ -57,6 +58,23 @@ const Dashboard = () => {
               isExpired: daysUntilExpiry < 0,
               isExpiringSoon: daysUntilExpiry >= 0 && daysUntilExpiry <= 5
             });
+          }
+
+          // Fetch route image if bus_number exists
+          if (data?.bus_number) {
+            const { data: files } = await supabase.storage
+              .from('route')
+              .list('', { search: data.bus_number });
+            
+            if (files && files.length > 0) {
+              const { data: urlData } = await supabase.storage
+                .from('route')
+                .createSignedUrl(files[0].name, 3600); // 1 hour expiry
+              
+              if (urlData?.signedUrl) {
+                setRouteImageUrl(urlData.signedUrl);
+              }
+            }
           }
         });
 
@@ -253,11 +271,24 @@ const Dashboard = () => {
               <CardTitle>Your Bus Route</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="bg-muted rounded-lg p-8 text-center">
-                <Bus className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-                <p className="text-lg font-semibold mb-2">Bus Number: {profile.bus_number}</p>
-                <p className="text-sm text-muted-foreground">Route map will be displayed here</p>
-              </div>
+              {routeImageUrl ? (
+                <div className="rounded-lg overflow-hidden">
+                  <img 
+                    src={routeImageUrl} 
+                    alt={`Route map for bus ${profile.bus_number}`}
+                    className="w-full h-auto"
+                  />
+                  <p className="text-center text-sm text-muted-foreground mt-2">
+                    Bus Number: {profile.bus_number}
+                  </p>
+                </div>
+              ) : (
+                <div className="bg-muted rounded-lg p-8 text-center">
+                  <Bus className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+                  <p className="text-lg font-semibold mb-2">Bus Number: {profile.bus_number}</p>
+                  <p className="text-sm text-muted-foreground">No route map available</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
