@@ -14,6 +14,8 @@ import Profile from "./pages/Profile";
 import BusDetails from "./pages/BusDetails";
 import EPass from "./pages/EPass";
 import AdminDashboard from "./pages/AdminDashboard";
+import AdminBuses from "./pages/AdminBuses";
+import AdminBusDashboard from "./pages/AdminBusDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -67,6 +69,22 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/buses"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminBuses />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/bus/:busNumber"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminBusDashboard />
                 </ProtectedRoute>
               }
             />
