@@ -62,17 +62,21 @@ const Dashboard = () => {
 
           // Fetch route image if bus_number exists
           if (data?.bus_number) {
-            const { data: files } = await supabase.storage
-              .from('route')
-              .list('', { search: data.bus_number });
-            
-            if (files && files.length > 0) {
-              const { data: urlData } = await supabase.storage
+            // Try to get the route image (try bus-specific file first, then general route.png)
+            const possibleFileNames = [
+              `bus-${data.bus_number}.png`,
+              `${data.bus_number}.png`,
+              'route.png'
+            ];
+
+            for (const fileName of possibleFileNames) {
+              const { data: urlData, error } = await supabase.storage
                 .from('route')
-                .createSignedUrl(files[0].name, 3600); // 1 hour expiry
+                .createSignedUrl(fileName, 3600); // 1 hour expiry
               
-              if (urlData?.signedUrl) {
+              if (urlData?.signedUrl && !error) {
                 setRouteImageUrl(urlData.signedUrl);
+                break;
               }
             }
           }
