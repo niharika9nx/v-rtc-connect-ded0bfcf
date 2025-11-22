@@ -37,7 +37,15 @@ const AdminBuses = () => {
         variant: 'destructive',
       });
     } else {
-      setBuses(data || []);
+      const mappedData = (data || []).map((bus: any) => ({
+        id: bus.ID,
+        bus_number: bus.bus_number,
+        route: bus.route,
+        departure_time: bus.departure_time,
+        arrival_time: bus.arrival_time,
+        capacity: bus.capacity,
+      }));
+      setBuses(mappedData);
     }
     setLoading(false);
   };
