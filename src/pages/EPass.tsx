@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, CreditCard, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { AlertNotifications } from '@/components/AlertNotifications';
 
 const EPass = () => {
   const { user } = useAuth();
@@ -184,6 +185,8 @@ const EPass = () => {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-6">
+        <AlertNotifications />
+        
         <Card className="glass border-border/50 shadow-lg hover:shadow-glow transition-all animate-slide-up">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-foreground">

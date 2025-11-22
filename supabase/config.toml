@@ -2,3 +2,9 @@ project_id = "riqqyhaguckeijcownor"
 
 [functions.enhance-pass]
 verify_jwt = true
+
+[functions.check-expiring-passes]
+verify_jwt = false
+
+[functions.respond-to-alert]
+verify_jwt = true
