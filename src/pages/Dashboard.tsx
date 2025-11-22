@@ -89,7 +89,10 @@ const Dashboard = () => {
           const hasExpiredPass = passInfo?.expiry_date && new Date(passInfo.expiry_date) < new Date();
           const feePaid = !!feeData;
 
-          setShowPassButton(feePaid && (hasNoPass || hasExpiredPass));
+          // TEMPORARY: Always show for testing
+          setShowPassButton(true);
+          // ORIGINAL LOGIC (restore after testing):
+          // setShowPassButton(feePaid && (hasNoPass || hasExpiredPass));
 
           // Fetch route image if bus_number exists
           if (data?.bus_number) {
