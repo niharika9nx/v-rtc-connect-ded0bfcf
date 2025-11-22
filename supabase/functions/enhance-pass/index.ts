@@ -33,11 +33,14 @@ serve(async (req) => {
 
     console.log('Image downloaded successfully');
 
-    // Convert blob to array buffer and then to base64
+    // Convert blob to array buffer
     const arrayBuffer = await fileData.arrayBuffer();
-    const uint8Array = new Uint8Array(arrayBuffer);
+    let uint8Array = new Uint8Array(arrayBuffer);
     
-    // Convert to base64 in chunks to avoid stack overflow
+    // Compress image to reduce size for faster processing
+    console.log('Original image size:', uint8Array.length, 'bytes');
+    
+    // Convert to base64 for compression via AI
     let binary = '';
     const chunkSize = 8192;
     for (let i = 0; i < uint8Array.length; i += chunkSize) {
@@ -45,7 +48,49 @@ serve(async (req) => {
       binary += String.fromCharCode.apply(null, Array.from(chunk));
     }
     const base64Image = btoa(binary);
-    const dataUrl = `data:image/jpeg;base64,${base64Image}`;
+    
+    // Compress image using Lovable AI (resize to max 1024px width)
+    console.log('Compressing image...');
+    const compressionResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash-image',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: 'Resize this image to a maximum width of 1024px while maintaining aspect ratio and quality. Return the compressed image.'
+              },
+              {
+                type: 'image_url',
+                image_url: { url: `data:image/jpeg;base64,${base64Image}` }
+              }
+            ]
+          }
+        ],
+        modalities: ['image']
+      }),
+    });
+
+    let compressedBase64 = base64Image;
+    if (compressionResponse.ok) {
+      const compressionData = await compressionResponse.json();
+      const compressedUrl = compressionData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+      if (compressedUrl) {
+        compressedBase64 = compressedUrl.split(',')[1];
+        console.log('Image compressed successfully');
+      }
+    } else {
+      console.log('Compression failed, using original image');
+    }
+    
+    const dataUrl = `data:image/jpeg;base64,${compressedBase64}`;
 
     console.log('Starting OCR processing with Lovable AI...');
     
@@ -94,8 +139,15 @@ serve(async (req) => {
     const isExpired = expiryDate ? new Date(expiryDate) < new Date() : false;
     console.log('Pass expired:', isExpired);
 
-    // Enhance and process image
-    const enhancedImageBlob = await enhanceImage(uint8Array, isExpired);
+    // Enhance and process image - convert compressed base64 back to blob
+    const compressedBinary = atob(compressedBase64);
+    const compressedBytes = new Uint8Array(compressedBinary.length);
+    for (let i = 0; i < compressedBinary.length; i++) {
+      compressedBytes[i] = compressedBinary.charCodeAt(i);
+    }
+    const enhancedImageBlob = await enhanceImage(compressedBytes, isExpired);
+
+    console.log('Compressed image size:', compressedBytes.length, 'bytes');
 
     // Upload enhanced image
     const enhancedFileName = filePath.replace('monthly_pass', 'monthly_pass_enhanced');
