@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { Bus } from 'lucide-react';
 
 const SignupStudent = () => {
   const [formData, setFormData] = useState({
@@ -82,58 +83,68 @@ const SignupStudent = () => {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-2xl">
-        <CardHeader>
-          <CardTitle className="text-2xl">Student Registration</CardTitle>
-          <CardDescription>Create your student account for VBus</CardDescription>
+    <div className="flex min-h-screen items-center justify-center bg-background bg-mesh p-4">
+      <div className="absolute inset-0 bg-gradient-primary opacity-5" />
+      <Card className="w-full max-w-2xl glass border-border/50 shadow-lg hover:shadow-glow transition-all animate-slide-up relative">
+        <CardHeader className="text-center">
+          <div className="flex justify-center mb-4">
+            <div className="p-3 rounded-full bg-primary/10 border border-primary/30">
+              <Bus className="h-8 w-8 text-primary" />
+            </div>
+          </div>
+          <CardTitle className="text-2xl font-display text-foreground">Student Registration</CardTitle>
+          <CardDescription className="text-muted-foreground">Create your student account for VBus</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSignup} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
+                <Label htmlFor="name" className="text-foreground">Full Name</Label>
                 <Input
                   id="name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
+                  className="bg-muted/30 border-border/50 text-foreground"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email" className="text-foreground">Email</Label>
                 <Input
                   id="email"
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
+                  className="bg-muted/30 border-border/50 text-foreground"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password" className="text-foreground">Password</Label>
                 <Input
                   id="password"
                   type="password"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required
+                  className="bg-muted/30 border-border/50 text-foreground"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone</Label>
+                <Label htmlFor="phone" className="text-foreground">Phone</Label>
                 <Input
                   id="phone"
                   type="tel"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   required
+                  className="bg-muted/30 border-border/50 text-foreground"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="gender">Gender</Label>
+                <Label htmlFor="gender" className="text-foreground">Gender</Label>
                 <Select onValueChange={(value) => setFormData({ ...formData, gender: value })}>
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-muted/30 border-border/50">
                     <SelectValue placeholder="Select gender" />
                   </SelectTrigger>
                   <SelectContent>
@@ -144,18 +155,19 @@ const SignupStudent = () => {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="registrationId">Registration ID</Label>
+                <Label htmlFor="registrationId" className="text-foreground">Registration ID</Label>
                 <Input
                   id="registrationId"
                   value={formData.registrationId}
                   onChange={(e) => setFormData({ ...formData, registrationId: e.target.value })}
                   required
+                  className="bg-muted/30 border-border/50 text-foreground"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="college">College</Label>
+                <Label htmlFor="college" className="text-foreground">College</Label>
                 <Select onValueChange={(value) => setFormData({ ...formData, college: value })}>
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-muted/30 border-border/50">
                     <SelectValue placeholder="Select college" />
                   </SelectTrigger>
                   <SelectContent>
@@ -166,9 +178,9 @@ const SignupStudent = () => {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="branch">Branch</Label>
+                <Label htmlFor="branch" className="text-foreground">Branch</Label>
                 <Select onValueChange={(value) => setFormData({ ...formData, branch: value })}>
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-muted/30 border-border/50">
                     <SelectValue placeholder="Select branch" />
                   </SelectTrigger>
                   <SelectContent>
@@ -179,9 +191,9 @@ const SignupStudent = () => {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="year">Year</Label>
+                <Label htmlFor="year" className="text-foreground">Year</Label>
                 <Select onValueChange={(value) => setFormData({ ...formData, year: value })}>
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-muted/30 border-border/50">
                     <SelectValue placeholder="Select year" />
                   </SelectTrigger>
                   <SelectContent>
@@ -193,9 +205,9 @@ const SignupStudent = () => {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="section">Section</Label>
+                <Label htmlFor="section" className="text-foreground">Section</Label>
                 <Select onValueChange={(value) => setFormData({ ...formData, section: value })}>
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-muted/30 border-border/50">
                     <SelectValue placeholder="Select section" />
                   </SelectTrigger>
                   <SelectContent>
@@ -206,14 +218,18 @@ const SignupStudent = () => {
                 </Select>
               </div>
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button 
+              type="submit" 
+              className="w-full bg-primary hover:bg-primary/90 hover:shadow-glow" 
+              disabled={loading}
+            >
               {loading ? 'Creating Account...' : 'Sign Up'}
             </Button>
           </form>
           <div className="mt-4 text-center text-sm">
             <p className="text-muted-foreground">
               Already have an account?{' '}
-              <Link to="/login" className="text-primary underline hover:text-primary/90">
+              <Link to="/login" className="text-primary underline hover:text-primary/90 font-semibold">
                 Login
               </Link>
             </p>
