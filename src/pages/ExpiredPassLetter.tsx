@@ -106,6 +106,12 @@ const ExpiredPassLetter = () => {
                       For any verification or queries, please contact the transport administration office.
                     </p>
 
+                    <div className="bg-muted/50 p-4 rounded-lg border">
+                      <p className="font-semibold mb-2">Contact for Verification:</p>
+                      <p>Palleswari Mam</p>
+                      <p className="font-semibold text-primary">Phone: 9000912477</p>
+                    </div>
+
                     <p>Thank you for your cooperation.</p>
                   </div>
 
@@ -179,6 +185,12 @@ const ExpiredPassLetter = () => {
                     <p>
                       ఏవైనా ధృవీకరణ లేదా ప్రశ్నలకు, దయచేసి రవాణా అడ్మినిస్ట్రేషన్ కార్యాలయాన్ని సంప్రదించండి.
                     </p>
+
+                    <div className="bg-muted/50 p-4 rounded-lg border">
+                      <p className="font-semibold mb-2">ధృవీకరణ కోసం సంప్రదించండి:</p>
+                      <p>పల్లేశ్వరి మేడం</p>
+                      <p className="font-semibold text-primary">ఫోన్: 9000912477</p>
+                    </div>
 
                     <p>మీ సహకారానికి ధన్యవాదాలు.</p>
                   </div>
