@@ -234,7 +234,6 @@ const Index = () => {
       <div className="absolute bottom-4 left-0 right-0 z-10">
         <div className="text-center text-xs md:text-sm text-muted-foreground/70 px-4 space-y-1">
           <p>© 2025 Shri Vishnu Engineering College For Women (SVECW). All rights reserved.</p>
-          <p>Developed by Niharika chinimilli</p>
           <p>Contact: <a href="mailto:vesbusrtc@gmail.com" className="hover:text-primary transition-colors">vesbusrtc@gmail.com</a></p>
         </div>
       </div>
