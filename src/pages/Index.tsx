@@ -175,9 +175,9 @@ const Index = () => {
         {/* Logo/Icon */}
         <div className="flex justify-center mb-4 md:mb-6">
           <div className="relative">
-            <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full animate-pulse" />
+            <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full" style={{ animationDuration: '6s' }} />
             <div className="relative p-3 md:p-5 rounded-2xl bg-gradient-primary/10 border border-primary/30 backdrop-blur-sm shadow-glow">
-              <Bus className="h-12 w-12 md:h-16 md:w-16 text-primary animate-float" />
+              <Bus className="h-12 w-12 md:h-16 md:w-16 text-primary" />
             </div>
           </div>
         </div>
