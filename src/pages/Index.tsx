@@ -163,7 +163,7 @@ const Index = () => {
         <img 
           src={apsrtcLogo} 
           alt="APSRTC Logo" 
-          className="h-10 md:h-16 w-auto opacity-80 hover:opacity-100 transition-opacity"
+          className="h-8 md:h-16 w-auto opacity-80 hover:opacity-100 transition-opacity"
         />
       </div>
 
@@ -172,7 +172,7 @@ const Index = () => {
         <img 
           src={vesLogo} 
           alt="VES Logo" 
-          className="h-10 md:h-16 w-auto opacity-80 hover:opacity-100 transition-opacity"
+          className="h-8 md:h-16 w-auto opacity-80 hover:opacity-100 transition-opacity"
         />
       </div>
 
