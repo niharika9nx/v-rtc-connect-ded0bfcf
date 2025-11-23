@@ -12,6 +12,7 @@ interface AlertNotification {
   message: string;
   status: string;
   send_at: string;
+  created_at: string;
 }
 
 export const AlertNotifications = () => {
@@ -23,6 +24,27 @@ export const AlertNotifications = () => {
   useEffect(() => {
     if (user) {
       fetchAlerts();
+
+      // Set up real-time subscription for new alerts
+      const channel = supabase
+        .channel('alerts-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'alerts',
+            filter: `user_id=eq.${user.id}`
+          },
+          () => {
+            fetchAlerts();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [user]);
 
@@ -33,8 +55,8 @@ export const AlertNotifications = () => {
       .from('alerts')
       .select('*')
       .eq('user_id', user.id)
-      .eq('status', 'pending')
-      .order('send_at', { ascending: false });
+      .in('status', ['pending', 'unread'])
+      .order('created_at', { ascending: false });
 
     if (error) {
       console.error('Error fetching alerts:', error);
@@ -89,11 +111,12 @@ export const AlertNotifications = () => {
   }
 
   return (
-    <div className="space-y-3 mb-4">
-      {alerts.map((alert) => (
+    <div className="space-y-3">
+      {alerts.map((alert, index) => (
         <Alert 
           key={alert.id} 
-          className="relative glass border-primary/30 bg-primary/5 animate-slide-up"
+          className="relative glass border-primary/30 bg-primary/5 animate-slide-up shadow-lg"
+          style={{ animationDelay: `${index * 0.1}s` }}
         >
           <div className="flex items-start gap-3">
             {alert.type === 'pass_renewal_reminder' ? (
@@ -125,6 +148,12 @@ export const AlertNotifications = () => {
                     Not yet
                   </Button>
                 </div>
+              )}
+
+              {alert.type === 'custom' && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Sent by admin • {new Date(alert.created_at).toLocaleDateString()}
+                </p>
               )}
             </div>
 

@@ -252,8 +252,42 @@ const Dashboard = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
-        {/* Alert Notifications */}
-        <AlertNotifications />
+        {/* Notifications Section */}
+        <Card className="glass animate-slide-up shadow-glow">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg font-display">
+              <Bell className="h-5 w-5 text-primary" />
+              Notifications & Alerts
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Custom Alerts from Admin */}
+            <AlertNotifications />
+            
+            {/* Announcements */}
+            {announcements.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+                  <Bell className="h-4 w-4" />
+                  Latest Announcements
+                </h3>
+                {announcements.map((announcement, index) => (
+                  <Alert key={announcement.id} className="bg-background/50 border-primary/20 animate-slide-up" style={{ animationDelay: `${index * 0.1}s` }}>
+                    <AlertCircle className="h-4 w-4 text-primary" />
+                    <AlertDescription>
+                      <div className="flex justify-between items-start">
+                        <span>{announcement.message}</span>
+                        <span className="text-xs text-muted-foreground ml-2 whitespace-nowrap">
+                          {new Date(announcement.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Pass Expiry Alert */}
         {passExpiryStatus?.isExpired && (
@@ -306,26 +340,6 @@ const Dashboard = () => {
               </p>
             </AlertDescription>
           </Alert>
-        )}
-
-        {/* Announcements Bar with glassmorphism */}
-        {announcements.length > 0 && (
-          <Card className="glass animate-slide-up shadow-glow">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg font-display">
-                <Bell className="h-5 w-5 text-primary" />
-                Announcements
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {announcements.map((announcement, index) => (
-                <Alert key={announcement.id} className="bg-background/50 border-primary/20" style={{ animationDelay: `${index * 0.1}s` }}>
-                  <AlertCircle className="h-4 w-4 text-primary" />
-                  <AlertDescription>{announcement.message}</AlertDescription>
-                </Alert>
-              ))}
-            </CardContent>
-          </Card>
         )}
 
         {/* Main Navigation Buttons with modern cards */}
