@@ -185,7 +185,7 @@ const Index = () => {
             </span>
           </h1>
           <p className="text-xl md:text-2xl text-muted-foreground font-medium">
-            College Bus Transportation Management System
+            VES - APSRTC Bus management system
           </p>
           <div className="h-1 w-32 mx-auto bg-gradient-primary rounded-full" />
         </div>
