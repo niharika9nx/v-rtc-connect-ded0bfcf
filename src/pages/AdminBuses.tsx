@@ -62,9 +62,9 @@ const AdminBuses = () => {
   return (
     <div className="min-h-screen bg-background p-4">
       <div className="max-w-6xl mx-auto space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Bus Management</h1>
-          <Button onClick={() => navigate('/admin')} variant="outline">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-6">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">Bus Management</h1>
+          <Button onClick={() => navigate('/admin')} variant="outline" className="w-full sm:w-auto">
             Back to Dashboard
           </Button>
         </div>
