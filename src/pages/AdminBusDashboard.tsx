@@ -377,51 +377,52 @@ const AdminBusDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Bus {busNumber} Dashboard</h1>
-          <Button onClick={() => navigate('/admin/buses')} variant="outline">
+    <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto space-y-4 md:space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
+          <h1 className="text-2xl md:text-3xl font-bold">Bus {busNumber} Dashboard</h1>
+          <Button onClick={() => navigate('/admin/buses')} variant="outline" className="w-full sm:w-auto">
             Back to Buses
           </Button>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Route Details</CardTitle>
+            <CardTitle className="text-lg md:text-xl">Route Details</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
-            <p>
+          <CardContent className="space-y-2 md:space-y-3">
+            <p className="text-sm md:text-base">
               <span className="font-semibold">Route:</span> {busDetails.route}
             </p>
-            <p>
+            <p className="text-sm md:text-base">
               <span className="font-semibold">Morning Departure:</span>{' '}
               {formatTo12Hour(busDetails.departure_time)}
             </p>
-            <p>
+            <p className="text-sm md:text-base">
               <span className="font-semibold">Evening Arrival:</span>{' '}
               {formatTo12Hour(busDetails.arrival_time)}
             </p>
-            <p>
+            <p className="text-sm md:text-base">
               <span className="font-semibold">Capacity:</span> {busDetails.capacity}
             </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Filters</CardTitle>
+          <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
+            <CardTitle className="text-lg md:text-xl">Filters</CardTitle>
             <Button 
               variant="outline" 
               size="sm"
               onClick={clearFilters}
               disabled={selectedCollege === 'all' && selectedBranch === 'all' && selectedYear === 'all'}
+              className="w-full sm:w-auto"
             >
               Clear Filters
             </Button>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">College</label>
                 <Select value={selectedCollege} onValueChange={setSelectedCollege}>
@@ -476,16 +477,16 @@ const AdminBusDashboard = () => {
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
           <Card
             className="hover:shadow-lg transition-shadow cursor-pointer"
             onClick={() => handleStatClick('students')}
           >
-            <CardHeader>
-              <CardTitle className="text-lg">Students</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base md:text-lg">Students</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold">{stats.totalStudents}</p>
+              <p className="text-2xl md:text-3xl font-bold">{stats.totalStudents}</p>
             </CardContent>
           </Card>
 
@@ -493,11 +494,11 @@ const AdminBusDashboard = () => {
             className="hover:shadow-lg transition-shadow cursor-pointer"
             onClick={() => handleStatClick('faculty')}
           >
-            <CardHeader>
-              <CardTitle className="text-lg">Faculty</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base md:text-lg">Faculty</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold">{stats.totalFaculty}</p>
+              <p className="text-2xl md:text-3xl font-bold">{stats.totalFaculty}</p>
             </CardContent>
           </Card>
 
@@ -505,11 +506,11 @@ const AdminBusDashboard = () => {
             className="hover:shadow-lg transition-shadow cursor-pointer"
             onClick={() => handleStatClick('feePaid')}
           >
-            <CardHeader>
-              <CardTitle className="text-lg">Fee Paid</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base md:text-lg">Fee Paid</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-green-600">{stats.feePaid}</p>
+              <p className="text-2xl md:text-3xl font-bold text-green-600">{stats.feePaid}</p>
             </CardContent>
           </Card>
 
@@ -517,11 +518,11 @@ const AdminBusDashboard = () => {
             className="hover:shadow-lg transition-shadow cursor-pointer"
             onClick={() => handleStatClick('feeDue')}
           >
-            <CardHeader>
-              <CardTitle className="text-lg">Fee Due</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base md:text-lg">Fee Due</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-red-600">{stats.feeDue}</p>
+              <p className="text-2xl md:text-3xl font-bold text-red-600">{stats.feeDue}</p>
             </CardContent>
           </Card>
 
@@ -529,11 +530,11 @@ const AdminBusDashboard = () => {
             className="hover:shadow-lg transition-shadow cursor-pointer"
             onClick={() => handleStatClick('expiringPasses')}
           >
-            <CardHeader>
-              <CardTitle className="text-lg">Expiring Passes</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base md:text-lg">Expiring Passes</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-orange-600">
+              <p className="text-2xl md:text-3xl font-bold text-orange-600">
                 {stats.expiringPasses}
               </p>
             </CardContent>
@@ -543,11 +544,11 @@ const AdminBusDashboard = () => {
             className="hover:shadow-lg transition-shadow cursor-pointer"
             onClick={() => handleStatClick('passesIssued')}
           >
-            <CardHeader>
-              <CardTitle className="text-lg">Passes Issued</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base md:text-lg">Passes Issued</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-blue-600">
+              <p className="text-2xl md:text-3xl font-bold text-blue-600">
                 {stats.passesIssued}
               </p>
             </CardContent>
@@ -556,9 +557,9 @@ const AdminBusDashboard = () => {
       </div>
 
       <Dialog open={showUserList} onOpenChange={setShowUserList}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-[95vw] sm:max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="text-base md:text-lg">
               {userListType === 'students' && 'Students List'}
               {userListType === 'faculty' && 'Faculty List'}
               {userListType === 'feePaid' && 'Fee Paid List'}
@@ -567,35 +568,35 @@ const AdminBusDashboard = () => {
               {userListType === 'passesIssued' && 'Passes Issued List'}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-2">
+          <div className="space-y-2 md:space-y-3">
             {userList.length === 0 ? (
-              <p className="text-muted-foreground text-center py-4">No users found</p>
+              <p className="text-muted-foreground text-center py-4 text-sm md:text-base">No users found</p>
             ) : (
               userList.map((user) => (
                 <Card key={user.id}>
-                  <CardContent className="pt-4">
-                    <div className="flex justify-between items-start gap-4">
-                      <div className="space-y-1 flex-1">
+                  <CardContent className="pt-3 md:pt-4 p-3 md:p-6">
+                    <div className="flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-4">
+                      <div className="space-y-1 flex-1 w-full">
                         <Link
                           to={`/admin/user/${user.id}`}
-                          className="font-semibold text-primary hover:underline"
+                          className="font-semibold text-primary hover:underline text-sm md:text-base"
                         >
                           {user.name}
                         </Link>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-xs md:text-sm text-muted-foreground">
                           {user.role} | {user.college}
                         </p>
                         {user.branch && (
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-xs md:text-sm text-muted-foreground">
                             {user.branch} - Year {user.year}
                           </p>
                         )}
-                        <p className="text-sm">{user.phone}</p>
+                        <p className="text-xs md:text-sm">{user.phone}</p>
                       </div>
-                      <div className="flex flex-col gap-2">
+                      <div className="flex flex-col gap-2 w-full sm:w-auto">
                         {(userListType === 'feePaid' || userListType === 'feeDue') && (
-                          <div className="flex gap-2 items-center">
-                            <Badge variant={user.feeStatus === 'paid' ? 'default' : 'destructive'}>
+                          <div className="flex gap-2 items-center flex-wrap">
+                            <Badge variant={user.feeStatus === 'paid' ? 'default' : 'destructive'} className="text-xs">
                               {user.feeStatus?.toUpperCase()}
                             </Badge>
                             <Select
@@ -604,7 +605,7 @@ const AdminBusDashboard = () => {
                                 handleFeeStatusChange(user.id, value)
                               }
                             >
-                              <SelectTrigger className="w-[100px] bg-background">
+                              <SelectTrigger className="w-full sm:w-[100px] bg-background text-xs md:text-sm">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent className="bg-background z-50">
@@ -618,6 +619,7 @@ const AdminBusDashboard = () => {
                           size="sm"
                           variant="outline"
                           onClick={() => handleSendAlert(user)}
+                          className="w-full sm:w-auto text-xs md:text-sm"
                         >
                           Send Alert
                         </Button>
@@ -632,26 +634,27 @@ const AdminBusDashboard = () => {
       </Dialog>
 
       <Dialog open={showAlertDialog} onOpenChange={setShowAlertDialog}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-[95vw] sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Send Alert to {selectedUser?.name}</DialogTitle>
+            <DialogTitle className="text-base md:text-lg">Send Alert to {selectedUser?.name}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-3 md:space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="alert-message">Alert Message</Label>
+              <Label htmlFor="alert-message" className="text-sm md:text-base">Alert Message</Label>
               <Textarea
                 id="alert-message"
                 placeholder="Enter your custom alert message..."
                 value={alertMessage}
                 onChange={(e) => setAlertMessage(e.target.value)}
                 rows={5}
+                className="text-sm md:text-base"
               />
             </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setShowAlertDialog(false)}>
+            <div className="flex flex-col sm:flex-row justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowAlertDialog(false)} className="w-full sm:w-auto text-sm md:text-base">
                 Cancel
               </Button>
-              <Button onClick={submitAlert}>Send Alert</Button>
+              <Button onClick={submitAlert} className="w-full sm:w-auto text-sm md:text-base">Send Alert</Button>
             </div>
           </div>
         </DialogContent>
