@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 // College configuration - same as in SignupStudent
 const collegeConfig = {
   'SVECW': {
-    branches: ['CSE', 'AIDS', 'AIML', 'CSE-CS', 'IT', 'ECE', 'EEE', 'CE', 'ME'],
+    branches: ['CSE', 'AIDS', 'AIML', 'CSE-CS', 'IT', 'ECE', 'EEE', 'CE', 'ME', 'Freshman Engineering'],
   },
   'Smt. B seetha Polytechnic': {
     branches: ['Computer Engineering', 'ECE', 'EEE', 'Applied Electronics and Instrumentation Engineering'],
