@@ -48,6 +48,7 @@ interface Stats {
   feePaid: number;
   feeDue: number;
   expiringPasses: number;
+  passesIssued: number;
 }
 
 const AdminBusDashboard = () => {
@@ -61,6 +62,7 @@ const AdminBusDashboard = () => {
     feePaid: 0,
     feeDue: 0,
     expiringPasses: 0,
+    passesIssued: 0,
   });
   const [loading, setLoading] = useState(true);
   const [selectedCollege, setSelectedCollege] = useState<string>('all');
@@ -171,12 +173,20 @@ const AdminBusDashboard = () => {
         .lte('pass_expiry_date', fiveDaysFromNow.toISOString().split('T')[0])
         .gte('pass_expiry_date', new Date().toISOString().split('T')[0]);
 
+      // Fetch passes issued count
+      const { data: passesIssuedData } = await supabase
+        .from('passes')
+        .select('user_id, profiles!inner(bus_number)')
+        .not('monthly_pass_url', 'is', null)
+        .eq('profiles.bus_number', busNumber);
+
       setStats({
         totalStudents: students.length,
         totalFaculty: faculty.length,
         feePaid: feePaidCount,
         feeDue: feeDueCount,
         expiringPasses: passData?.length || 0,
+        passesIssued: passesIssuedData?.length || 0,
       });
     }
 
@@ -235,6 +245,22 @@ const AdminBusDashboard = () => {
         .eq('bus_number', busNumber)
         .lte('pass_expiry_date', fiveDaysFromNow.toISOString().split('T')[0])
         .gte('pass_expiry_date', new Date().toISOString().split('T')[0]);
+
+      setUserList(passProfiles || []);
+    } else if (type === 'passesIssued') {
+      // Fetch users who have uploaded monthly passes
+      const { data: passesData } = await supabase
+        .from('passes')
+        .select('user_id')
+        .not('monthly_pass_url', 'is', null);
+
+      const passUserIds = passesData?.map((p) => p.user_id) || [];
+      
+      const { data: passProfiles } = await supabase
+        .from('profiles')
+        .select('id, name, role, college, branch, year, phone')
+        .eq('bus_number', busNumber)
+        .in('id', passUserIds);
 
       setUserList(passProfiles || []);
     } else {
@@ -494,6 +520,20 @@ const AdminBusDashboard = () => {
               </p>
             </CardContent>
           </Card>
+
+          <Card
+            className="hover:shadow-lg transition-shadow cursor-pointer"
+            onClick={() => handleStatClick('passesIssued')}
+          >
+            <CardHeader>
+              <CardTitle className="text-lg">Passes Issued</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold text-blue-600">
+                {stats.passesIssued}
+              </p>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
@@ -506,6 +546,7 @@ const AdminBusDashboard = () => {
               {userListType === 'feePaid' && 'Fee Paid List'}
               {userListType === 'feeDue' && 'Fee Due List'}
               {userListType === 'expiringPasses' && 'Expiring Passes List'}
+              {userListType === 'passesIssued' && 'Passes Issued List'}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-2">
