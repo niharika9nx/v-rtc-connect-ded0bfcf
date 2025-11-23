@@ -145,6 +145,28 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleTestAlerts = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('check-expiring-passes');
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: `Alert check completed! Found ${data.expiringCount || 0} expiring and ${data.expiredCount || 0} expired passes.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to check alerts',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background bg-mesh p-4">
       <div className="max-w-6xl mx-auto space-y-6">
@@ -165,6 +187,28 @@ const AdminDashboard = () => {
               Logout
             </Button>
           </div>
+        </div>
+
+        <div className="mb-4">
+          <Card className="glass border-primary/50 hover:shadow-glow transition-all">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-foreground mb-1">Test Pass Expiry Alerts</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Manually trigger the alert check system to see how pass expiry alerts work
+                  </p>
+                </div>
+                <Button 
+                  onClick={handleTestAlerts}
+                  disabled={loading}
+                  className="bg-primary hover:bg-primary/90 hover:shadow-glow"
+                >
+                  {loading ? 'Checking...' : 'Test Alerts'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
