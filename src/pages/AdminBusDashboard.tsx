@@ -243,28 +243,27 @@ const AdminBusDashboard = () => {
         .lte('pass_expiry_date', fiveDaysFromNow.toISOString().split('T')[0])
         .gte('pass_expiry_date', new Date().toISOString().split('T')[0]);
 
-      // Fetch passes issued count
+      // Fetch passes issued count - first get filtered profile IDs, then count passes
+      const passesIssuedUserIds = profiles.map(p => p.id);
+      
       const { data: passesIssuedData } = await supabase
         .from('passes')
-        .select('user_id, profiles!passes_user_id_fkey(bus_number)')
+        .select('user_id')
+        .in('user_id', passesIssuedUserIds)
         .not('monthly_pass_url', 'is', null);
 
-      // Filter by bus number on the client side after joining
-      const filteredPasses = passesIssuedData?.filter(
-        (pass: any) => pass.profiles?.bus_number === busNumber
-      );
+      const filteredPasses = passesIssuedData || [];
 
-      // Fetch passes expired count (users who answered "No" to pass renewal)
+      // Fetch passes expired count (users who answered "No" to pass renewal) - use filtered profile IDs
       const { data: expiredAlertsData } = await supabase
         .from('alerts')
-        .select('user_id, profiles!alerts_user_id_fkey(bus_number)')
+        .select('user_id')
+        .in('user_id', passesIssuedUserIds)
         .eq('type', 'pass_renewal_reminder')
         .eq('user_response', 'no')
         .eq('status', 'pending');
 
-      const filteredExpiredAlerts = expiredAlertsData?.filter(
-        (alert: any) => alert.profiles?.bus_number === busNumber
-      );
+      const filteredExpiredAlerts = expiredAlertsData || [];
 
       setStats({
         totalStudents: students.length,
