@@ -196,13 +196,6 @@ const Dashboard = () => {
     try {
       console.log('Creating test alerts for user:', user.id);
       
-      // First, clear any existing test alerts
-      await supabase
-        .from('alerts')
-        .delete()
-        .eq('user_id', user.id)
-        .or('message.ilike.*[TEST ALERT]*,message.ilike.*December 10, 2025*,message.ilike.*expired 2 days ago*');
-      
       // Create a countdown alert (3 days remaining)
       const { data: data1, error: error1 } = await supabase.from('alerts').insert({
         user_id: user.id,
