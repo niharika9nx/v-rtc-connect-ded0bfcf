@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Bus } from "lucide-react";
 import { useState, useEffect } from "react";
 import apsrtcLogo from '@/assets/apsrtc-logo.png';
+import vesLogo from '@/assets/ves-logo.jpg';
 
 interface Ripple {
   id: number;
@@ -162,6 +163,15 @@ const Index = () => {
         <img 
           src={apsrtcLogo} 
           alt="APSRTC Logo" 
+          className="h-16 w-auto opacity-80 hover:opacity-100 transition-opacity"
+        />
+      </div>
+
+      {/* VES Logo in corner */}
+      <div className="absolute top-4 right-4 z-10 animate-fade-in">
+        <img 
+          src={vesLogo} 
+          alt="VES Logo" 
           className="h-16 w-auto opacity-80 hover:opacity-100 transition-opacity"
         />
       </div>
