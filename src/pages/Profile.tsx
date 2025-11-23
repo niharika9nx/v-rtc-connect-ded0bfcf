@@ -35,6 +35,7 @@ const Profile = () => {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
@@ -73,6 +74,12 @@ const Profile = () => {
           department: data.department || '',
         });
       }
+
+      // Check if user is admin
+      const { data: adminCheck } = await supabase
+        .rpc('has_role', { _user_id: user.id, _role: 'admin' });
+      setIsAdmin(!!adminCheck);
+
       setLoading(false);
     }
   };
@@ -137,7 +144,7 @@ const Profile = () => {
         <div className="relative max-w-7xl mx-auto px-4 py-4">
           <Button 
             variant="ghost" 
-            onClick={() => navigate('/dashboard')} 
+            onClick={() => navigate(isAdmin ? '/admin' : '/dashboard')} 
             className="mb-2 hover:bg-primary/10 border-primary/30"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
