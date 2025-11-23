@@ -210,7 +210,7 @@ const Index = () => {
         </div>
 
         <div className="pt-8 text-sm text-muted-foreground animate-fade-in" style={{ animationDelay: '0.5s' }}>
-          <p>Tap anywhere to see the magic ✨</p>
+          <p>A SVECW product</p>
         </div>
       </div>
 
