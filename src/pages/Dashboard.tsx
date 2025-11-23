@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { AlertNotifications } from '@/components/AlertNotifications';
+import { useNotifications } from '@/hooks/useNotifications';
 import { z } from 'zod';
 import { Bell, User, Bus, CreditCard, AlertCircle, AlertTriangle, Trash2 } from 'lucide-react';
 import { differenceInDays, parseISO } from 'date-fns';
@@ -26,6 +27,7 @@ const Dashboard = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { sendAlertNotification } = useNotifications();
   const [profile, setProfile] = useState<any>(null);
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [complaint, setComplaint] = useState('');
@@ -153,6 +155,11 @@ const Dashboard = () => {
           },
           (payload) => {
             setAnnouncements(prev => [payload.new, ...prev].slice(0, 3));
+            
+            // Send browser notification for new announcement
+            if (payload.new.message) {
+              sendAlertNotification(payload.new.message, 'announcement');
+            }
           }
         )
         .subscribe();
