@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Bus } from 'lucide-react';
+import apsrtcLogo from '@/assets/apsrtc-logo.png';
 import {
   Dialog,
   DialogContent,
@@ -17,6 +18,14 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 
+interface FloatingBus {
+  id: number;
+  x: number;
+  y: number;
+  speed: number;
+  delay: number;
+}
+
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -24,9 +33,22 @@ const Login = () => {
   const [resetEmail, setResetEmail] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
+  const [floatingBuses, setFloatingBuses] = useState<FloatingBus[]>([]);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
+
+  // Create floating buses animation
+  useEffect(() => {
+    const buses: FloatingBus[] = Array.from({ length: 5 }, (_, i) => ({
+      id: i,
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      speed: 20 + Math.random() * 30,
+      delay: Math.random() * 5,
+    }));
+    setFloatingBuses(buses);
+  }, []);
 
   // Redirect if already logged in
   if (user) {
@@ -104,9 +126,44 @@ const Login = () => {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background bg-mesh p-4">
-      <div className="absolute inset-0 bg-gradient-primary opacity-5" />
-      <Card className="w-full max-w-md glass border-border/50 shadow-lg hover:shadow-glow transition-all animate-slide-up relative">
+    <div className="flex min-h-screen items-center justify-center bg-background bg-mesh p-4 overflow-hidden relative">
+      {/* Animated gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-primary opacity-5 animate-pulse" style={{ animationDuration: '4s' }} />
+      
+      {/* Animated road lines */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="road-line" style={{ left: '20%', animationDelay: '0s' }} />
+        <div className="road-line" style={{ left: '40%', animationDelay: '0.5s' }} />
+        <div className="road-line" style={{ left: '60%', animationDelay: '1s' }} />
+        <div className="road-line" style={{ left: '80%', animationDelay: '1.5s' }} />
+      </div>
+
+      {/* Floating buses */}
+      {floatingBuses.map((bus) => (
+        <div
+          key={bus.id}
+          className="floating-bus"
+          style={{
+            left: `${bus.x}%`,
+            top: `${bus.y}%`,
+            animationDuration: `${bus.speed}s`,
+            animationDelay: `${bus.delay}s`,
+          }}
+        >
+          <Bus className="h-6 w-6 text-primary/30" />
+        </div>
+      ))}
+
+      {/* APSRTC Logo in corner */}
+      <div className="absolute top-4 left-4 z-10 animate-fade-in">
+        <img 
+          src={apsrtcLogo} 
+          alt="APSRTC Logo" 
+          className="h-16 w-auto opacity-80 hover:opacity-100 transition-opacity"
+        />
+      </div>
+
+      <Card className="w-full max-w-md glass border-border/50 shadow-lg hover:shadow-glow transition-all animate-slide-up relative z-10">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             <div className="p-3 rounded-full bg-primary/10 border border-primary/30">
@@ -202,6 +259,49 @@ const Login = () => {
           </div>
         </CardContent>
       </Card>
+
+      <style>{`
+        @keyframes road-scroll {
+          0% {
+            transform: translateY(-100%);
+          }
+          100% {
+            transform: translateY(100vh);
+          }
+        }
+
+        @keyframes float-across {
+          0% {
+            transform: translate(0, 0) rotate(0deg);
+            opacity: 0;
+          }
+          10% {
+            opacity: 0.3;
+          }
+          90% {
+            opacity: 0.3;
+          }
+          100% {
+            transform: translate(50vw, -20vh) rotate(10deg);
+            opacity: 0;
+          }
+        }
+
+        .road-line {
+          position: absolute;
+          width: 4px;
+          height: 40px;
+          background: linear-gradient(180deg, transparent, hsl(var(--primary) / 0.3), transparent);
+          animation: road-scroll 3s linear infinite;
+        }
+
+        .floating-bus {
+          position: absolute;
+          animation: float-across 25s linear infinite;
+          pointer-events: none;
+          filter: drop-shadow(0 0 10px hsl(var(--primary) / 0.5));
+        }
+      `}</style>
     </div>
   );
 };
