@@ -178,8 +178,8 @@ const EPass = () => {
       }
 
       // Edge function already updates the database with enhanced image URL
-      // Wait a moment for edge function to complete, then refresh
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Wait for edge function to complete processing (takes ~20-25 seconds)
+      await new Promise(resolve => setTimeout(resolve, 5000));
 
       toast({
         title: "Success",
@@ -297,7 +297,7 @@ const EPass = () => {
                   {pass?.monthly_pass_url && (
                     <div className="mt-2 relative">
                       <img 
-                        src={pass.monthly_pass_url} 
+                        src={`${pass.monthly_pass_url}?t=${new Date().getTime()}`} 
                         alt="Monthly Pass" 
                         className="max-w-full h-auto rounded-lg border border-border/50 shadow-md"
                       />
