@@ -158,7 +158,7 @@ const Index = () => {
       ))}
 
       {/* VISHNU Logo in corner */}
-      <div className="absolute top-2 left-2 md:top-4 md:left-4 z-10 animate-fade-in">
+      <div className="absolute top-2 left-1 md:top-4 md:left-2 z-10 animate-fade-in">
         <div className="relative">
           <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full opacity-60" />
           <img 
