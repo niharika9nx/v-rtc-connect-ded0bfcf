@@ -177,8 +177,12 @@ const AdminBusDashboard = () => {
       const { data: passesIssuedData } = await supabase
         .from('passes')
         .select('user_id, profiles!inner(bus_number)')
-        .not('monthly_pass_url', 'is', null)
-        .eq('profiles.bus_number', busNumber);
+        .not('monthly_pass_url', 'is', null);
+
+      // Filter by bus number on the client side after joining
+      const filteredPasses = passesIssuedData?.filter(
+        (pass: any) => pass.profiles?.bus_number === busNumber
+      );
 
       setStats({
         totalStudents: students.length,
@@ -186,7 +190,7 @@ const AdminBusDashboard = () => {
         feePaid: feePaidCount,
         feeDue: feeDueCount,
         expiringPasses: passData?.length || 0,
-        passesIssued: passesIssuedData?.length || 0,
+        passesIssued: filteredPasses?.length || 0,
       });
     }
 
