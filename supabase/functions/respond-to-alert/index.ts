@@ -30,12 +30,15 @@ serve(async (req) => {
 
     console.log('Responding to alert:', alertId, 'with response:', response);
 
-    // Update alert status based on response
+    // Update alert status and user_response based on response
     const newStatus = response === 'yes' ? 'resolved' : 'pending';
     
     const { error: updateError } = await supabase
       .from('alerts')
-      .update({ status: newStatus })
+      .update({ 
+        status: newStatus,
+        user_response: response 
+      })
       .eq('id', alertId)
       .eq('user_id', user.id);
 

@@ -49,6 +49,7 @@ interface Stats {
   feeDue: number;
   expiringPasses: number;
   passesIssued: number;
+  passesExpired: number;
 }
 
 const AdminBusDashboard = () => {
@@ -63,6 +64,7 @@ const AdminBusDashboard = () => {
     feeDue: 0,
     expiringPasses: 0,
     passesIssued: 0,
+    passesExpired: 0,
   });
   const [loading, setLoading] = useState(true);
   const [selectedCollege, setSelectedCollege] = useState<string>('all');
@@ -190,6 +192,18 @@ const AdminBusDashboard = () => {
         (pass: any) => pass.profiles?.bus_number === busNumber
       );
 
+      // Fetch passes expired count (users who answered "No" to pass renewal)
+      const { data: expiredAlertsData } = await supabase
+        .from('alerts')
+        .select('user_id, profiles!alerts_user_id_fkey(bus_number)')
+        .eq('type', 'pass_renewal_reminder')
+        .eq('user_response', 'no')
+        .eq('status', 'pending');
+
+      const filteredExpiredAlerts = expiredAlertsData?.filter(
+        (alert: any) => alert.profiles?.bus_number === busNumber
+      );
+
       setStats({
         totalStudents: students.length,
         totalFaculty: faculty.length,
@@ -197,6 +211,7 @@ const AdminBusDashboard = () => {
         feeDue: feeDueCount,
         expiringPasses: passData?.length || 0,
         passesIssued: filteredPasses?.length || 0,
+        passesExpired: filteredExpiredAlerts?.length || 0,
       });
     }
 
@@ -273,6 +288,24 @@ const AdminBusDashboard = () => {
         .in('id', passUserIds);
 
       setUserList(passProfiles || []);
+    } else if (type === 'passesExpired') {
+      // Fetch users who answered "No" to pass renewal reminder
+      const { data: expiredAlertsData } = await supabase
+        .from('alerts')
+        .select('user_id')
+        .eq('type', 'pass_renewal_reminder')
+        .eq('user_response', 'no')
+        .eq('status', 'pending');
+
+      const expiredUserIds = expiredAlertsData?.map((a) => a.user_id) || [];
+      
+      const { data: expiredProfiles } = await supabase
+        .from('profiles')
+        .select('id, name, role, college, branch, year, phone')
+        .eq('bus_number', busNumber)
+        .in('id', expiredUserIds);
+
+      setUserList(expiredProfiles || []);
     } else {
       setUserList(profiles || []);
     }
@@ -553,6 +586,20 @@ const AdminBusDashboard = () => {
               </p>
             </CardContent>
           </Card>
+
+          <Card
+            className="hover:shadow-lg transition-shadow cursor-pointer"
+            onClick={() => handleStatClick('passesExpired')}
+          >
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base md:text-lg">Passes Expired</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl md:text-3xl font-bold text-red-600">
+                {stats.passesExpired}
+              </p>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
@@ -566,6 +613,7 @@ const AdminBusDashboard = () => {
               {userListType === 'feeDue' && 'Fee Due List'}
               {userListType === 'expiringPasses' && 'Expiring Passes List'}
               {userListType === 'passesIssued' && 'Passes Issued List'}
+              {userListType === 'passesExpired' && 'Passes Expired - Awaiting New Pass'}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-2 md:space-y-3">
