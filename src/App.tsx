@@ -18,6 +18,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AdminBuses from "./pages/AdminBuses";
 import AdminBusDashboard from "./pages/AdminBusDashboard";
 import AdminUserProfile from "./pages/AdminUserProfile";
+import AdminBulkImport from "./pages/AdminBulkImport";
 import ExpiredPassLetter from "./pages/ExpiredPassLetter";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
@@ -107,6 +108,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <AdminUserProfile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/bulk-import"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminBulkImport />
                 </ProtectedRoute>
               }
             />

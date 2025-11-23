@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { User, Bus, MessageSquare, Megaphone, Trash2 } from 'lucide-react';
+import { User, Bus, MessageSquare, Megaphone, Trash2, Upload } from 'lucide-react';
 
 interface Complaint {
   id: string;
@@ -248,6 +248,22 @@ const AdminDashboard = () => {
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground">Manage bus routes and details</p>
+            </CardContent>
+          </Card>
+
+          <Card 
+            className="glass border-border/50 hover:shadow-glow transition-all cursor-pointer animate-slide-up group"
+            onClick={() => navigate('/admin/bulk-import')}
+            style={{ animationDelay: '0.25s' }}
+          >
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-foreground group-hover:text-primary transition-colors">
+                <Upload className="h-5 w-5" />
+                Bulk Import
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">Import data using CSV files</p>
             </CardContent>
           </Card>
 
