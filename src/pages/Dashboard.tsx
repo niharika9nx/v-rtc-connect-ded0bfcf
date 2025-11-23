@@ -127,9 +127,9 @@ const Dashboard = () => {
           }
         });
 
-      // Fetch announcements
+      // Fetch announcements using secure view (hides admin_id)
       supabase
-        .from('announcements')
+        .from('public_announcements')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(3)
