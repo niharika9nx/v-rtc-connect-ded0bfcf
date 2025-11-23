@@ -315,7 +315,24 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_announcements: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          message: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string | null
+          message?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string | null
+          message?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {
