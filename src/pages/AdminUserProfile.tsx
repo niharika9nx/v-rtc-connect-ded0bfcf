@@ -302,7 +302,10 @@ const AdminUserProfile = () => {
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">User Profile</h1>
-          <Button onClick={() => navigate(-1)} variant="outline">
+          <Button 
+            onClick={() => profile?.bus_number ? navigate(`/admin/bus/${profile.bus_number}`) : navigate('/admin/buses')} 
+            variant="outline"
+          >
             Back
           </Button>
         </div>
