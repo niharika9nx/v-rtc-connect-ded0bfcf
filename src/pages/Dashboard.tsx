@@ -215,18 +215,11 @@ const Dashboard = () => {
         {passExpiryStatus?.isExpired && (
           <Alert variant="destructive" className="border-destructive animate-slide-up shadow-lg">
             <AlertTriangle className="h-5 w-5" />
-            <AlertDescription className="flex items-center justify-between">
+            <AlertDescription>
               <div>
                 <p className="font-semibold mb-1">PASS EXPIRED</p>
                 <p>Your bus pass has expired. Please upload a new pass or contact admin.</p>
               </div>
-              <Button 
-                variant="outline" 
-                className="ml-4 border-destructive-foreground hover:bg-destructive hover:text-destructive-foreground"
-                onClick={() => navigate('/expired-pass-letter')}
-              >
-                PASS Letter
-              </Button>
             </AlertDescription>
           </Alert>
         )}
