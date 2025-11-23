@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { User, Bus, MessageSquare, Megaphone } from 'lucide-react';
+import { User, Bus, MessageSquare, Megaphone, Trash2 } from 'lucide-react';
 
 interface Complaint {
   id: string;
@@ -141,6 +141,27 @@ const AdminDashboard = () => {
         description: 'Announcement created successfully',
       });
       setNewAnnouncement('');
+      fetchAnnouncements();
+    }
+  };
+
+  const handleDeleteAnnouncement = async (announcementId: string) => {
+    const { error } = await supabase
+      .from('announcements')
+      .delete()
+      .eq('id', announcementId);
+
+    if (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete announcement',
+        variant: 'destructive',
+      });
+    } else {
+      toast({
+        title: 'Success',
+        description: 'Announcement deleted successfully',
+      });
       fetchAnnouncements();
     }
   };
@@ -321,11 +342,23 @@ const AdminDashboard = () => {
                         announcements.map((announcement) => (
                           <Card key={announcement.id} className="glass border-border/50">
                             <CardContent className="pt-4">
-                              <p className="text-sm mb-2 text-foreground">{announcement.message}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {new Date(announcement.created_at).toLocaleDateString()} at{' '}
-                                {new Date(announcement.created_at).toLocaleTimeString()}
-                              </p>
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1">
+                                  <p className="text-sm mb-2 text-foreground">{announcement.message}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {new Date(announcement.created_at).toLocaleDateString()} at{' '}
+                                    {new Date(announcement.created_at).toLocaleTimeString()}
+                                  </p>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDeleteAnnouncement(announcement.id)}
+                                  className="hover:bg-destructive/10 hover:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </CardContent>
                           </Card>
                         ))
