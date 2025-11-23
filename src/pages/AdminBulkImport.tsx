@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Upload, Download, CheckCircle, XCircle } from 'lucide-react';
 import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -99,41 +100,88 @@ const AdminBulkImport = () => {
     setFile(uploadedFile);
     setImportResults(null);
 
-    Papa.parse(uploadedFile, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        const validated = results.data.map((row: any) => {
-          let validation;
-          switch (importType) {
-            case 'profiles':
-              validation = validateProfileRow(row);
-              break;
-            case 'bus_details':
-              validation = validateBusDetailsRow(row);
-              break;
-            case 'fee_history':
-              validation = validateFeeHistoryRow(row);
-              break;
-            default:
-              validation = { isValid: false, errors: ['Unknown import type'] };
-          }
-          return {
-            data: row,
-            isValid: validation.isValid,
-            errors: validation.errors
-          };
-        });
-        setParsedData(validated);
-      },
-      error: (error) => {
-        toast({
-          title: 'Error parsing CSV',
-          description: error.message,
-          variant: 'destructive'
-        });
-      }
-    });
+    const fileExtension = uploadedFile.name.split('.').pop()?.toLowerCase();
+
+    if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+      // Handle Excel files
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target?.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+          const validated = jsonData.map((row: any) => {
+            let validation;
+            switch (importType) {
+              case 'profiles':
+                validation = validateProfileRow(row);
+                break;
+              case 'bus_details':
+                validation = validateBusDetailsRow(row);
+                break;
+              case 'fee_history':
+                validation = validateFeeHistoryRow(row);
+                break;
+              default:
+                validation = { isValid: false, errors: ['Unknown import type'] };
+            }
+            return {
+              data: row,
+              isValid: validation.isValid,
+              errors: validation.errors
+            };
+          });
+          setParsedData(validated);
+        } catch (error) {
+          toast({
+            title: 'Error parsing Excel file',
+            description: error instanceof Error ? error.message : 'Unknown error',
+            variant: 'destructive'
+          });
+        }
+      };
+      reader.readAsArrayBuffer(uploadedFile);
+    } else {
+      // Handle CSV files
+      Papa.parse(uploadedFile, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+          const validated = results.data.map((row: any) => {
+            let validation;
+            switch (importType) {
+              case 'profiles':
+                validation = validateProfileRow(row);
+                break;
+              case 'bus_details':
+                validation = validateBusDetailsRow(row);
+                break;
+              case 'fee_history':
+                validation = validateFeeHistoryRow(row);
+                break;
+              default:
+                validation = { isValid: false, errors: ['Unknown import type'] };
+            }
+            return {
+              data: row,
+              isValid: validation.isValid,
+              errors: validation.errors
+            };
+          });
+          setParsedData(validated);
+        },
+        error: (error) => {
+          toast({
+            title: 'Error parsing CSV',
+            description: error.message,
+            variant: 'destructive'
+          });
+        }
+      });
+    }
   };
 
   const handleImport = async () => {
@@ -290,11 +338,11 @@ const AdminBulkImport = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="csv-file">CSV File</Label>
+                <Label htmlFor="csv-file">CSV or Excel File</Label>
                 <input
                   id="csv-file"
                   type="file"
-                  accept=".csv"
+                  accept=".csv,.xlsx,.xls"
                   onChange={handleFileUpload}
                   className="w-full text-sm text-foreground file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
                 />
@@ -306,7 +354,7 @@ const AdminBulkImport = () => {
                 className="w-full"
               >
                 <Download className="mr-2 h-4 w-4" />
-                Download CSV Template
+                Download Template (CSV)
               </Button>
 
               {parsedData.length > 0 && (
