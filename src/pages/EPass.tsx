@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, CreditCard, Upload, RefreshCw } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ArrowLeft, CreditCard, Upload, RefreshCw, ZoomIn, ZoomOut, Maximize2, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { AlertNotifications } from '@/components/AlertNotifications';
 
@@ -20,6 +21,8 @@ const EPass = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [identityCardFile, setIdentityCardFile] = useState<File | null>(null);
   const [monthlyPassFile, setMonthlyPassFile] = useState<File | null>(null);
+  const [imageZoom, setImageZoom] = useState(1);
+  const [selectedImage, setSelectedImage] = useState<{ url: string; title: string } | null>(null);
 
   useEffect(() => {
     fetchPass();
@@ -54,6 +57,28 @@ const EPass = () => {
     } finally {
       setRefreshing(false);
     }
+  };
+
+  const openImageModal = (url: string, title: string) => {
+    setSelectedImage({ url, title });
+    setImageZoom(1);
+  };
+
+  const closeImageModal = () => {
+    setSelectedImage(null);
+    setImageZoom(1);
+  };
+
+  const handleZoomIn = () => {
+    setImageZoom(prev => Math.min(prev + 0.25, 3));
+  };
+
+  const handleZoomOut = () => {
+    setImageZoom(prev => Math.max(prev - 0.25, 0.5));
+  };
+
+  const resetZoom = () => {
+    setImageZoom(1);
   };
 
   const uploadFile = async (file: File, type: 'identity_card' | 'monthly_pass') => {
@@ -296,11 +321,20 @@ const EPass = () => {
                   </div>
                   {pass?.identity_card_url && (
                     <div className="mt-2">
-                      <img 
-                        src={pass.identity_card_url} 
-                        alt="Identity Card" 
-                        className="max-w-full h-auto rounded-lg border border-border/50 shadow-md"
-                      />
+                      <div 
+                        className="relative group cursor-pointer overflow-hidden rounded-lg border border-border/50 shadow-md hover:shadow-glow transition-all"
+                        onClick={() => openImageModal(pass.identity_card_url, 'Identity Card')}
+                      >
+                        <img 
+                          src={pass.identity_card_url} 
+                          alt="Identity Card" 
+                          className="max-w-full h-auto transition-transform duration-300 group-hover:scale-105"
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
+                          <Maximize2 className="h-12 w-12 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground text-center mt-2">Click to view full size</p>
                     </div>
                   )}
                 </div>
@@ -326,25 +360,34 @@ const EPass = () => {
                     </Button>
                   </div>
                   {pass?.monthly_pass_url && (
-                    <div className="mt-2 relative">
-                      <img 
-                        src={`${pass.monthly_pass_url}?t=${new Date().getTime()}`} 
-                        alt="Monthly Pass" 
-                        className="max-w-full h-auto rounded-lg border border-border/50 shadow-md"
-                      />
-                      {pass.expiry_date && new Date(pass.expiry_date) < new Date() && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-lg backdrop-blur-sm">
-                          <div className="text-center">
-                            <p className="text-red-500 text-4xl font-bold font-display animate-pulse drop-shadow-lg">
-                              PASS EXPIRED
-                            </p>
-                            <p className="text-white text-lg mt-2 font-semibold">
-                              Expired on: {new Date(pass.expiry_date).toLocaleDateString()}
-                            </p>
-                          </div>
+                    <div className="mt-2 space-y-3">
+                      <div 
+                        className="relative group cursor-pointer overflow-hidden rounded-lg border border-border/50 shadow-md hover:shadow-glow transition-all"
+                        onClick={() => openImageModal(`${pass.monthly_pass_url}?t=${new Date().getTime()}`, 'Monthly Pass')}
+                      >
+                        <img 
+                          src={`${pass.monthly_pass_url}?t=${new Date().getTime()}`} 
+                          alt="Monthly Pass" 
+                          className="max-w-full h-auto transition-transform duration-300 group-hover:scale-105"
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center pointer-events-none">
+                          <Maximize2 className="h-12 w-12 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
                         </div>
-                      )}
-                      <div className="mt-3 text-center">
+                        {pass.expiry_date && new Date(pass.expiry_date) < new Date() && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-lg backdrop-blur-sm pointer-events-none">
+                            <div className="text-center">
+                              <p className="text-red-500 text-4xl font-bold font-display animate-pulse drop-shadow-lg">
+                                PASS EXPIRED
+                              </p>
+                              <p className="text-white text-lg mt-2 font-semibold">
+                                Expired on: {new Date(pass.expiry_date).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground text-center">Click to view full size</p>
+                      <div className="text-center">
                         {pass.verified === false ? (
                           <p className="text-red-500 text-2xl font-bold font-display animate-pulse drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]">
                             ⚠️ UNVERIFIED - DUPLICATE PASS ID DETECTED
@@ -383,6 +426,66 @@ const EPass = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Image Zoom Modal */}
+      <Dialog open={!!selectedImage} onOpenChange={(open) => !open && closeImageModal()}>
+        <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 overflow-hidden">
+          <DialogHeader className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-black/80 to-transparent p-4">
+            <DialogTitle className="text-white font-display flex items-center justify-between">
+              <span>{selectedImage?.title}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={closeImageModal}
+                className="text-white hover:bg-white/20"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="relative w-full h-[85vh] flex items-center justify-center bg-black/95 overflow-auto">
+            {selectedImage && (
+              <img
+                src={selectedImage.url}
+                alt={selectedImage.title}
+                className="max-w-none transition-transform duration-300"
+                style={{ transform: `scale(${imageZoom})` }}
+              />
+            )}
+          </div>
+
+          {/* Zoom Controls */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex gap-2 bg-black/80 backdrop-blur-sm rounded-full p-2 shadow-lg">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleZoomOut}
+              disabled={imageZoom <= 0.5}
+              className="text-white hover:bg-white/20 rounded-full h-10 w-10 p-0"
+            >
+              <ZoomOut className="h-5 w-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={resetZoom}
+              className="text-white hover:bg-white/20 rounded-full px-4"
+            >
+              {Math.round(imageZoom * 100)}%
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleZoomIn}
+              disabled={imageZoom >= 3}
+              className="text-white hover:bg-white/20 rounded-full h-10 w-10 p-0"
+            >
+              <ZoomIn className="h-5 w-5" />
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
