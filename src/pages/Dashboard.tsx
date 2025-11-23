@@ -8,9 +8,10 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
 import { AlertNotifications } from '@/components/AlertNotifications';
 import { z } from 'zod';
-import { Bell, User, Bus, CreditCard, AlertCircle, AlertTriangle } from 'lucide-react';
+import { Bell, User, Bus, CreditCard, AlertCircle, AlertTriangle, Trash2 } from 'lucide-react';
 import { differenceInDays, parseISO } from 'date-fns';
 
 const complaintSchema = z.object({
@@ -38,6 +39,7 @@ const Dashboard = () => {
   const [routeImageUrl, setRouteImageUrl] = useState<string | null>(null);
   const [showPassButton, setShowPassButton] = useState(false);
   const [passData, setPassData] = useState<any>(null);
+  const [userComplaints, setUserComplaints] = useState<any[]>([]);
 
   useEffect(() => {
     if (user) {
@@ -131,6 +133,14 @@ const Dashboard = () => {
         .limit(3)
         .then(({ data }) => setAnnouncements(data || []));
 
+      // Fetch user's complaints
+      supabase
+        .from('complaints')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .then(({ data }) => setUserComplaints(data || []));
+
       // Subscribe to new announcements
       const channel = supabase
         .channel('announcements-changes')
@@ -185,9 +195,43 @@ const Dashboard = () => {
         description: 'Your issue has been reported successfully.',
       });
       setComplaint('');
+      // Refresh complaints list
+      const { data } = await supabase
+        .from('complaints')
+        .select('*')
+        .eq('user_id', user?.id)
+        .order('created_at', { ascending: false });
+      setUserComplaints(data || []);
     }
 
     setSubmitting(false);
+  };
+
+  const handleDeleteComplaint = async (complaintId: string) => {
+    const { error } = await supabase
+      .from('complaints')
+      .delete()
+      .eq('id', complaintId);
+
+    if (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete complaint',
+        variant: 'destructive',
+      });
+    } else {
+      toast({
+        title: 'Success',
+        description: 'Complaint deleted successfully',
+      });
+      // Refresh complaints list
+      const { data } = await supabase
+        .from('complaints')
+        .select('*')
+        .eq('user_id', user?.id)
+        .order('created_at', { ascending: false });
+      setUserComplaints(data || []);
+    }
   };
 
 
@@ -409,6 +453,42 @@ const Dashboard = () => {
                 {submitting ? 'Submitting...' : 'Submit Complaint'}
               </Button>
             </form>
+
+            {/* Previous Complaints */}
+            {userComplaints.length > 0 && (
+              <div className="mt-6 pt-6 border-t border-border/50">
+                <h3 className="font-semibold mb-3 text-foreground">Your Previous Complaints</h3>
+                <div className="space-y-3">
+                  {userComplaints.map((complaint) => (
+                    <Card key={complaint.id} className="glass border-border/50">
+                      <CardContent className="pt-4">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Badge variant={complaint.status === 'resolved' ? 'default' : 'secondary'}>
+                                {complaint.status}
+                              </Badge>
+                              <p className="text-xs text-muted-foreground">
+                                {new Date(complaint.created_at).toLocaleDateString()}
+                              </p>
+                            </div>
+                            <p className="text-sm text-foreground">{complaint.message}</p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteComplaint(complaint.id)}
+                            className="hover:bg-destructive/10 hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
