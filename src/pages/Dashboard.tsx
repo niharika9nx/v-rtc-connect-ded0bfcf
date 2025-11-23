@@ -190,6 +190,44 @@ const Dashboard = () => {
     setSubmitting(false);
   };
 
+  const handleCreateTestAlerts = async () => {
+    if (!user) return;
+    
+    try {
+      // Create a countdown alert (3 days remaining)
+      await supabase.from('alerts').insert({
+        user_id: user.id,
+        type: 'pass_expiry_warning',
+        status: 'pending',
+        message: '⏰ Your bus pass will expire in 3 days (December 10, 2025). Please upload a new pass soon.',
+        send_at: new Date().toISOString()
+      });
+
+      // Create a renewal reminder alert
+      await supabase.from('alerts').insert({
+        user_id: user.id,
+        type: 'pass_renewal_reminder',
+        status: 'pending',
+        message: '🚨 Your bus pass expired 2 days ago! Did you receive your new bus pass?',
+        send_at: new Date().toISOString()
+      });
+
+      toast({
+        title: 'Test Alerts Created',
+        description: 'Sample alerts have been added to your dashboard.',
+      });
+
+      // Refresh the page to show new alerts
+      window.location.reload();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to create test alerts',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background bg-mesh">
       {/* Modern Header with gradient */}
@@ -207,6 +245,27 @@ const Dashboard = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+        {/* Test Alerts Button - FOR TESTING ONLY */}
+        <Card className="glass border-accent/50 hover:shadow-glow transition-all">
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-foreground mb-1">Test Alert System</h3>
+                <p className="text-sm text-muted-foreground">
+                  Create sample pass expiry alerts for testing (countdown + renewal reminder)
+                </p>
+              </div>
+              <Button 
+                onClick={handleCreateTestAlerts}
+                variant="outline"
+                className="border-accent/30 hover:bg-accent/10"
+              >
+                Create Test Alerts
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Alert Notifications */}
         <AlertNotifications />
 
