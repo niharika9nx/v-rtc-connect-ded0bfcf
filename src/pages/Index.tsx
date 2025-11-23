@@ -163,7 +163,7 @@ const Index = () => {
         <img 
           src={apsrtcLogo} 
           alt="APSRTC Logo" 
-          className="h-6 md:h-12 w-auto opacity-80 hover:opacity-100 transition-opacity"
+          className="h-10 md:h-16 w-auto opacity-80 hover:opacity-100 transition-opacity"
         />
       </div>
 
@@ -172,7 +172,7 @@ const Index = () => {
         <img 
           src={vesLogo} 
           alt="VES Logo" 
-          className="h-6 md:h-12 w-auto opacity-80 hover:opacity-100 transition-opacity"
+          className="h-10 md:h-16 w-auto opacity-80 hover:opacity-100 transition-opacity"
         />
       </div>
 
@@ -181,8 +181,8 @@ const Index = () => {
         <div className="flex justify-center mb-4 md:mb-6">
           <div className="relative">
             <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full animate-pulse" />
-            <div className="relative p-4 md:p-6 rounded-2xl bg-gradient-primary/10 border border-primary/30 backdrop-blur-sm shadow-glow">
-              <Bus className="h-16 w-16 md:h-20 md:w-20 text-primary animate-float" />
+            <div className="relative p-3 md:p-5 rounded-2xl bg-gradient-primary/10 border border-primary/30 backdrop-blur-sm shadow-glow">
+              <Bus className="h-12 w-12 md:h-16 md:w-16 text-primary animate-float" />
             </div>
           </div>
         </div>
