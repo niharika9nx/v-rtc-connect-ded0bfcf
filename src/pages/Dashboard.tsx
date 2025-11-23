@@ -190,60 +190,6 @@ const Dashboard = () => {
     setSubmitting(false);
   };
 
-  const handleCreateTestAlerts = async () => {
-    if (!user) return;
-    
-    try {
-      console.log('Creating test alerts for user:', user.id);
-      
-      // Create a countdown alert (3 days remaining)
-      const { data: data1, error: error1 } = await supabase.from('alerts').insert({
-        user_id: user.id,
-        type: 'pass_expiry_warning',
-        status: 'pending',
-        message: '⏰ [TEST] Your bus pass will expire in 3 days (December 10, 2025). Please upload a new pass soon.',
-        send_at: new Date().toISOString()
-      }).select();
-
-      console.log('Countdown alert result:', { data: data1, error: error1 });
-      
-      if (error1) {
-        console.error('Error creating countdown alert:', error1);
-        throw error1;
-      }
-
-      // Create a renewal reminder alert with Yes/No buttons
-      const { data: data2, error: error2 } = await supabase.from('alerts').insert({
-        user_id: user.id,
-        type: 'pass_renewal_reminder',
-        status: 'pending',
-        message: '🚨 [TEST] Your bus pass expired 2 days ago! Did you receive your new bus pass?',
-        send_at: new Date().toISOString()
-      }).select();
-
-      console.log('Renewal alert result:', { data: data2, error: error2 });
-
-      if (error2) {
-        console.error('Error creating renewal alert:', error2);
-        throw error2;
-      }
-
-      toast({
-        title: 'Test Alerts Created',
-        description: 'Two alerts added: Countdown (3 days) + Renewal with Yes/No buttons. Reloading...',
-      });
-
-      // Refresh the page to show new alerts
-      setTimeout(() => window.location.reload(), 1500);
-    } catch (error: any) {
-      console.error('Test alerts error:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to create test alerts',
-        variant: 'destructive',
-      });
-    }
-  };
 
   return (
     <div className="min-h-screen bg-background bg-mesh">
@@ -262,27 +208,6 @@ const Dashboard = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
-        {/* Test Alerts Button - FOR TESTING ONLY */}
-        <Card className="glass border-accent/50 hover:shadow-glow transition-all">
-          <CardContent className="py-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-semibold text-foreground mb-1">Test Alert System</h3>
-                <p className="text-sm text-muted-foreground">
-                  Create sample pass expiry alerts for testing (countdown + renewal reminder)
-                </p>
-              </div>
-              <Button 
-                onClick={handleCreateTestAlerts}
-                variant="outline"
-                className="border-accent/30 hover:bg-accent/10"
-              >
-                Create Test Alerts
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Alert Notifications */}
         <AlertNotifications />
 
