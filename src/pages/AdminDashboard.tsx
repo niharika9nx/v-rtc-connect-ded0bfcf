@@ -145,75 +145,6 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleTestAlerts = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('check-expiring-passes');
-
-      if (error) throw error;
-
-      toast({
-        title: 'Success',
-        description: `Alert check completed! Found ${data.expiringCount || 0} expiring and ${data.expiredCount || 0} expired passes.`,
-      });
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to check alerts',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSendTestAlert = async () => {
-    setLoading(true);
-    try {
-      // Get a student user to send test alert to
-      const { data: students, error: studentsError } = await supabase
-        .from('profiles')
-        .select('id, name')
-        .eq('role', 'student')
-        .limit(1);
-
-      if (studentsError) throw studentsError;
-      if (!students || students.length === 0) {
-        toast({
-          title: 'No Students Found',
-          description: 'No student accounts found to send test alert to.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      const student = students[0];
-
-      // Create test alert
-      const { error } = await supabase.functions.invoke('create-test-alert', {
-        body: {
-          userId: student.id,
-          type: 'pass_expiry_warning',
-          message: `[TEST ALERT] Your bus pass will expire in 5 days. Please upload a new pass soon.`
-        }
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: 'Success',
-        description: `Test alert sent to ${student.name}! They should see it on their dashboard.`,
-      });
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to send test alert',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-background bg-mesh p-4">
@@ -235,49 +166,6 @@ const AdminDashboard = () => {
               Logout
             </Button>
           </div>
-        </div>
-
-        <div className="mb-4 space-y-4">
-          <Card className="glass border-primary/50 hover:shadow-glow transition-all">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-foreground mb-1">Check Expiring Passes</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Scan all users to find passes expiring in 5 days or already expired
-                  </p>
-                </div>
-                <Button 
-                  onClick={handleTestAlerts}
-                  disabled={loading}
-                  className="bg-primary hover:bg-primary/90 hover:shadow-glow ml-4"
-                >
-                  {loading ? 'Checking...' : 'Check Passes'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="glass border-accent/50 hover:shadow-glow transition-all">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-foreground mb-1">Send Test Alert to Student</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Send a sample pass expiry alert to a student account for testing
-                  </p>
-                </div>
-                <Button 
-                  onClick={handleSendTestAlert}
-                  disabled={loading}
-                  variant="outline"
-                  className="border-accent/30 hover:bg-accent/10 hover:shadow-glow ml-4"
-                >
-                  {loading ? 'Sending...' : 'Send Test Alert'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
