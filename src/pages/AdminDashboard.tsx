@@ -263,7 +263,7 @@ const AdminDashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground">Import data using CSV files</p>
+              <p className="text-muted-foreground">Import data using CSV / Excel files</p>
             </CardContent>
           </Card>
 
