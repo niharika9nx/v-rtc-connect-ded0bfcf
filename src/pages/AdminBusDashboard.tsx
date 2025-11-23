@@ -126,6 +126,12 @@ const AdminBusDashboard = () => {
     }
   };
 
+  const clearFilters = () => {
+    setSelectedCollege('all');
+    setSelectedBranch('all');
+    setSelectedYear('all');
+  };
+
   const fetchStats = async () => {
     setLoading(true);
 
@@ -403,8 +409,16 @@ const AdminBusDashboard = () => {
         </Card>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Filters</CardTitle>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={clearFilters}
+              disabled={selectedCollege === 'all' && selectedBranch === 'all' && selectedYear === 'all'}
+            >
+              Clear Filters
+            </Button>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
