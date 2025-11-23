@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { AlertNotifications } from '@/components/AlertNotifications';
 import { z } from 'zod';
 import { Bell, User, Bus, CreditCard, AlertCircle, AlertTriangle } from 'lucide-react';
 import { differenceInDays, parseISO } from 'date-fns';
@@ -206,6 +207,9 @@ const Dashboard = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+        {/* Alert Notifications */}
+        <AlertNotifications />
+
         {/* Pass Expiry Alert */}
         {passExpiryStatus?.isExpired && (
           <Alert variant="destructive" className="border-destructive animate-slide-up shadow-lg">
