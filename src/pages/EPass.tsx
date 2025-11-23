@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, CreditCard, Upload } from 'lucide-react';
+import { ArrowLeft, CreditCard, Upload, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { AlertNotifications } from '@/components/AlertNotifications';
 
@@ -17,6 +17,7 @@ const EPass = () => {
   const [pass, setPass] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [identityCardFile, setIdentityCardFile] = useState<File | null>(null);
   const [monthlyPassFile, setMonthlyPassFile] = useState<File | null>(null);
 
@@ -33,6 +34,25 @@ const EPass = () => {
         .maybeSingle();
       setPass(data);
       setLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await fetchPass();
+      toast({
+        title: "Refreshed",
+        description: "Pass data reloaded successfully"
+      });
+    } catch (error: any) {
+      toast({
+        title: "Refresh failed",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -214,14 +234,25 @@ const EPass = () => {
       <div className="relative overflow-hidden border-b border-border/30 glass">
         <div className="absolute inset-0 bg-gradient-accent opacity-10" />
         <div className="relative max-w-7xl mx-auto px-4 py-4">
-          <Button 
-            variant="ghost" 
-            onClick={() => navigate('/dashboard')} 
-            className="mb-2 hover:bg-primary/10 border-primary/30"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Dashboard
-          </Button>
+          <div className="flex items-center justify-between mb-2">
+            <Button 
+              variant="ghost" 
+              onClick={() => navigate('/dashboard')} 
+              className="hover:bg-primary/10 border-primary/30"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Dashboard
+            </Button>
+            <Button 
+              variant="ghost" 
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="hover:bg-primary/10 border-primary/30"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
           <div className="flex items-center gap-3">
             <CreditCard className="h-6 w-6 text-primary" />
             <h1 className="text-2xl font-bold font-display text-foreground">E-Pass Management</h1>
