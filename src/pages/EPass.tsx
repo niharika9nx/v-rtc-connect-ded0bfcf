@@ -223,8 +223,8 @@ const EPass = () => {
       }
 
       // Edge function already updates the database with enhanced image URL
-      // Wait for edge function to complete processing (takes ~20-25 seconds)
-      await new Promise(resolve => setTimeout(resolve, 5000));
+      // Wait for edge function to complete processing and storage to propagate
+      await new Promise(resolve => setTimeout(resolve, 10000));
 
       toast({
         title: "Success",
