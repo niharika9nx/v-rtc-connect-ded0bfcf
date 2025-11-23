@@ -160,11 +160,13 @@ const Index = () => {
       {/* VISHNU Logo in corner */}
       <div className="absolute top-1 left-1 md:top-2 md:left-2 z-10 animate-fade-in">
         <div className="relative">
-          <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full opacity-60" />
+          <div className="absolute inset-0 bg-primary/40 blur-3xl rounded-full opacity-80 animate-pulse" style={{ animationDuration: '3s' }} />
+          <div className="absolute inset-0 bg-accent/30 blur-2xl rounded-full" />
           <img 
             src={vishnuLogo} 
             alt="VISHNU Universal Learning Logo" 
-            className="relative h-28 md:h-36 w-auto opacity-90 hover:opacity-100 transition-all hover:scale-105 drop-shadow-glow"
+            className="relative h-28 md:h-36 w-auto opacity-95 hover:opacity-100 transition-all hover:scale-105"
+            style={{ filter: 'drop-shadow(0 0 20px rgba(var(--primary), 0.6)) drop-shadow(0 0 40px rgba(var(--primary), 0.4))' }}
           />
         </div>
       </div>
