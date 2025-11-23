@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,49 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Bus } from 'lucide-react';
+
+// College configuration
+const collegeConfig = {
+  'SVECW': {
+    branches: ['CSE', 'AIDS', 'AIML', 'CSE-CS', 'IT', 'ECE', 'EE', 'CE', 'ME'],
+    years: { default: ['1', '2', '3', '4'] },
+    sections: ['A', 'B', 'C']
+  },
+  'Smt. B seetha Polytechnic': {
+    branches: ['Computer Engineering', 'ECE', 'EEE', 'Applied Electronics and Instrumentation Engineering'],
+    years: { default: ['1', '2', '3'] },
+    sections: ['A', 'B']
+  },
+  'VDC': {
+    branches: ['BDS', 'MDS'],
+    years: { 
+      'BDS': ['1', '2', '3', '4', '5'],
+      'MDS': ['1', '2', '3']
+    },
+    sections: []
+  },
+  'Shri vishnu college of pharmacy': {
+    branches: ['B.Pharm', 'M.Pharm', 'Pharm.D', 'Pharm.D(PB)'],
+    years: {
+      'B.Pharm': ['1', '2', '3', '4'],
+      'Pharm.D': ['1', '2', '3', '4', '5', '6'],
+      'Pharm.D(PB)': ['1', '2', '3'],
+      'M.Pharm': ['1', '2']
+    },
+    sections: []
+  },
+  'B V Raju college': {
+    branches: ['B.Sc', 'B.Com', 'BCA', 'M.Sc', 'MCA'],
+    years: {
+      'B.Sc': ['1', '2', '3'],
+      'B.Com': ['1', '2', '3'],
+      'BCA': ['1', '2', '3'],
+      'M.Sc': ['1', '2'],
+      'MCA': ['1', '2']
+    },
+    sections: []
+  }
+};
 
 const SignupStudent = () => {
   const [formData, setFormData] = useState({
@@ -25,6 +68,50 @@ const SignupStudent = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Get available branches based on selected college
+  const availableBranches = useMemo(() => {
+    if (!formData.college || !collegeConfig[formData.college as keyof typeof collegeConfig]) return [];
+    return collegeConfig[formData.college as keyof typeof collegeConfig].branches;
+  }, [formData.college]);
+
+  // Get available years based on selected college and branch
+  const availableYears = useMemo(() => {
+    if (!formData.college || !collegeConfig[formData.college as keyof typeof collegeConfig]) return [];
+    const config = collegeConfig[formData.college as keyof typeof collegeConfig];
+    const years = config.years as any;
+    if (years.default) return years.default;
+    if (formData.branch && years[formData.branch]) {
+      return years[formData.branch] as string[];
+    }
+    return [];
+  }, [formData.college, formData.branch]);
+
+  // Get available sections based on selected college
+  const availableSections = useMemo(() => {
+    if (!formData.college || !collegeConfig[formData.college as keyof typeof collegeConfig]) return [];
+    return collegeConfig[formData.college as keyof typeof collegeConfig].sections;
+  }, [formData.college]);
+
+  // Reset dependent fields when college changes
+  const handleCollegeChange = (value: string) => {
+    setFormData({ 
+      ...formData, 
+      college: value, 
+      branch: '', 
+      year: '', 
+      section: '' 
+    });
+  };
+
+  // Reset year when branch changes (for colleges with branch-specific years)
+  const handleBranchChange = (value: string) => {
+    setFormData({ 
+      ...formData, 
+      branch: value, 
+      year: '' 
+    });
+  };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -171,57 +258,78 @@ const SignupStudent = () => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="college" className="text-foreground">College</Label>
-                <Select onValueChange={(value) => setFormData({ ...formData, college: value })}>
+                <Select value={formData.college} onValueChange={handleCollegeChange}>
                   <SelectTrigger className="bg-muted/30 border-border/50">
                     <SelectValue placeholder="Select college" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="engineering">Engineering College</SelectItem>
-                    <SelectItem value="arts">Arts College</SelectItem>
-                    <SelectItem value="science">Science College</SelectItem>
+                    {Object.keys(collegeConfig).map((college) => (
+                      <SelectItem key={college} value={college}>
+                        {college}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="branch" className="text-foreground">Branch</Label>
-                <Select onValueChange={(value) => setFormData({ ...formData, branch: value })}>
+                <Select 
+                  value={formData.branch} 
+                  onValueChange={handleBranchChange}
+                  disabled={!formData.college}
+                >
                   <SelectTrigger className="bg-muted/30 border-border/50">
                     <SelectValue placeholder="Select branch" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="cse">Computer Science</SelectItem>
-                    <SelectItem value="ece">Electronics</SelectItem>
-                    <SelectItem value="mech">Mechanical</SelectItem>
+                    {availableBranches.map((branch) => (
+                      <SelectItem key={branch} value={branch}>
+                        {branch}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="year" className="text-foreground">Year</Label>
-                <Select onValueChange={(value) => setFormData({ ...formData, year: value })}>
+                <Select 
+                  value={formData.year}
+                  onValueChange={(value) => setFormData({ ...formData, year: value })}
+                  disabled={!formData.college || (availableYears.length === 0 && !formData.branch)}
+                >
                   <SelectTrigger className="bg-muted/30 border-border/50">
                     <SelectValue placeholder="Select year" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1">1st Year</SelectItem>
-                    <SelectItem value="2">2nd Year</SelectItem>
-                    <SelectItem value="3">3rd Year</SelectItem>
-                    <SelectItem value="4">4th Year</SelectItem>
+                    {availableYears.map((year) => (
+                      <SelectItem key={year} value={year}>
+                        Year {year}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="section" className="text-foreground">Section</Label>
-                <Select onValueChange={(value) => setFormData({ ...formData, section: value })}>
-                  <SelectTrigger className="bg-muted/30 border-border/50">
-                    <SelectValue placeholder="Select section" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="A">Section A</SelectItem>
-                    <SelectItem value="B">Section B</SelectItem>
-                    <SelectItem value="C">Section C</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {availableSections.length > 0 && (
+                <div className="space-y-2">
+                  <Label htmlFor="section" className="text-foreground">Section</Label>
+                  <Select 
+                    value={formData.section}
+                    onValueChange={(value) => setFormData({ ...formData, section: value })}
+                    disabled={!formData.college}
+                  >
+                    <SelectTrigger className="bg-muted/30 border-border/50">
+                      <SelectValue placeholder="Select section" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableSections.map((section) => (
+                        <SelectItem key={section} value={section}>
+                          Section {section}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
             <Button 
               type="submit" 

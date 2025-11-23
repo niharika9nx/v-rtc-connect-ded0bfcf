@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,49 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { formatTo12Hour } from '@/lib/utils';
+
+// College configuration - same as in SignupStudent
+const collegeConfig = {
+  'SVECW': {
+    branches: ['CSE', 'AIDS', 'AIML', 'CSE-CS', 'IT', 'ECE', 'EE', 'CE', 'ME'],
+    years: { default: ['1', '2', '3', '4'] },
+    sections: ['A', 'B', 'C']
+  },
+  'Smt. B seetha Polytechnic': {
+    branches: ['Computer Engineering', 'ECE', 'EEE', 'Applied Electronics and Instrumentation Engineering'],
+    years: { default: ['1', '2', '3'] },
+    sections: ['A', 'B']
+  },
+  'VDC': {
+    branches: ['BDS', 'MDS'],
+    years: { 
+      'BDS': ['1', '2', '3', '4', '5'],
+      'MDS': ['1', '2', '3']
+    },
+    sections: []
+  },
+  'Shri vishnu college of pharmacy': {
+    branches: ['B.Pharm', 'M.Pharm', 'Pharm.D', 'Pharm.D(PB)'],
+    years: {
+      'B.Pharm': ['1', '2', '3', '4'],
+      'Pharm.D': ['1', '2', '3', '4', '5', '6'],
+      'Pharm.D(PB)': ['1', '2', '3'],
+      'M.Pharm': ['1', '2']
+    },
+    sections: []
+  },
+  'B V Raju college': {
+    branches: ['B.Sc', 'B.Com', 'BCA', 'M.Sc', 'MCA'],
+    years: {
+      'B.Sc': ['1', '2', '3'],
+      'B.Com': ['1', '2', '3'],
+      'BCA': ['1', '2', '3'],
+      'M.Sc': ['1', '2'],
+      'MCA': ['1', '2']
+    },
+    sections: []
+  }
+};
 
 interface BusDetail {
   bus_number: string;
@@ -70,9 +113,26 @@ const AdminBusDashboard = () => {
   const [selectedCollege, setSelectedCollege] = useState<string>('all');
   const [selectedBranch, setSelectedBranch] = useState<string>('all');
   const [selectedYear, setSelectedYear] = useState<string>('all');
-  const [colleges, setColleges] = useState<string[]>([]);
-  const [branches, setBranches] = useState<string[]>([]);
-  const [years, setYears] = useState<string[]>([]);
+
+  // Get available branches based on selected college
+  const availableBranches = useMemo(() => {
+    if (selectedCollege === 'all') return [];
+    if (!collegeConfig[selectedCollege as keyof typeof collegeConfig]) return [];
+    return collegeConfig[selectedCollege as keyof typeof collegeConfig].branches;
+  }, [selectedCollege]);
+
+  // Get available years based on selected college and branch
+  const availableYears = useMemo(() => {
+    if (selectedCollege === 'all') return [];
+    const config = collegeConfig[selectedCollege as keyof typeof collegeConfig];
+    if (!config) return [];
+    const years = config.years as any;
+    if (years.default) return years.default;
+    if (selectedBranch !== 'all' && years[selectedBranch]) {
+      return years[selectedBranch] as string[];
+    }
+    return [];
+  }, [selectedCollege, selectedBranch]);
   const [showUserList, setShowUserList] = useState(false);
   const [userListType, setUserListType] = useState<string>('');
   const [userList, setUserList] = useState<Profile[]>([]);
@@ -83,7 +143,6 @@ const AdminBusDashboard = () => {
   useEffect(() => {
     if (busNumber) {
       fetchBusDetails();
-      fetchFilters();
     }
   }, [busNumber]);
 
@@ -111,20 +170,23 @@ const AdminBusDashboard = () => {
     }
   };
 
-  const fetchFilters = async () => {
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('college, branch, year')
-      .eq('bus_number', busNumber);
+  // Handle college change - reset dependent filters
+  const handleCollegeChange = (value: string) => {
+    setSelectedCollege(value);
+    setSelectedBranch('all');
+    setSelectedYear('all');
+  };
 
-    if (profiles) {
-      const uniqueColleges = [...new Set(profiles.map((p) => p.college).filter(Boolean))];
-      const uniqueBranches = [...new Set(profiles.map((p) => p.branch).filter(Boolean))];
-      const uniqueYears = [...new Set(profiles.map((p) => p.year).filter(Boolean))];
-
-      setColleges(uniqueColleges as string[]);
-      setBranches(uniqueBranches as string[]);
-      setYears(uniqueYears as string[]);
+  // Handle branch change - reset year filter if needed
+  const handleBranchChange = (value: string) => {
+    setSelectedBranch(value);
+    // Reset year if the new branch has different year options
+    const config = selectedCollege !== 'all' && collegeConfig[selectedCollege as keyof typeof collegeConfig];
+    if (config) {
+      const years = (config as any).years;
+      if (!years.default) {
+        setSelectedYear('all');
+      }
     }
   };
 
@@ -458,13 +520,13 @@ const AdminBusDashboard = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">College</label>
-                <Select value={selectedCollege} onValueChange={setSelectedCollege}>
+                <Select value={selectedCollege} onValueChange={handleCollegeChange}>
                   <SelectTrigger className="bg-background">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-background z-50">
                     <SelectItem value="all">All Colleges</SelectItem>
-                    {colleges.map((college) => (
+                    {Object.keys(collegeConfig).map((college) => (
                       <SelectItem key={college} value={college}>
                         {college}
                       </SelectItem>
@@ -475,13 +537,17 @@ const AdminBusDashboard = () => {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Branch</label>
-                <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+                <Select 
+                  value={selectedBranch} 
+                  onValueChange={handleBranchChange}
+                  disabled={selectedCollege === 'all'}
+                >
                   <SelectTrigger className="bg-background">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-background z-50">
                     <SelectItem value="all">All Branches</SelectItem>
-                    {branches.map((branch) => (
+                    {availableBranches.map((branch) => (
                       <SelectItem key={branch} value={branch}>
                         {branch}
                       </SelectItem>
@@ -492,15 +558,19 @@ const AdminBusDashboard = () => {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Year</label>
-                <Select value={selectedYear} onValueChange={setSelectedYear}>
+                <Select 
+                  value={selectedYear} 
+                  onValueChange={setSelectedYear}
+                  disabled={selectedCollege === 'all' || (availableYears.length === 0 && selectedBranch === 'all')}
+                >
                   <SelectTrigger className="bg-background">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-background z-50">
                     <SelectItem value="all">All Years</SelectItem>
-                    {years.map((year) => (
+                    {availableYears.map((year) => (
                       <SelectItem key={year} value={year}>
-                        {year}
+                        Year {year}
                       </SelectItem>
                     ))}
                   </SelectContent>
