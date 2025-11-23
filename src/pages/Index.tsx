@@ -2,7 +2,6 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Bus } from "lucide-react";
 import { useState, useEffect } from "react";
-import apsrtcLogo from '@/assets/apsrtc-logo.png';
 import vesLogo from '@/assets/ves-logo.jpg';
 
 interface Ripple {
@@ -158,17 +157,8 @@ const Index = () => {
         </div>
       ))}
 
-      {/* APSRTC Logo in corner */}
-      <div className="absolute top-2 left-2 md:top-4 md:left-4 z-10 animate-fade-in">
-        <img 
-          src={apsrtcLogo} 
-          alt="APSRTC Logo" 
-          className="h-10 md:h-16 w-auto opacity-80 hover:opacity-100 transition-opacity"
-        />
-      </div>
-
       {/* VES Logo in corner */}
-      <div className="absolute top-2 right-2 md:top-4 md:right-4 z-10 animate-fade-in">
+      <div className="absolute top-2 left-2 md:top-4 md:left-4 z-10 animate-fade-in">
         <img 
           src={vesLogo} 
           alt="VES Logo" 
