@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Bus } from "lucide-react";
 import { useState, useEffect } from "react";
-import vesLogo from '@/assets/ves-logo.jpg';
+import vishnuLogo from '@/assets/vishnu-logo.png';
 
 interface Ripple {
   id: number;
@@ -157,11 +157,11 @@ const Index = () => {
         </div>
       ))}
 
-      {/* VES Logo in corner */}
+      {/* VISHNU Logo in corner */}
       <div className="absolute top-2 left-2 md:top-4 md:left-4 z-10 animate-fade-in">
         <img 
-          src={vesLogo} 
-          alt="VES Logo" 
+          src={vishnuLogo} 
+          alt="VISHNU Universal Learning Logo" 
           className="h-10 md:h-16 w-auto opacity-80 hover:opacity-100 transition-opacity"
         />
       </div>
