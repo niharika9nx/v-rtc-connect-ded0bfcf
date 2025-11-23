@@ -278,10 +278,17 @@ serve(async (req) => {
 });
 
 function extractExpiryDate(text: string): string | null {
-  // Common date patterns: DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY, YYYY-MM-DD
+  // Common date patterns including dates with month names
   const patterns = [
+    // DD-MMM-YYYY format (e.g., 05-Nov-2025)
+    /(?:to|until|till|expiry|expire|valid until|valid till|expires on|exp)[:\s]*(\d{1,2}[-\s](Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[-\s]\d{4})/i,
+    // Standard numeric patterns
     /(?:expiry|expire|valid until|valid till|expires on|exp)[:\s]*(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{4})/i,
     /(?:expiry|expire|valid until|valid till|expires on|exp)[:\s]*(\d{4}[\/\-\.]\d{1,2}[\/\-\.]\d{1,2})/i,
+    // Validity range pattern (capture the end date)
+    /validity[:\s]*\d{1,2}[-\/\.]\w{3}[-\/\.]\d{4}\s+to\s+(\d{1,2}[-\/\.]\w{3}[-\/\.]\d{4})/i,
+    // Generic date patterns
+    /(\d{1,2}[-\s](Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[-\s]\d{4})/i,
     /(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{4})/,
     /(\d{4}[\/\-\.]\d{1,2}[\/\-\.]\d{1,2})/,
   ];
@@ -328,8 +335,17 @@ function extractPassId(text: string): string | null {
 }
 
 function parseDateString(dateStr: string): Date | null {
+  // Month name to number mapping
+  const monthMap: { [key: string]: string } = {
+    'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04',
+    'may': '05', 'jun': '06', 'jul': '07', 'aug': '08',
+    'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12'
+  };
+
   // Try different date formats
   const formats = [
+    // DD-MMM-YYYY or DD MMM YYYY (e.g., 05-Nov-2025 or 05 Nov 2025)
+    /^(\d{1,2})[-\s](Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[-\s](\d{4})$/i,
     // DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY
     /^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/,
     // YYYY/MM/DD or YYYY-MM-DD or YYYY.MM.DD
@@ -340,6 +356,13 @@ function parseDateString(dateStr: string): Date | null {
     const match = dateStr.match(format);
     if (match) {
       if (format === formats[0]) {
+        // DD-MMM-YYYY format
+        const [, day, month, year] = match;
+        const monthNum = monthMap[month.toLowerCase()];
+        if (monthNum) {
+          return new Date(`${year}-${monthNum}-${day.padStart(2, '0')}`);
+        }
+      } else if (format === formats[1]) {
         // DD/MM/YYYY format
         const [, day, month, year] = match;
         return new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`);
