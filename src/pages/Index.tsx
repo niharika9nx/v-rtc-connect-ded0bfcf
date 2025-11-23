@@ -163,7 +163,7 @@ const Index = () => {
         <img 
           src={apsrtcLogo} 
           alt="APSRTC Logo" 
-          className="h-8 md:h-16 w-auto opacity-80 hover:opacity-100 transition-opacity"
+          className="h-6 md:h-12 w-auto opacity-80 hover:opacity-100 transition-opacity"
         />
       </div>
 
@@ -172,7 +172,7 @@ const Index = () => {
         <img 
           src={vesLogo} 
           alt="VES Logo" 
-          className="h-8 md:h-16 w-auto opacity-80 hover:opacity-100 transition-opacity"
+          className="h-6 md:h-12 w-auto opacity-80 hover:opacity-100 transition-opacity"
         />
       </div>
 
@@ -231,6 +231,14 @@ const Index = () => {
 
         <div className="pt-8 text-sm text-muted-foreground animate-fade-in" style={{ animationDelay: '0.5s' }}>
           <p>A SVECW product</p>
+        </div>
+      </div>
+
+      {/* Copyright section */}
+      <div className="absolute bottom-4 left-0 right-0 z-10">
+        <div className="text-center text-xs md:text-sm text-muted-foreground/70 px-4">
+          <p>© 2024 VBus. All rights reserved.</p>
+          <p className="mt-1">Developed by [Developer/Team Name]</p>
         </div>
       </div>
 
