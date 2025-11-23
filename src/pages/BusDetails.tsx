@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Bus, Clock, MapPin, IndianRupee, Calendar } from 'lucide-react';
+import { formatTo12Hour } from '@/lib/utils';
 
 const BusDetails = () => {
   const { user } = useAuth();
@@ -158,7 +159,7 @@ const BusDetails = () => {
                         <Clock className="h-4 w-4 text-secondary" />
                         Departure Time
                       </p>
-                      <p className="font-medium text-lg">{busDetails.departure_time}</p>
+                      <p className="font-medium text-lg">{formatTo12Hour(busDetails.departure_time)}</p>
                     </div>
                   )}
                   {busDetails?.arrival_time && (
@@ -167,7 +168,7 @@ const BusDetails = () => {
                         <Clock className="h-4 w-4 text-secondary" />
                         Arrival Time
                       </p>
-                      <p className="font-medium text-lg">{busDetails.arrival_time}</p>
+                      <p className="font-medium text-lg">{formatTo12Hour(busDetails.arrival_time)}</p>
                     </div>
                   )}
                   {busDetails?.capacity && (

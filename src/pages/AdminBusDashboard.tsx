@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { formatTo12Hour } from '@/lib/utils';
 
 interface BusDetail {
   bus_number: string;
@@ -359,11 +360,11 @@ const AdminBusDashboard = () => {
             </p>
             <p>
               <span className="font-semibold">Morning Departure:</span>{' '}
-              {busDetails.departure_time}
+              {formatTo12Hour(busDetails.departure_time)}
             </p>
             <p>
               <span className="font-semibold">Evening Arrival:</span>{' '}
-              {busDetails.arrival_time}
+              {formatTo12Hour(busDetails.arrival_time)}
             </p>
             <p>
               <span className="font-semibold">Capacity:</span> {busDetails.capacity}

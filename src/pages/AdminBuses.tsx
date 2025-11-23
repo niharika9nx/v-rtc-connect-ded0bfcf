@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { formatTo12Hour } from '@/lib/utils';
 
 interface BusDetail {
   id: number;
@@ -84,10 +85,10 @@ const AdminBuses = () => {
                 </p>
                 <p className="text-sm">
                   <span className="font-semibold">Departure:</span>{' '}
-                  {bus.departure_time}
+                  {formatTo12Hour(bus.departure_time)}
                 </p>
                 <p className="text-sm">
-                  <span className="font-semibold">Arrival:</span> {bus.arrival_time}
+                  <span className="font-semibold">Arrival:</span> {formatTo12Hour(bus.arrival_time)}
                 </p>
                 <p className="text-sm">
                   <span className="font-semibold">Capacity:</span> {bus.capacity}
