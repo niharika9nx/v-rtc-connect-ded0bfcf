@@ -176,7 +176,7 @@ const AdminBusDashboard = () => {
       // Fetch passes issued count
       const { data: passesIssuedData } = await supabase
         .from('passes')
-        .select('user_id, profiles!inner(bus_number)')
+        .select('user_id, profiles!passes_user_id_fkey(bus_number)')
         .not('monthly_pass_url', 'is', null);
 
       // Filter by bus number on the client side after joining
