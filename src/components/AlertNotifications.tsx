@@ -3,8 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { X, AlertCircle, Calendar } from 'lucide-react';
+import { X, AlertCircle, Calendar, Bell, BellOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useNotifications } from '@/hooks/useNotifications';
 
 interface AlertNotification {
   id: string;
@@ -18,12 +19,19 @@ interface AlertNotification {
 export const AlertNotifications = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { supported, permission, requestPermission, sendAlertNotification } = useNotifications();
   const [alerts, setAlerts] = useState<AlertNotification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showPermissionPrompt, setShowPermissionPrompt] = useState(false);
 
   useEffect(() => {
     if (user) {
       fetchAlerts();
+
+      // Check if we should show notification permission prompt
+      if (supported && permission === 'default') {
+        setShowPermissionPrompt(true);
+      }
 
       // Set up real-time subscription for new alerts
       const channel = supabase
@@ -36,8 +44,15 @@ export const AlertNotifications = () => {
             table: 'alerts',
             filter: `user_id=eq.${user.id}`
           },
-          () => {
+          (payload) => {
+            console.log('New alert received:', payload);
             fetchAlerts();
+            
+            // Send browser notification
+            const newAlert = payload.new as AlertNotification;
+            if (newAlert.message) {
+              sendAlertNotification(newAlert.message, newAlert.type);
+            }
           }
         )
         .subscribe();
@@ -46,7 +61,7 @@ export const AlertNotifications = () => {
         supabase.removeChannel(channel);
       };
     }
-  }, [user]);
+  }, [user, supported, permission]);
 
   const fetchAlerts = async () => {
     if (!user) return;
@@ -106,12 +121,68 @@ export const AlertNotifications = () => {
     }
   };
 
-  if (loading || alerts.length === 0) {
+  const dismissPermissionPrompt = () => {
+    setShowPermissionPrompt(false);
+    localStorage.setItem('vbus-notification-prompt-dismissed', 'true');
+  };
+
+  const handleEnableNotifications = async () => {
+    const granted = await requestPermission();
+    if (granted) {
+      setShowPermissionPrompt(false);
+    }
+  };
+
+  if (loading) {
     return null;
   }
 
   return (
     <div className="space-y-3">
+      {/* Notification Permission Prompt */}
+      {showPermissionPrompt && !localStorage.getItem('vbus-notification-prompt-dismissed') && (
+        <Alert className="glass border-primary/50 bg-primary/10 shadow-lg">
+          <Bell className="h-5 w-5 text-primary" />
+          <AlertDescription>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1">
+                <p className="font-semibold mb-1">Enable Browser Notifications</p>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Get notified about important alerts and announcements even when you're not on this page.
+                </p>
+                <div className="flex gap-2">
+                  <Button 
+                    size="sm" 
+                    onClick={handleEnableNotifications}
+                    className="bg-primary hover:bg-primary/90"
+                  >
+                    <Bell className="h-4 w-4 mr-1" />
+                    Enable Notifications
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={dismissPermissionPrompt}
+                  >
+                    <BellOff className="h-4 w-4 mr-1" />
+                    Maybe Later
+                  </Button>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={dismissPermissionPrompt}
+                className="h-6 w-6 p-0"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Active Alerts */}
       {alerts.map((alert, index) => (
         <Alert 
           key={alert.id} 
