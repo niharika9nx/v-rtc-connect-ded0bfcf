@@ -194,32 +194,56 @@ const Dashboard = () => {
     if (!user) return;
     
     try {
+      console.log('Creating test alerts for user:', user.id);
+      
+      // First, clear any existing test alerts
+      await supabase
+        .from('alerts')
+        .delete()
+        .eq('user_id', user.id)
+        .or('message.ilike.*[TEST ALERT]*,message.ilike.*December 10, 2025*,message.ilike.*expired 2 days ago*');
+      
       // Create a countdown alert (3 days remaining)
-      await supabase.from('alerts').insert({
+      const { data: data1, error: error1 } = await supabase.from('alerts').insert({
         user_id: user.id,
         type: 'pass_expiry_warning',
         status: 'pending',
-        message: '⏰ Your bus pass will expire in 3 days (December 10, 2025). Please upload a new pass soon.',
+        message: '⏰ [TEST] Your bus pass will expire in 3 days (December 10, 2025). Please upload a new pass soon.',
         send_at: new Date().toISOString()
-      });
+      }).select();
 
-      // Create a renewal reminder alert
-      await supabase.from('alerts').insert({
+      console.log('Countdown alert result:', { data: data1, error: error1 });
+      
+      if (error1) {
+        console.error('Error creating countdown alert:', error1);
+        throw error1;
+      }
+
+      // Create a renewal reminder alert with Yes/No buttons
+      const { data: data2, error: error2 } = await supabase.from('alerts').insert({
         user_id: user.id,
         type: 'pass_renewal_reminder',
         status: 'pending',
-        message: '🚨 Your bus pass expired 2 days ago! Did you receive your new bus pass?',
+        message: '🚨 [TEST] Your bus pass expired 2 days ago! Did you receive your new bus pass?',
         send_at: new Date().toISOString()
-      });
+      }).select();
+
+      console.log('Renewal alert result:', { data: data2, error: error2 });
+
+      if (error2) {
+        console.error('Error creating renewal alert:', error2);
+        throw error2;
+      }
 
       toast({
         title: 'Test Alerts Created',
-        description: 'Sample alerts have been added to your dashboard.',
+        description: 'Two alerts added: Countdown (3 days) + Renewal with Yes/No buttons. Reloading...',
       });
 
       // Refresh the page to show new alerts
-      window.location.reload();
+      setTimeout(() => window.location.reload(), 1500);
     } catch (error: any) {
+      console.error('Test alerts error:', error);
       toast({
         title: 'Error',
         description: error.message || 'Failed to create test alerts',
