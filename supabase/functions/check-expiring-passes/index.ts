@@ -26,41 +26,41 @@ serve(async (req) => {
     fiveDaysFromNow.setDate(fiveDaysFromNow.getDate() + 5);
     const fiveDaysDate = fiveDaysFromNow.toISOString().split('T')[0];
 
-    // Get passes expiring within the next 1-5 days
-    const { data: expiringPasses, error: expiringError } = await supabase
-      .from('passes')
-      .select('user_id, expiry_date')
-      .gt('expiry_date', today)
-      .lte('expiry_date', fiveDaysDate);
+    // Get profiles with passes expiring within the next 1-5 days
+    const { data: expiringProfiles, error: expiringError } = await supabase
+      .from('profiles')
+      .select('id, pass_expiry_date')
+      .gt('pass_expiry_date', today)
+      .lte('pass_expiry_date', fiveDaysDate);
 
     if (expiringError) throw expiringError;
 
-    console.log(`Found ${expiringPasses?.length || 0} passes expiring within 5 days`);
+    console.log(`Found ${expiringProfiles?.length || 0} passes expiring within 5 days`);
 
     // Create daily countdown alerts for expiring passes
-    for (const pass of expiringPasses || []) {
+    for (const profile of expiringProfiles || []) {
       // Check if there's already an alert for today
       const { data: existingTodayAlert } = await supabase
         .from('alerts')
         .select('*')
-        .eq('user_id', pass.user_id)
+        .eq('user_id', profile.id)
         .eq('type', 'pass_expiry_warning')
         .eq('status', 'pending')
         .gte('send_at', today);
 
       // Only create a new alert if there isn't one already today
       if (!existingTodayAlert || existingTodayAlert.length === 0) {
-        const expiryDate = new Date(pass.expiry_date);
+        const expiryDate = new Date(profile.pass_expiry_date);
         const daysRemaining = Math.ceil((expiryDate.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24));
         
         const message = daysRemaining === 1 
-          ? `⚠️ Your bus pass expires TOMORROW (${new Date(pass.expiry_date).toLocaleDateString()})! Please upload a new pass urgently.`
-          : `⏰ Your bus pass will expire in ${daysRemaining} days (${new Date(pass.expiry_date).toLocaleDateString()}). Please upload a new pass soon.`;
+          ? `⚠️ Your bus pass expires TOMORROW (${new Date(profile.pass_expiry_date).toLocaleDateString()})! Please upload a new pass urgently.`
+          : `⏰ Your bus pass will expire in ${daysRemaining} days (${new Date(profile.pass_expiry_date).toLocaleDateString()}). Please upload a new pass soon.`;
 
         const { error: alertError } = await supabase
           .from('alerts')
           .insert({
-            user_id: pass.user_id,
+            user_id: profile.id,
             type: 'pass_expiry_warning',
             status: 'pending',
             message: message,
@@ -73,30 +73,30 @@ serve(async (req) => {
       }
     }
 
-    // Get passes that have expired
-    const { data: expiredPasses, error: expiredError } = await supabase
-      .from('passes')
-      .select('user_id, expiry_date')
-      .lt('expiry_date', today);
+    // Get profiles with expired passes
+    const { data: expiredProfiles, error: expiredError } = await supabase
+      .from('profiles')
+      .select('id, pass_expiry_date')
+      .lt('pass_expiry_date', today);
 
     if (expiredError) throw expiredError;
 
-    console.log(`Found ${expiredPasses?.length || 0} expired passes`);
+    console.log(`Found ${expiredProfiles?.length || 0} expired passes`);
 
     // For expired passes, check if there's already a pending renewal reminder
-    for (const pass of expiredPasses || []) {
+    for (const profile of expiredProfiles || []) {
       // Check if there's already a pending renewal reminder sent today
       const { data: existingAlerts } = await supabase
         .from('alerts')
         .select('*')
-        .eq('user_id', pass.user_id)
+        .eq('user_id', profile.id)
         .eq('type', 'pass_renewal_reminder')
         .eq('status', 'pending')
         .gte('send_at', today);
 
       // Only create a new reminder if there isn't one already today
       if (!existingAlerts || existingAlerts.length === 0) {
-        const daysSinceExpiry = Math.floor((todayDate.getTime() - new Date(pass.expiry_date).getTime()) / (1000 * 60 * 60 * 24));
+        const daysSinceExpiry = Math.floor((todayDate.getTime() - new Date(profile.pass_expiry_date).getTime()) / (1000 * 60 * 60 * 24));
         
         const message = daysSinceExpiry === 0
           ? '🚨 Your bus pass expired TODAY! Did you receive your new bus pass?'
@@ -105,7 +105,7 @@ serve(async (req) => {
         const { error: reminderError } = await supabase
           .from('alerts')
           .insert({
-            user_id: pass.user_id,
+            user_id: profile.id,
             type: 'pass_renewal_reminder',
             status: 'pending',
             message: message,
@@ -121,8 +121,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        expiringCount: expiringPasses?.length || 0,
-        expiredCount: expiredPasses?.length || 0
+        expiringCount: expiringProfiles?.length || 0,
+        expiredCount: expiredProfiles?.length || 0
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
