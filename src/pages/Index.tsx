@@ -176,7 +176,7 @@ const Index = () => {
         />
       </div>
 
-      <div className="relative z-10 text-center space-y-6 md:space-y-8 px-4 max-w-4xl mx-auto animate-slide-up">
+      <div className="relative z-10 text-center space-y-6 md:space-y-8 px-4 max-w-4xl mx-auto pb-32 md:pb-24 animate-slide-up">
         {/* Logo/Icon */}
         <div className="flex justify-center mb-4 md:mb-6">
           <div className="relative">
