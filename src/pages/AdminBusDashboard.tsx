@@ -564,7 +564,7 @@ const AdminBusDashboard = () => {
             onClick={() => handleStatClick('expiringPasses')}
           >
             <CardHeader className="pb-3">
-              <CardTitle className="text-base md:text-lg">Expiring Passes</CardTitle>
+              <CardTitle className="text-base md:text-lg">Expiring Passes &lt;= 5 days</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-2xl md:text-3xl font-bold text-orange-600">
@@ -611,7 +611,7 @@ const AdminBusDashboard = () => {
               {userListType === 'faculty' && 'Faculty List'}
               {userListType === 'feePaid' && 'Fee Paid List'}
               {userListType === 'feeDue' && 'Fee Due List'}
-              {userListType === 'expiringPasses' && 'Expiring Passes List'}
+              {userListType === 'expiringPasses' && 'Expiring Passes <= 5 days List'}
               {userListType === 'passesIssued' && 'Passes Issued List'}
               {userListType === 'passesExpired' && 'Passes Expired - Awaiting New Pass'}
             </DialogTitle>
