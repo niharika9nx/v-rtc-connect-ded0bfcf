@@ -8,8 +8,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Bus } from 'lucide-react';
-import apsrtcLogo from '@/assets/apsrtc-logo.png';
-import vesLogo from '@/assets/ves-logo.jpg';
 import {
   Dialog,
   DialogContent,
@@ -154,24 +152,6 @@ const Login = () => {
           <Bus className="h-6 w-6 text-primary/30" />
         </div>
       ))}
-
-      {/* APSRTC Logo in corner */}
-      <div className="absolute top-2 left-2 md:top-4 md:left-4 z-10 animate-fade-in">
-        <img 
-          src={apsrtcLogo} 
-          alt="APSRTC Logo" 
-          className="h-10 md:h-16 w-auto opacity-80 hover:opacity-100 transition-opacity"
-        />
-      </div>
-
-      {/* VES Logo in corner */}
-      <div className="absolute top-2 right-2 md:top-4 md:right-4 z-10 animate-fade-in">
-        <img 
-          src={vesLogo} 
-          alt="VES Logo" 
-          className="h-10 md:h-16 w-auto opacity-80 hover:opacity-100 transition-opacity"
-        />
-      </div>
 
       <Card className="w-full max-w-md glass border-border/50 shadow-lg hover:shadow-glow transition-all animate-slide-up relative z-10">
         <CardHeader className="text-center">
