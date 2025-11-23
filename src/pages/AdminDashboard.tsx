@@ -35,6 +35,7 @@ const AdminDashboard = () => {
   const [complaintsOpen, setComplaintsOpen] = useState(false);
   const [announcementsOpen, setAnnouncementsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [routeImageUrl, setRouteImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -47,8 +48,36 @@ const AdminDashboard = () => {
       
       fetchComplaints();
       fetchAnnouncements();
+      fetchRouteImage();
     }
   }, [user]);
+
+  const fetchRouteImage = async () => {
+    // Try to fetch a default route image
+    const possibleFileNames = [
+      'route.png',
+      'bus-1.png',
+      'bus-2.png'
+    ];
+
+    for (const fileName of possibleFileNames) {
+      const { data: publicUrl } = supabase.storage
+        .from('route')
+        .getPublicUrl(fileName);
+      
+      if (publicUrl?.publicUrl) {
+        try {
+          const response = await fetch(publicUrl.publicUrl, { method: 'HEAD' });
+          if (response.ok) {
+            setRouteImageUrl(publicUrl.publicUrl);
+            break;
+          }
+        } catch (error) {
+          continue;
+        }
+      }
+    }
+  };
 
   const fetchComplaints = async () => {
     const { data, error } = await supabase
@@ -370,6 +399,29 @@ const AdminDashboard = () => {
             </DialogContent>
           </Dialog>
         </div>
+
+        {/* Bus Route Image */}
+        {routeImageUrl && (
+          <Card className="glass animate-slide-up shadow-lg" style={{ animationDelay: '0.5s' }}>
+            <CardHeader>
+              <CardTitle className="font-display">Bus Route Map</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-xl overflow-hidden shadow-md hover:shadow-glow transition-shadow cursor-pointer"
+                onClick={() => window.open(routeImageUrl, '_blank')}
+              >
+                <img 
+                  src={routeImageUrl} 
+                  alt="Bus route map"
+                  className="w-full h-auto"
+                />
+              </div>
+              <p className="text-center text-sm text-muted-foreground mt-4 font-medium">
+                Click image to view in full size
+              </p>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );
