@@ -12,7 +12,7 @@ import { Bus } from 'lucide-react';
 // College configuration
 const collegeConfig = {
   'SVECW': {
-    branches: ['CSE', 'AIDS', 'AIML', 'CSE-CS', 'IT', 'ECE', 'EEE', 'CE', 'ME', 'Freshman Engineering'],
+    branches: ['CSE', 'AIDS', 'AIML', 'CSE-CS', 'IT', 'ECE', 'EEE', 'CE', 'ME'],
     years: { default: ['1', '2', '3', '4'] },
     sections: ['A', 'B', 'C']
   },
