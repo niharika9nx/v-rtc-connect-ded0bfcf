@@ -176,35 +176,35 @@ const Index = () => {
         />
       </div>
 
-      <div className="relative z-10 text-center space-y-8 px-4 max-w-4xl mx-auto animate-slide-up">
+      <div className="relative z-10 text-center space-y-6 md:space-y-8 px-4 max-w-4xl mx-auto animate-slide-up">
         {/* Logo/Icon */}
-        <div className="flex justify-center mb-6">
+        <div className="flex justify-center mb-4 md:mb-6">
           <div className="relative">
             <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full animate-pulse" />
-            <div className="relative p-6 rounded-2xl bg-gradient-primary/10 border border-primary/30 backdrop-blur-sm shadow-glow">
-              <Bus className="h-20 w-20 text-primary animate-float" />
+            <div className="relative p-4 md:p-6 rounded-2xl bg-gradient-primary/10 border border-primary/30 backdrop-blur-sm shadow-glow">
+              <Bus className="h-16 w-16 md:h-20 md:w-20 text-primary animate-float" />
             </div>
           </div>
         </div>
 
-        <div className="space-y-4">
-          <h1 className="text-5xl md:text-7xl font-bold font-display text-foreground tracking-tight">
+        <div className="space-y-3 md:space-y-4">
+          <h1 className="text-4xl md:text-7xl font-bold font-display text-foreground tracking-tight">
             Welcome to{" "}
             <span className="bg-gradient-primary bg-clip-text text-transparent">
               VBus
             </span>
           </h1>
-          <p className="text-xl md:text-2xl text-muted-foreground font-medium">
+          <p className="text-lg md:text-2xl text-muted-foreground font-medium">
             VES - APSRTC Bus management system
           </p>
           <div className="h-1 w-32 mx-auto bg-gradient-primary rounded-full" />
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+        <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center pt-2 md:pt-4">
           <Link to="/login">
             <Button 
               size="lg" 
-              className="bg-primary hover:bg-primary/90 hover:shadow-glow transition-all w-full sm:w-auto text-lg px-8 py-6"
+              className="bg-primary hover:bg-primary/90 hover:shadow-glow transition-all w-full sm:w-auto text-base md:text-lg px-6 md:px-8 py-5 md:py-6"
             >
               Login
             </Button>
@@ -213,7 +213,7 @@ const Index = () => {
             <Button 
               size="lg" 
               variant="outline"
-              className="border-primary/30 hover:bg-primary/10 hover:shadow-glow transition-all w-full sm:w-auto text-lg px-8 py-6"
+              className="border-primary/30 hover:bg-primary/10 hover:shadow-glow transition-all w-full sm:w-auto text-base md:text-lg px-6 md:px-8 py-5 md:py-6"
             >
               Sign Up as Student
             </Button>
@@ -222,15 +222,11 @@ const Index = () => {
             <Button 
               size="lg" 
               variant="outline"
-              className="border-secondary/30 hover:bg-secondary/10 hover:shadow-glow transition-all w-full sm:w-auto text-lg px-8 py-6"
+              className="border-secondary/30 hover:bg-secondary/10 hover:shadow-glow transition-all w-full sm:w-auto text-base md:text-lg px-6 md:px-8 py-5 md:py-6"
             >
               Sign Up as Faculty
             </Button>
           </Link>
-        </div>
-
-        <div className="pt-8 text-sm text-muted-foreground animate-fade-in" style={{ animationDelay: '0.5s' }}>
-          <p>A SVECW product</p>
         </div>
       </div>
 
