@@ -158,31 +158,36 @@ const EPass = () => {
           description: "Pass uploaded but enhancement failed",
           variant: "destructive"
         });
+        
+        // Only update with original URL if enhancement failed
+        const passData = {
+          user_id: user.id,
+          monthly_pass_url: uploadResult.publicUrl
+        };
+
+        if (pass) {
+          await supabase
+            .from('passes')
+            .update({ monthly_pass_url: uploadResult.publicUrl })
+            .eq('id', pass.id);
+        } else {
+          await supabase
+            .from('passes')
+            .insert(passData);
+        }
       }
 
-      const passData = {
-        user_id: user.id,
-        monthly_pass_url: uploadResult.publicUrl
-      };
-
-      if (pass) {
-        await supabase
-          .from('passes')
-          .update({ monthly_pass_url: uploadResult.publicUrl })
-          .eq('id', pass.id);
-      } else {
-        await supabase
-          .from('passes')
-          .insert(passData);
-      }
+      // Edge function already updates the database with enhanced image URL
+      // Wait a moment for edge function to complete, then refresh
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       toast({
         title: "Success",
-        description: "Monthly pass uploaded successfully"
+        description: "Monthly pass uploaded and processed successfully"
       });
 
       setMonthlyPassFile(null);
-      fetchPass();
+      await fetchPass();
     } catch (error: any) {
       toast({
         title: "Upload failed",
