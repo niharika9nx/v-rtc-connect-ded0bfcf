@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.respond-to-alert]
 verify_jwt = true
+
+[functions.create-test-alert]
+verify_jwt = false
