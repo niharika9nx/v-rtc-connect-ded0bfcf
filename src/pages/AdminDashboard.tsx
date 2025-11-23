@@ -167,6 +167,54 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleSendTestAlert = async () => {
+    setLoading(true);
+    try {
+      // Get a student user to send test alert to
+      const { data: students, error: studentsError } = await supabase
+        .from('profiles')
+        .select('id, name')
+        .eq('role', 'student')
+        .limit(1);
+
+      if (studentsError) throw studentsError;
+      if (!students || students.length === 0) {
+        toast({
+          title: 'No Students Found',
+          description: 'No student accounts found to send test alert to.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const student = students[0];
+
+      // Create test alert
+      const { error } = await supabase.functions.invoke('create-test-alert', {
+        body: {
+          userId: student.id,
+          type: 'pass_expiry_warning',
+          message: `[TEST ALERT] Your bus pass will expire in 5 days. Please upload a new pass soon.`
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: `Test alert sent to ${student.name}! They should see it on their dashboard.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to send test alert',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background bg-mesh p-4">
       <div className="max-w-6xl mx-auto space-y-6">
@@ -189,22 +237,43 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        <div className="mb-4">
+        <div className="mb-4 space-y-4">
           <Card className="glass border-primary/50 hover:shadow-glow transition-all">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold text-foreground mb-1">Test Pass Expiry Alerts</h3>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-foreground mb-1">Check Expiring Passes</h3>
                   <p className="text-sm text-muted-foreground">
-                    Manually trigger the alert check system to see how pass expiry alerts work
+                    Scan all users to find passes expiring in 5 days or already expired
                   </p>
                 </div>
                 <Button 
                   onClick={handleTestAlerts}
                   disabled={loading}
-                  className="bg-primary hover:bg-primary/90 hover:shadow-glow"
+                  className="bg-primary hover:bg-primary/90 hover:shadow-glow ml-4"
                 >
-                  {loading ? 'Checking...' : 'Test Alerts'}
+                  {loading ? 'Checking...' : 'Check Passes'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="glass border-accent/50 hover:shadow-glow transition-all">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <h3 className="font-semibold text-foreground mb-1">Send Test Alert to Student</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Send a sample pass expiry alert to a student account for testing
+                  </p>
+                </div>
+                <Button 
+                  onClick={handleSendTestAlert}
+                  disabled={loading}
+                  variant="outline"
+                  className="border-accent/30 hover:bg-accent/10 hover:shadow-glow ml-4"
+                >
+                  {loading ? 'Sending...' : 'Send Test Alert'}
                 </Button>
               </div>
             </CardContent>
