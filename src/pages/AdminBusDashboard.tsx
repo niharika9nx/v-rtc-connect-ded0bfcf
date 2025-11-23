@@ -26,7 +26,7 @@ import { formatTo12Hour } from '@/lib/utils';
 // College configuration - same as in SignupStudent
 const collegeConfig = {
   'SVECW': {
-    branches: ['CSE', 'AIDS', 'AIML', 'CSE-CS', 'IT', 'ECE', 'EE', 'CE', 'ME'],
+    branches: ['CSE', 'AIDS', 'AIML', 'CSE-CS', 'IT', 'ECE', 'EEE', 'CE', 'ME'],
     years: { default: ['1', '2', '3', '4'] },
     sections: ['A', 'B', 'C']
   },
