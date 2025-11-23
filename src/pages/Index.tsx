@@ -164,7 +164,7 @@ const Index = () => {
           <img 
             src={vishnuLogo} 
             alt="VISHNU Universal Learning Logo" 
-            className="relative h-20 md:h-28 w-auto opacity-90 hover:opacity-100 transition-all hover:scale-105 drop-shadow-glow"
+            className="relative h-28 md:h-36 w-auto opacity-90 hover:opacity-100 transition-all hover:scale-105 drop-shadow-glow"
           />
         </div>
       </div>
