@@ -159,20 +159,20 @@ const Index = () => {
       ))}
 
       {/* APSRTC Logo in corner */}
-      <div className="absolute top-4 left-4 z-10 animate-fade-in">
+      <div className="absolute top-2 left-2 md:top-4 md:left-4 z-10 animate-fade-in">
         <img 
           src={apsrtcLogo} 
           alt="APSRTC Logo" 
-          className="h-16 w-auto opacity-80 hover:opacity-100 transition-opacity"
+          className="h-10 md:h-16 w-auto opacity-80 hover:opacity-100 transition-opacity"
         />
       </div>
 
       {/* VES Logo in corner */}
-      <div className="absolute top-4 right-4 z-10 animate-fade-in">
+      <div className="absolute top-2 right-2 md:top-4 md:right-4 z-10 animate-fade-in">
         <img 
           src={vesLogo} 
           alt="VES Logo" 
-          className="h-16 w-auto opacity-80 hover:opacity-100 transition-opacity"
+          className="h-10 md:h-16 w-auto opacity-80 hover:opacity-100 transition-opacity"
         />
       </div>
 
