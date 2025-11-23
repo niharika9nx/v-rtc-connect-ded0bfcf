@@ -123,7 +123,7 @@ const Index = () => {
       {/* Smoke trail effects */}
       {particles.map((particle) => (
         <div
-          key={particle.id}
+          key={`particle-${particle.id}`}
           className="absolute pointer-events-none animate-smoke"
           style={{
             left: particle.x,
@@ -141,7 +141,7 @@ const Index = () => {
       {/* Touch ripple effects */}
       {ripples.map((ripple) => (
         <div
-          key={ripple.id}
+          key={`ripple-${ripple.id}`}
           className="absolute pointer-events-none"
           style={{
             left: ripple.x,
