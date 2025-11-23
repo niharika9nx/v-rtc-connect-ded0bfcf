@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,25 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+
+// College configuration - same as in SignupStudent
+const collegeConfig = {
+  'SVECW': {
+    branches: ['CSE', 'AIDS', 'AIML', 'CSE-CS', 'IT', 'ECE', 'EEE', 'CE', 'ME'],
+  },
+  'Smt. B seetha Polytechnic': {
+    branches: ['Computer Engineering', 'ECE', 'EEE', 'Applied Electronics and Instrumentation Engineering'],
+  },
+  'VDC': {
+    branches: ['BDS', 'MDS'],
+  },
+  'Shri vishnu college of pharmacy': {
+    branches: ['B.Pharm', 'M.Pharm', 'Pharm.D', 'Pharm.D(PB)'],
+  },
+  'B V Raju college': {
+    branches: ['B.Sc', 'B.Com', 'BCA', 'M.Sc', 'MCA'],
+  }
+};
 
 const SignupFaculty = () => {
   const [formData, setFormData] = useState({
@@ -21,6 +40,21 @@ const SignupFaculty = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Get available departments (branches) based on selected college
+  const availableDepartments = useMemo(() => {
+    if (!formData.college || !collegeConfig[formData.college as keyof typeof collegeConfig]) return [];
+    return collegeConfig[formData.college as keyof typeof collegeConfig].branches;
+  }, [formData.college]);
+
+  // Reset department when college changes
+  const handleCollegeChange = (value: string) => {
+    setFormData({ 
+      ...formData, 
+      college: value, 
+      department: '' 
+    });
+  };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,29 +177,35 @@ const SignupFaculty = () => {
             </div>
             <div className="space-y-2">
               <Label htmlFor="college">College</Label>
-              <Select onValueChange={(value) => setFormData({ ...formData, college: value })}>
+              <Select value={formData.college} onValueChange={handleCollegeChange}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select college" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="engineering">Engineering College</SelectItem>
-                  <SelectItem value="arts">Arts College</SelectItem>
-                  <SelectItem value="science">Science College</SelectItem>
+                  {Object.keys(collegeConfig).map((college) => (
+                    <SelectItem key={college} value={college}>
+                      {college}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="department">Department</Label>
-              <Select onValueChange={(value) => setFormData({ ...formData, department: value })}>
+              <Select 
+                value={formData.department}
+                onValueChange={(value) => setFormData({ ...formData, department: value })}
+                disabled={!formData.college}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select department" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="cse">Computer Science</SelectItem>
-                  <SelectItem value="ece">Electronics</SelectItem>
-                  <SelectItem value="mech">Mechanical</SelectItem>
-                  <SelectItem value="physics">Physics</SelectItem>
-                  <SelectItem value="chemistry">Chemistry</SelectItem>
+                  {availableDepartments.map((department) => (
+                    <SelectItem key={department} value={department}>
+                      {department}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
