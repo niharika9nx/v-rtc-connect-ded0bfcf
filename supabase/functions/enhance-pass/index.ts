@@ -151,6 +151,27 @@ serve(async (req) => {
 
     console.log('Compressed image size:', compressedBytes.length, 'bytes');
 
+    // Clean up old enhanced files before uploading new one
+    try {
+      const userFolder = filePath.split('/')[0];
+      const { data: oldFiles } = await supabase.storage
+        .from('pass-documents')
+        .list(userFolder, {
+          search: 'monthly_pass_enhanced'
+        });
+
+      if (oldFiles && oldFiles.length > 0) {
+        const filesToDelete = oldFiles.map(file => `${userFolder}/${file.name}`);
+        await supabase.storage
+          .from('pass-documents')
+          .remove(filesToDelete);
+        console.log(`Cleaned up ${filesToDelete.length} old enhanced files`);
+      }
+    } catch (cleanupError) {
+      console.error('Cleanup error:', cleanupError);
+      // Don't throw - cleanup failure shouldn't block upload
+    }
+
     // Upload enhanced image as JPEG for smaller file size
     const enhancedFileName = filePath.replace('monthly_pass', 'monthly_pass_enhanced').replace(/\.\w+$/, '.jpg');
     const { error: uploadError } = await supabase.storage
