@@ -81,8 +81,37 @@ const EPass = () => {
     setImageZoom(1);
   };
 
+  const cleanupOldFiles = async (prefix: string) => {
+    if (!user) return;
+    
+    try {
+      // List all files for this user with the given prefix
+      const { data: files } = await supabase.storage
+        .from('pass-documents')
+        .list(`${user.id}`, {
+          search: prefix
+        });
+
+      if (files && files.length > 0) {
+        // Delete all old files with this prefix
+        const filesToDelete = files.map(file => `${user.id}/${file.name}`);
+        await supabase.storage
+          .from('pass-documents')
+          .remove(filesToDelete);
+        
+        console.log(`Cleaned up ${filesToDelete.length} old files with prefix: ${prefix}`);
+      }
+    } catch (error) {
+      console.error('Cleanup error:', error);
+      // Don't throw - cleanup failure shouldn't block upload
+    }
+  };
+
   const uploadFile = async (file: File, type: 'identity_card' | 'monthly_pass') => {
     if (!user) return null;
+
+    // Clean up old files before uploading new one
+    await cleanupOldFiles(type);
 
     const fileExt = file.name.split('.').pop();
     const fileName = `${user.id}/${type}.${fileExt}`;
