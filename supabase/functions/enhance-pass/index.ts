@@ -49,7 +49,7 @@ serve(async (req) => {
     }
     const base64Image = btoa(binary);
     
-    // Compress image using Lovable AI (resize to max 1024px width)
+    // Compress image using Lovable AI (resize to max 800px width for aggressive compression)
     console.log('Compressing image...');
     const compressionResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -65,7 +65,7 @@ serve(async (req) => {
             content: [
               {
                 type: 'text',
-                text: 'Resize this image to a maximum width of 1024px while maintaining aspect ratio and quality. Return the compressed image.'
+                text: 'Resize this image to a maximum width of 800px while maintaining aspect ratio. Compress it aggressively to reduce file size. Return the compressed image.'
               },
               {
                 type: 'image_url',
@@ -151,13 +151,13 @@ serve(async (req) => {
 
     console.log('Compressed image size:', compressedBytes.length, 'bytes');
 
-    // Upload enhanced image
-    const enhancedFileName = filePath.replace('monthly_pass', 'monthly_pass_enhanced');
+    // Upload enhanced image as JPEG for smaller file size
+    const enhancedFileName = filePath.replace('monthly_pass', 'monthly_pass_enhanced').replace(/\.\w+$/, '.jpg');
     const { error: uploadError } = await supabase.storage
       .from('pass-documents')
       .upload(enhancedFileName, enhancedImageBlob, { 
         upsert: true,
-        contentType: 'image/png'
+        contentType: 'image/jpeg'
       });
 
     if (uploadError) {
