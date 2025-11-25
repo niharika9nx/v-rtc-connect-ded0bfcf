@@ -35,6 +35,7 @@ interface UserProfile {
   registration_id?: string;
   bus_number: string;
   pass_expiry_date?: string;
+  buss_pass_id?: string;
 }
 
 interface FeeHistory {
@@ -82,9 +83,21 @@ const AdminUserProfile = () => {
         description: 'Failed to load user profile',
         variant: 'destructive',
       });
-    } else {
-      setProfile(data);
+      setLoading(false);
+      return;
     }
+
+    // Fetch bus pass ID from passes table
+    const { data: passData } = await supabase
+      .from('passes')
+      .select('buss_pass_id')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    setProfile({
+      ...data,
+      buss_pass_id: passData?.buss_pass_id
+    });
     setLoading(false);
   };
 
@@ -370,6 +383,12 @@ const AdminUserProfile = () => {
                 <p className="text-sm text-muted-foreground">Bus Number</p>
                 <p className="font-semibold">{profile.bus_number}</p>
               </div>
+              {profile.buss_pass_id && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Bus Pass ID</p>
+                  <p className="font-semibold text-primary">{profile.buss_pass_id}</p>
+                </div>
+              )}
               {profile.pass_expiry_date && (
                 <div>
                   <p className="text-sm text-muted-foreground">Pass Expiry Date</p>
