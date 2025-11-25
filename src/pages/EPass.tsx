@@ -28,7 +28,8 @@ const EPass = () => {
   const [extractedPassId, setExtractedPassId] = useState('');
   const [extractedExpiryDate, setExtractedExpiryDate] = useState('');
   const [ocrProgress, setOcrProgress] = useState(0);
-  const [deleting, setDeleting] = useState(false);
+  const [deletingIdentity, setDeletingIdentity] = useState(false);
+  const [deletingMonthly, setDeletingMonthly] = useState(false);
 
   useEffect(() => {
     fetchPass();
@@ -558,45 +559,35 @@ const EPass = () => {
     }
   };
 
-  const handleDeletePass = async () => {
+  const handleDeleteIdentityCard = async () => {
     if (!user || !pass) return;
 
-    if (!confirm('Are you sure you want to delete your pass? This action cannot be undone.')) {
+    if (!confirm('Are you sure you want to delete your identity card?')) {
       return;
     }
 
-    setDeleting(true);
+    setDeletingIdentity(true);
 
     try {
-      // Delete storage files
-      const filesToDelete = [];
-      if (pass.identity_card_url) {
-        filesToDelete.push(`${user.id}/identity_card.png`);
-      }
-      if (pass.monthly_pass_url) {
-        filesToDelete.push(`${user.id}/monthly_pass.png`);
-      }
+      // Delete storage file
+      await supabase.storage
+        .from('pass-documents')
+        .remove([`${user.id}/identity_card.png`]);
 
-      if (filesToDelete.length > 0) {
-        await supabase.storage
-          .from('pass-documents')
-          .remove(filesToDelete);
-      }
-
-      // Delete database record
+      // Update database record
       const { error } = await supabase
         .from('passes')
-        .delete()
+        .update({ identity_card_url: null })
         .eq('id', pass.id);
 
       if (error) throw error;
 
       toast({
-        title: "Pass deleted",
-        description: "Your pass has been removed successfully"
+        title: "Identity card deleted",
+        description: "Your identity card has been removed successfully"
       });
 
-      setPass(null);
+      await fetchPass();
     } catch (error: any) {
       toast({
         title: "Delete failed",
@@ -604,7 +595,57 @@ const EPass = () => {
         variant: "destructive"
       });
     } finally {
-      setDeleting(false);
+      setDeletingIdentity(false);
+    }
+  };
+
+  const handleDeleteMonthlyPass = async () => {
+    if (!user || !pass) return;
+
+    if (!confirm('Are you sure you want to delete your monthly pass?')) {
+      return;
+    }
+
+    setDeletingMonthly(true);
+
+    try {
+      // Delete storage file
+      await supabase.storage
+        .from('pass-documents')
+        .remove([`${user.id}/monthly_pass.png`]);
+
+      // Update database record
+      const { error } = await supabase
+        .from('passes')
+        .update({ 
+          monthly_pass_url: null,
+          buss_pass_id: null,
+          expiry_date: null 
+        })
+        .eq('id', pass.id);
+
+      if (error) throw error;
+
+      // Also clear pass_expiry_date from profile
+      await supabase
+        .from('profiles')
+        .update({ pass_expiry_date: null })
+        .eq('id', user.id);
+
+      toast({
+        title: "Monthly pass deleted",
+        description: "Your monthly pass has been removed successfully"
+      });
+
+      await fetchPass();
+    } catch (error: any) {
+      toast({
+        title: "Delete failed",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setDeletingMonthly(false);
     }
   };
 
@@ -654,23 +695,9 @@ const EPass = () => {
         
         <Card className="glass border-border/50 shadow-lg hover:shadow-glow transition-all animate-slide-up">
           <CardHeader>
-            <CardTitle className="flex items-center justify-between gap-2 text-foreground">
-              <div className="flex items-center gap-2">
-                <CreditCard className="h-5 w-5 text-primary" />
-                Your E-Pass
-              </div>
-              {pass && (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={handleDeletePass}
-                  disabled={deleting}
-                  className="ml-auto"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  {deleting ? "Deleting..." : "Delete Pass"}
-                </Button>
-              )}
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <CreditCard className="h-5 w-5 text-primary" />
+              Your E-Pass
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -698,7 +725,7 @@ const EPass = () => {
                     </Button>
                   </div>
                   {pass?.identity_card_url && (
-                    <div className="mt-2">
+                    <div className="mt-2 space-y-2">
                       <div 
                         className="relative group cursor-pointer overflow-hidden rounded-lg border border-border/50 shadow-md hover:shadow-glow transition-all"
                         onClick={() => openImageModal(pass.identity_card_url, 'Identity Card')}
@@ -712,7 +739,18 @@ const EPass = () => {
                           <Maximize2 className="h-12 w-12 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
                         </div>
                       </div>
-                      <p className="text-xs text-muted-foreground text-center mt-2">Click to view full size</p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs text-muted-foreground">Click to view full size</p>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={handleDeleteIdentityCard}
+                          disabled={deletingIdentity}
+                        >
+                          <Trash2 className="h-3 w-3 mr-1" />
+                          {deletingIdentity ? "Deleting..." : "Delete"}
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -779,7 +817,18 @@ const EPass = () => {
                           </div>
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground text-center">Click to view full size</p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs text-muted-foreground">Click to view full size</p>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={handleDeleteMonthlyPass}
+                          disabled={deletingMonthly}
+                        >
+                          <Trash2 className="h-3 w-3 mr-1" />
+                          {deletingMonthly ? "Deleting..." : "Delete"}
+                        </Button>
+                      </div>
                       {pass.verified === false ? (
                         <div className="text-center">
                           <p className="text-red-500 text-2xl font-bold font-display animate-pulse drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]">
