@@ -9,7 +9,6 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ArrowLeft, CreditCard, Upload, RefreshCw, ZoomIn, ZoomOut, Maximize2, X, Check, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { AlertNotifications } from '@/components/AlertNotifications';
 import Tesseract from 'tesseract.js';
 
 const EPass = () => {
@@ -738,8 +737,6 @@ const EPass = () => {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-6">
-        <AlertNotifications />
-        
         <Card className="glass border-border/50 shadow-lg hover:shadow-glow transition-all animate-slide-up">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-foreground">

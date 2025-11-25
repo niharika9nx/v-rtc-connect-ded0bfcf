@@ -23,9 +23,12 @@ export const AlertNotifications = () => {
   const [alerts, setAlerts] = useState<AlertNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [showPermissionPrompt, setShowPermissionPrompt] = useState(false);
+  const [passVerified, setPassVerified] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (user) {
+      // Check pass verification status first
+      checkPassVerification();
       fetchAlerts();
 
       // Check if we should show notification permission prompt
@@ -63,8 +66,23 @@ export const AlertNotifications = () => {
     }
   }, [user, supported, permission]);
 
+  const checkPassVerification = async () => {
+    if (!user) return;
+
+    const { data } = await supabase
+      .from('passes')
+      .select('verified')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    setPassVerified(data?.verified !== false);
+  };
+
   const fetchAlerts = async () => {
     if (!user) return;
+
+    // Recheck pass verification status on every fetch
+    await checkPassVerification();
 
     const { data, error } = await supabase
       .from('alerts')
@@ -76,7 +94,15 @@ export const AlertNotifications = () => {
     if (error) {
       console.error('Error fetching alerts:', error);
     } else {
-      setAlerts(data || []);
+      // Filter out pass-related alerts if pass is fake (not verified)
+      const filteredAlerts = (data || []).filter(alert => {
+        // If pass is fake, hide pass renewal reminders
+        if (passVerified === false && alert.type === 'pass_renewal_reminder') {
+          return false;
+        }
+        return true;
+      });
+      setAlerts(filteredAlerts);
     }
     setLoading(false);
   };
