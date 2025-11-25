@@ -7,9 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ArrowLeft, CreditCard, Upload, RefreshCw, ZoomIn, ZoomOut, Maximize2, X } from 'lucide-react';
+import { ArrowLeft, CreditCard, Upload, RefreshCw, ZoomIn, ZoomOut, Maximize2, X, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { AlertNotifications } from '@/components/AlertNotifications';
+import Tesseract from 'tesseract.js';
 
 const EPass = () => {
   const { user } = useAuth();
@@ -23,6 +24,10 @@ const EPass = () => {
   const [monthlyPassFile, setMonthlyPassFile] = useState<File | null>(null);
   const [imageZoom, setImageZoom] = useState(1);
   const [selectedImage, setSelectedImage] = useState<{ url: string; title: string } | null>(null);
+  const [showVerificationDialog, setShowVerificationDialog] = useState(false);
+  const [extractedPassId, setExtractedPassId] = useState('');
+  const [extractedExpiryDate, setExtractedExpiryDate] = useState('');
+  const [ocrProgress, setOcrProgress] = useState(0);
 
   useEffect(() => {
     fetchPass();
@@ -181,6 +186,76 @@ const EPass = () => {
     }
   };
 
+  const extractDateFromText = (text: string): string | null => {
+    // Common date patterns: DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY, DDMMYYYY
+    const datePatterns = [
+      /(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/,  // DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY
+      /(\d{2})(\d{2})(\d{4})/,  // DDMMYYYY
+      /(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/  // YYYY/MM/DD or YYYY-MM-DD
+    ];
+
+    for (const pattern of datePatterns) {
+      const match = text.match(pattern);
+      if (match) {
+        let day, month, year;
+        
+        if (pattern.source.startsWith('(\\d{4})')) {
+          // YYYY/MM/DD format
+          [, year, month, day] = match;
+        } else {
+          [, day, month, year] = match;
+        }
+        
+        // Validate date components
+        const d = parseInt(day);
+        const m = parseInt(month);
+        const y = parseInt(year);
+        
+        if (d >= 1 && d <= 31 && m >= 1 && m <= 12 && y >= 2024 && y <= 2030) {
+          return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        }
+      }
+    }
+    
+    return null;
+  };
+
+  const extractPassIdFromText = (text: string): string | null => {
+    // Look for patterns like: ID: XXXXX, Pass ID: XXXXX, or standalone numbers
+    const idPatterns = [
+      /(?:ID|PASS\s*ID|P\.ID|PID)[\s:]*([A-Z0-9]+)/i,
+      /\b([A-Z]{2,3}\d{4,8})\b/,  // e.g., AP123456
+      /\b(\d{6,10})\b/  // Standalone 6-10 digit number
+    ];
+
+    for (const pattern of idPatterns) {
+      const match = text.match(pattern);
+      if (match && match[1]) {
+        return match[1].trim();
+      }
+    }
+    
+    return null;
+  };
+
+  const runOCR = async (file: File) => {
+    setOcrProgress(0);
+    
+    const { data: { text } } = await Tesseract.recognize(
+      file,
+      'eng',
+      {
+        logger: (m) => {
+          if (m.status === 'recognizing text') {
+            setOcrProgress(Math.round(m.progress * 100));
+          }
+        }
+      }
+    );
+    
+    return text;
+  };
+
   const handleMonthlyPassUpload = async () => {
     if (!user || !monthlyPassFile) {
       toast({
@@ -192,6 +267,7 @@ const EPass = () => {
     }
 
     setUploading(true);
+    setOcrProgress(0);
 
     try {
       const uploadResult = await uploadFile(monthlyPassFile, 'monthly_pass');
@@ -199,74 +275,90 @@ const EPass = () => {
       if (!uploadResult) throw new Error('Upload failed');
 
       toast({
-        title: "Processing pass...",
-        description: "Detecting expiry date and pass ID from image"
+        title: "Analyzing pass...",
+        description: "Extracting expiry date and pass ID"
       });
-      
-      try {
-        const { data: enhanceData, error: enhanceError } = await supabase.functions.invoke('enhance-pass', {
-          body: { filePath: uploadResult.filePath, userId: user.id }
-        });
 
-        if (enhanceError) {
-          console.error('Processing error:', enhanceError);
-          const errorMessage = enhanceError.message || enhanceData?.error || "Pass uploaded but processing failed. You may need to manually verify the details.";
-          toast({
-            title: "Processing Error",
-            description: errorMessage,
-            variant: "destructive",
-            duration: 10000
-          });
-        } else if (enhanceData?.success) {
-          const details = [];
-          if (enhanceData.passId) details.push(`Pass ID: ${enhanceData.passId}`);
-          if (enhanceData.expiryDate) details.push(`Expiry: ${new Date(enhanceData.expiryDate).toLocaleDateString()}${enhanceData.isExpired ? ' (EXPIRED)' : ''}`);
-          
-          toast({
-            title: "Pass processed!",
-            description: details.length > 0 ? details.join(' | ') : "Processing complete",
-          });
-        }
-      } catch (error: any) {
-        console.error('Processing error:', error);
-        toast({
-          title: "Processing warning",
-          description: "Pass uploaded but processing failed",
-          variant: "destructive"
-        });
-        
-        // Only update with original URL if enhancement failed
-        const passData = {
-          user_id: user.id,
-          monthly_pass_url: uploadResult.publicUrl
-        };
+      // Run OCR on the uploaded image
+      const ocrText = await runOCR(monthlyPassFile);
+      console.log('OCR Text:', ocrText);
 
-        if (pass) {
-          await supabase
-            .from('passes')
-            .update({ monthly_pass_url: uploadResult.publicUrl })
-            .eq('id', pass.id);
-        } else {
-          await supabase
-            .from('passes')
-            .insert(passData);
-        }
-      }
+      // Extract expiry date and pass ID
+      const expiryDate = extractDateFromText(ocrText);
+      const passId = extractPassIdFromText(ocrText);
 
-      // Edge function already updates the database
-      // Wait for processing to complete and storage to propagate
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      console.log('Extracted - Expiry:', expiryDate, 'Pass ID:', passId);
+
+      // Set extracted values for user verification
+      setExtractedExpiryDate(expiryDate || '');
+      setExtractedPassId(passId || '');
+
+      // Show verification dialog
+      setShowVerificationDialog(true);
 
       toast({
-        title: "Success",
-        description: "Monthly pass uploaded and processed successfully"
+        title: "OCR Complete",
+        description: "Please verify the extracted information",
       });
 
-      setMonthlyPassFile(null);
-      await fetchPass();
     } catch (error: any) {
       toast({
         title: "Upload failed",
+        description: error.message,
+        variant: "destructive"
+      });
+      setUploading(false);
+    }
+  };
+
+  const handleVerificationConfirm = async () => {
+    if (!user || !monthlyPassFile) return;
+
+    try {
+      const uploadResult = await uploadFile(monthlyPassFile, 'monthly_pass');
+      if (!uploadResult) throw new Error('Upload failed');
+
+      // Update database with verified information
+      const passData: any = {
+        user_id: user.id,
+        monthly_pass_url: uploadResult.publicUrl
+      };
+
+      if (extractedPassId) passData.buss_pass_id = extractedPassId;
+      if (extractedExpiryDate) passData.expiry_date = extractedExpiryDate;
+
+      if (pass) {
+        await supabase
+          .from('passes')
+          .update(passData)
+          .eq('id', pass.id);
+      } else {
+        await supabase
+          .from('passes')
+          .insert(passData);
+      }
+
+      // Update profile with expiry date
+      if (extractedExpiryDate) {
+        await supabase
+          .from('profiles')
+          .update({ pass_expiry_date: extractedExpiryDate })
+          .eq('id', user.id);
+      }
+
+      toast({
+        title: "Success",
+        description: "Monthly pass saved successfully"
+      });
+
+      setShowVerificationDialog(false);
+      setMonthlyPassFile(null);
+      setExtractedPassId('');
+      setExtractedExpiryDate('');
+      await fetchPass();
+    } catch (error: any) {
+      toast({
+        title: "Save failed",
         description: error.message,
         variant: "destructive"
       });
@@ -457,6 +549,82 @@ const EPass = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Verification Dialog */}
+      <Dialog open={showVerificationDialog} onOpenChange={setShowVerificationDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display">Verify Extracted Data</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-muted-foreground">
+              Please verify and correct the information extracted from your pass:
+            </p>
+            
+            <div className="space-y-2">
+              <Label htmlFor="verify-pass-id">Pass ID</Label>
+              <Input
+                id="verify-pass-id"
+                value={extractedPassId}
+                onChange={(e) => setExtractedPassId(e.target.value)}
+                placeholder="Enter pass ID if not detected"
+                className="bg-muted/30 border-border/50"
+              />
+              {!extractedPassId && (
+                <p className="text-xs text-amber-500">⚠️ Pass ID not detected - please enter manually</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="verify-expiry">Expiry Date (YYYY-MM-DD)</Label>
+              <Input
+                id="verify-expiry"
+                type="date"
+                value={extractedExpiryDate}
+                onChange={(e) => setExtractedExpiryDate(e.target.value)}
+                className="bg-muted/30 border-border/50"
+              />
+              {!extractedExpiryDate && (
+                <p className="text-xs text-amber-500">⚠️ Expiry date not detected - please select manually</p>
+              )}
+            </div>
+
+            {ocrProgress > 0 && ocrProgress < 100 && (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">Processing: {ocrProgress}%</p>
+                <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-primary transition-all duration-300"
+                    style={{ width: `${ocrProgress}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowVerificationDialog(false);
+                  setUploading(false);
+                  setMonthlyPassFile(null);
+                }}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleVerificationConfirm}
+                disabled={uploading || (!extractedPassId && !extractedExpiryDate)}
+                className="flex-1 bg-primary hover:bg-primary/90"
+              >
+                <Check className="h-4 w-4 mr-2" />
+                Confirm & Save
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Image Zoom Modal */}
       <Dialog open={!!selectedImage} onOpenChange={(open) => !open && closeImageModal()}>
