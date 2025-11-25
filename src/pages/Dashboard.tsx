@@ -54,20 +54,7 @@ const Dashboard = () => {
         .then(async ({ data }) => {
           setProfile(data);
           
-          // Calculate pass expiry status
-          if (data?.pass_expiry_date) {
-            const expiryDate = parseISO(data.pass_expiry_date);
-            const today = new Date();
-            const daysUntilExpiry = differenceInDays(expiryDate, today);
-            
-            setPassExpiryStatus({
-              daysUntilExpiry,
-              isExpired: daysUntilExpiry < 0,
-              isExpiringSoon: daysUntilExpiry >= 0 && daysUntilExpiry <= 5
-            });
-          }
-
-          // Fetch pass data
+          // Fetch pass data first to check verification status
           const { data: passInfo } = await supabase
             .from('passes')
             .select('*')
@@ -76,8 +63,11 @@ const Dashboard = () => {
           
           setPassData(passInfo);
 
+          // Only show pass-related UI if pass is verified (not fake)
+          const isPassVerified = passInfo?.verified !== false;
+
           // Check if PASS button should be displayed
-          // Show if: fee is paid AND (no monthly pass OR pass expired)
+          // Show if: pass is verified AND fee is paid AND (no monthly pass OR pass expired)
           const currentMonth = new Date().toLocaleString('default', { month: 'long' });
           const currentYear = new Date().getFullYear();
           
@@ -94,7 +84,24 @@ const Dashboard = () => {
           const hasExpiredPass = passInfo?.expiry_date && new Date(passInfo.expiry_date) < new Date();
           const feePaid = !!feeData;
 
-          setShowPassButton(feePaid && (hasNoPass || hasExpiredPass));
+          // Only show PASS button if pass is verified
+          setShowPassButton(isPassVerified && feePaid && (hasNoPass || hasExpiredPass));
+
+          // Update pass expiry status only if pass is verified
+          if (data?.pass_expiry_date && isPassVerified) {
+            const expiryDate = parseISO(data.pass_expiry_date);
+            const today = new Date();
+            const daysUntilExpiry = differenceInDays(expiryDate, today);
+            
+            setPassExpiryStatus({
+              daysUntilExpiry,
+              isExpired: daysUntilExpiry < 0,
+              isExpiringSoon: daysUntilExpiry >= 0 && daysUntilExpiry <= 5
+            });
+          } else if (!isPassVerified) {
+            // Clear pass expiry status if pass is fake
+            setPassExpiryStatus(null);
+          }
 
           // Fetch route image if bus_number exists
           if (data?.bus_number) {
