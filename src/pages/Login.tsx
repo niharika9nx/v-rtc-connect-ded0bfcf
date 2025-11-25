@@ -50,17 +50,24 @@ const Login = () => {
   }, []);
 
   // Redirect if already logged in
-  if (user) {
-    supabase
-      .rpc('has_role', { _user_id: user.id, _role: 'admin' })
-      .then(({ data }) => {
+  useEffect(() => {
+    if (user) {
+      const checkRoleAndRedirect = async () => {
+        const { data } = await supabase.rpc('has_role', { 
+          _user_id: user.id, 
+          _role: 'admin' 
+        });
+        
         if (data) {
-          navigate('/admin');
+          navigate('/admin', { replace: true });
         } else {
-          navigate('/dashboard');
+          navigate('/dashboard', { replace: true });
         }
-      });
-  }
+      };
+      
+      checkRoleAndRedirect();
+    }
+  }, [user, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
