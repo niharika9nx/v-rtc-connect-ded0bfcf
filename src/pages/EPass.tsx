@@ -186,34 +186,180 @@ const EPass = () => {
     }
   };
 
-  const extractDateFromText = (text: string): string | null => {
-    // Common date patterns: DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY, DDMMYYYY
-    const datePatterns = [
-      /(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/,  // DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY
-      /(\d{2})(\d{2})(\d{4})/,  // DDMMYYYY
-      /(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/  // YYYY/MM/DD or YYYY-MM-DD
-    ];
+  const preprocessImage = async (file: File): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        reject(new Error('Canvas not supported'));
+        return;
+      }
 
-    for (const pattern of datePatterns) {
-      const match = text.match(pattern);
-      if (match) {
-        let day, month, year;
+      img.onload = () => {
+        // Set canvas to image dimensions (scale to optimal DPI)
+        const scaleFactor = 2; // 2x for better OCR
+        canvas.width = img.width * scaleFactor;
+        canvas.height = img.height * scaleFactor;
+
+        // Draw image
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        // Get image data for processing
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+
+        // 1. Grayscale conversion + Contrast enhancement
+        for (let i = 0; i < data.length; i += 4) {
+          const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+          
+          // Increase contrast (1.5x)
+          const enhanced = Math.min(255, Math.max(0, (gray - 128) * 1.5 + 128));
+          
+          data[i] = enhanced;
+          data[i + 1] = enhanced;
+          data[i + 2] = enhanced;
+        }
+
+        // 2. Binarization (Otsu's method approximation)
+        let threshold = 128;
+        const histogram = new Array(256).fill(0);
         
-        if (pattern.source.startsWith('(\\d{4})')) {
-          // YYYY/MM/DD format
-          [, year, month, day] = match;
-        } else {
-          [, day, month, year] = match;
+        // Calculate histogram
+        for (let i = 0; i < data.length; i += 4) {
+          histogram[data[i]]++;
         }
         
-        // Validate date components
-        const d = parseInt(day);
-        const m = parseInt(month);
-        const y = parseInt(year);
+        // Find optimal threshold
+        let sum = 0;
+        for (let i = 0; i < 256; i++) sum += i * histogram[i];
         
-        if (d >= 1 && d <= 31 && m >= 1 && m <= 12 && y >= 2024 && y <= 2030) {
-          return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        let sumB = 0;
+        let wB = 0;
+        let wF = 0;
+        let varMax = 0;
+        const total = canvas.width * canvas.height;
+        
+        for (let t = 0; t < 256; t++) {
+          wB += histogram[t];
+          if (wB === 0) continue;
+          
+          wF = total - wB;
+          if (wF === 0) break;
+          
+          sumB += t * histogram[t];
+          const mB = sumB / wB;
+          const mF = (sum - sumB) / wF;
+          const varBetween = wB * wF * (mB - mF) * (mB - mF);
+          
+          if (varBetween > varMax) {
+            varMax = varBetween;
+            threshold = t;
+          }
         }
+
+        // Apply threshold
+        for (let i = 0; i < data.length; i += 4) {
+          const value = data[i] > threshold ? 255 : 0;
+          data[i] = value;
+          data[i + 1] = value;
+          data[i + 2] = value;
+        }
+
+        // 3. Noise removal (median filter 3x3)
+        const filtered = new Uint8ClampedArray(data);
+        for (let y = 1; y < canvas.height - 1; y++) {
+          for (let x = 1; x < canvas.width - 1; x++) {
+            const neighbors = [];
+            for (let dy = -1; dy <= 1; dy++) {
+              for (let dx = -1; dx <= 1; dx++) {
+                const idx = ((y + dy) * canvas.width + (x + dx)) * 4;
+                neighbors.push(data[idx]);
+              }
+            }
+            neighbors.sort((a, b) => a - b);
+            const median = neighbors[4];
+            const idx = (y * canvas.width + x) * 4;
+            filtered[idx] = median;
+            filtered[idx + 1] = median;
+            filtered[idx + 2] = median;
+          }
+        }
+
+        // Put processed image back
+        ctx.putImageData(new ImageData(filtered, canvas.width, canvas.height), 0, 0);
+
+        // Convert to blob
+        canvas.toBlob((blob) => {
+          if (blob) {
+            resolve(blob);
+          } else {
+            reject(new Error('Failed to create blob'));
+          }
+        }, 'image/png');
+      };
+
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
+  const extractDateFromText = (text: string): string | null => {
+    // Look for validity section and date after "to"
+    const lines = text.toLowerCase().split('\n');
+    let validityFound = false;
+    
+    const monthMap: { [key: string]: string } = {
+      'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04',
+      'may': '05', 'jun': '06', 'jul': '07', 'aug': '08',
+      'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12'
+    };
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      
+      // Check if this line contains "validity"
+      if (line.includes('validity') || line.includes('valid')) {
+        validityFound = true;
+      }
+
+      // If we found validity section, look for "to" followed by date
+      if (validityFound && line.includes('to')) {
+        // Pattern: DD-MMM-YYYY (e.g., 03-sep-2025)
+        const datePattern = /(\d{1,2})[-\s]*(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[-\s]*(\d{4})/i;
+        const match = line.match(datePattern);
+        
+        if (match) {
+          const day = match[1].padStart(2, '0');
+          const monthAbbr = match[2].toLowerCase().substring(0, 3);
+          const year = match[3];
+          const month = monthMap[monthAbbr];
+          
+          if (month) {
+            console.log(`Found expiry date: ${day}-${monthAbbr}-${year} -> ${year}-${month}-${day}`);
+            return `${year}-${month}-${day}`;
+          }
+        }
+      }
+    }
+
+    // Fallback: Try to find any DD-MMM-YYYY pattern
+    const fullText = text.toLowerCase();
+    const datePattern = /(\d{1,2})[-\s]*(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[-\s]*(\d{4})/gi;
+    const matches = [...fullText.matchAll(datePattern)];
+    
+    // Return the last date found (usually expiry is at the end)
+    if (matches.length > 0) {
+      const lastMatch = matches[matches.length - 1];
+      const day = lastMatch[1].padStart(2, '0');
+      const monthAbbr = lastMatch[2].toLowerCase().substring(0, 3);
+      const year = lastMatch[3];
+      const month = monthMap[monthAbbr];
+      
+      if (month) {
+        console.log(`Fallback found date: ${day}-${monthAbbr}-${year} -> ${year}-${month}-${day}`);
+        return `${year}-${month}-${day}`;
       }
     }
     
@@ -241,8 +387,21 @@ const EPass = () => {
   const runOCR = async (file: File) => {
     setOcrProgress(0);
     
+    toast({
+      title: "Preprocessing image...",
+      description: "Enhancing image quality for better OCR"
+    });
+
+    // Preprocess image
+    const preprocessedBlob = await preprocessImage(file);
+    
+    toast({
+      title: "Running OCR...",
+      description: "Extracting text from pass"
+    });
+
     const { data: { text } } = await Tesseract.recognize(
-      file,
+      preprocessedBlob,
       'eng',
       {
         logger: (m) => {
@@ -253,6 +412,7 @@ const EPass = () => {
       }
     );
     
+    console.log('OCR extracted text:', text);
     return text;
   };
 
