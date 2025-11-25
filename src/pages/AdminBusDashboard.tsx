@@ -86,6 +86,7 @@ interface Profile {
   phone: string;
   feeStatus?: 'paid' | 'due';
   buss_pass_id?: string;
+  seat_number?: number;
 }
 
 interface Stats {
@@ -285,7 +286,7 @@ const AdminBusDashboard = () => {
   const handleStatClick = async (type: string) => {
     let query = supabase
       .from('profiles')
-      .select('id, name, role, college, branch, year, phone')
+      .select('id, name, role, college, branch, year, phone, seat_number')
       .eq('bus_number', busNumber);
 
     if (selectedCollege !== 'all') {
@@ -346,7 +347,7 @@ const AdminBusDashboard = () => {
 
       const { data: passProfiles } = await supabase
         .from('profiles')
-        .select('id, name, role, college, branch, year, phone')
+        .select('id, name, role, college, branch, year, phone, seat_number')
         .eq('bus_number', busNumber)
         .lte('pass_expiry_date', fiveDaysFromNow.toISOString().split('T')[0])
         .gte('pass_expiry_date', new Date().toISOString().split('T')[0]);
@@ -379,7 +380,7 @@ const AdminBusDashboard = () => {
       
       const { data: passProfiles } = await supabase
         .from('profiles')
-        .select('id, name, role, college, branch, year, phone')
+        .select('id, name, role, college, branch, year, phone, seat_number')
         .eq('bus_number', busNumber)
         .in('id', passUserIds);
 
@@ -413,7 +414,7 @@ const AdminBusDashboard = () => {
       
       const { data: expiredProfiles } = await supabase
         .from('profiles')
-        .select('id, name, role, college, branch, year, phone')
+        .select('id, name, role, college, branch, year, phone, seat_number')
         .eq('bus_number', busNumber)
         .in('id', expiredUserIds);
 
@@ -527,7 +528,7 @@ const AdminBusDashboard = () => {
     // Fetch all users on this bus
     let query = supabase
       .from('profiles')
-      .select('id, name, role, college, branch, year, phone')
+      .select('id, name, role, college, branch, year, phone, seat_number')
       .eq('bus_number', busNumber);
 
     if (selectedCollege !== 'all') {
@@ -896,6 +897,11 @@ const AdminBusDashboard = () => {
                         {user.buss_pass_id && (
                           <p className="text-xs md:text-sm font-medium">
                             Pass ID: <span className="text-primary">{user.buss_pass_id}</span>
+                          </p>
+                        )}
+                        {user.seat_number && (
+                          <p className="text-xs md:text-sm font-medium">
+                            Seat Number: <span className="text-primary">{user.seat_number}</span>
                           </p>
                         )}
                       </div>
