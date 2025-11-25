@@ -246,57 +246,108 @@ const EPass = () => {
       }
 
       img.onload = () => {
-        // Set canvas to image dimensions (scale to optimal DPI)
-        const scaleFactor = 2; // 2x for better OCR
+        // Adaptive scale factor based on image size (target 300 DPI minimum)
+        const minDimension = Math.min(img.width, img.height);
+        const scaleFactor = minDimension < 1000 ? 3 : minDimension < 1500 ? 2.5 : 2;
+        
         canvas.width = img.width * scaleFactor;
         canvas.height = img.height * scaleFactor;
 
-        // Draw image
+        // Enable high-quality image smoothing
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        
+        // Draw image with high quality
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
         // Get image data for processing
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = imageData.data;
 
-        // 1. Grayscale conversion + Contrast enhancement
+        // 1. Grayscale conversion with improved weights
         for (let i = 0; i < data.length; i += 4) {
           const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-          
-          // Increase contrast (1.5x)
-          const enhanced = Math.min(255, Math.max(0, (gray - 128) * 1.5 + 128));
-          
-          data[i] = enhanced;
-          data[i + 1] = enhanced;
-          data[i + 2] = enhanced;
+          data[i] = gray;
+          data[i + 1] = gray;
+          data[i + 2] = gray;
         }
 
-        // 2. Binarization (Otsu's method approximation)
-        let threshold = 128;
+        // 2. Adaptive histogram equalization for better contrast
+        const histEq = new Uint8ClampedArray(data);
         const histogram = new Array(256).fill(0);
         
-        // Calculate histogram
+        // Build histogram
         for (let i = 0; i < data.length; i += 4) {
           histogram[data[i]]++;
         }
         
-        // Find optimal threshold
+        // Calculate CDF
+        const cdf = new Array(256).fill(0);
+        cdf[0] = histogram[0];
+        for (let i = 1; i < 256; i++) {
+          cdf[i] = cdf[i - 1] + histogram[i];
+        }
+        
+        // Normalize CDF
+        const cdfMin = cdf.find(v => v > 0) || 0;
+        const totalPixels = canvas.width * canvas.height;
+        
+        for (let i = 0; i < data.length; i += 4) {
+          const newValue = Math.round(((cdf[data[i]] - cdfMin) / (totalPixels - cdfMin)) * 255);
+          histEq[i] = newValue;
+          histEq[i + 1] = newValue;
+          histEq[i + 2] = newValue;
+        }
+
+        // 3. Sharpening filter (unsharp mask)
+        const sharpened = new Uint8ClampedArray(histEq);
+        const sharpenKernel = [
+          0, -1, 0,
+          -1, 5, -1,
+          0, -1, 0
+        ];
+        
+        for (let y = 1; y < canvas.height - 1; y++) {
+          for (let x = 1; x < canvas.width - 1; x++) {
+            let sum = 0;
+            for (let ky = -1; ky <= 1; ky++) {
+              for (let kx = -1; kx <= 1; kx++) {
+                const idx = ((y + ky) * canvas.width + (x + kx)) * 4;
+                const kernelIdx = (ky + 1) * 3 + (kx + 1);
+                sum += histEq[idx] * sharpenKernel[kernelIdx];
+              }
+            }
+            const idx = (y * canvas.width + x) * 4;
+            sharpened[idx] = Math.min(255, Math.max(0, sum));
+            sharpened[idx + 1] = sharpened[idx];
+            sharpened[idx + 2] = sharpened[idx];
+          }
+        }
+
+        // 4. Otsu's binarization (improved implementation)
+        let threshold = 128;
+        const binHistogram = new Array(256).fill(0);
+        
+        for (let i = 0; i < sharpened.length; i += 4) {
+          binHistogram[sharpened[i]]++;
+        }
+        
         let sum = 0;
-        for (let i = 0; i < 256; i++) sum += i * histogram[i];
+        for (let i = 0; i < 256; i++) sum += i * binHistogram[i];
         
         let sumB = 0;
         let wB = 0;
         let wF = 0;
         let varMax = 0;
-        const total = canvas.width * canvas.height;
         
         for (let t = 0; t < 256; t++) {
-          wB += histogram[t];
+          wB += binHistogram[t];
           if (wB === 0) continue;
           
-          wF = total - wB;
+          wF = totalPixels - wB;
           if (wF === 0) break;
           
-          sumB += t * histogram[t];
+          sumB += t * binHistogram[t];
           const mB = sumB / wB;
           const mF = (sum - sumB) / wF;
           const varBetween = wB * wF * (mB - mF) * (mB - mF);
@@ -307,27 +358,51 @@ const EPass = () => {
           }
         }
 
-        // Apply threshold
-        for (let i = 0; i < data.length; i += 4) {
-          const value = data[i] > threshold ? 255 : 0;
-          data[i] = value;
-          data[i + 1] = value;
-          data[i + 2] = value;
+        // Apply adaptive threshold (slightly adjust based on local variance)
+        threshold = Math.max(100, Math.min(180, threshold));
+        
+        for (let i = 0; i < sharpened.length; i += 4) {
+          const value = sharpened[i] > threshold ? 255 : 0;
+          sharpened[i] = value;
+          sharpened[i + 1] = value;
+          sharpened[i + 2] = value;
         }
 
-        // 3. Noise removal (median filter 3x3)
-        const filtered = new Uint8ClampedArray(data);
-        for (let y = 1; y < canvas.height - 1; y++) {
-          for (let x = 1; x < canvas.width - 1; x++) {
-            const neighbors = [];
-            for (let dy = -1; dy <= 1; dy++) {
-              for (let dx = -1; dx <= 1; dx++) {
+        // 5. Morphological operations: dilation to connect broken characters
+        const dilated = new Uint8ClampedArray(sharpened);
+        const structElement = 1; // 3x3 structuring element
+        
+        for (let y = structElement; y < canvas.height - structElement; y++) {
+          for (let x = structElement; x < canvas.width - structElement; x++) {
+            let maxVal = 0;
+            for (let dy = -structElement; dy <= structElement; dy++) {
+              for (let dx = -structElement; dx <= structElement; dx++) {
                 const idx = ((y + dy) * canvas.width + (x + dx)) * 4;
-                neighbors.push(data[idx]);
+                maxVal = Math.max(maxVal, sharpened[idx]);
+              }
+            }
+            const idx = (y * canvas.width + x) * 4;
+            dilated[idx] = maxVal;
+            dilated[idx + 1] = maxVal;
+            dilated[idx + 2] = maxVal;
+          }
+        }
+
+        // 6. Advanced noise removal (5x5 median filter for better results)
+        const filtered = new Uint8ClampedArray(dilated);
+        const filterSize = 2; // 5x5 window
+        
+        for (let y = filterSize; y < canvas.height - filterSize; y++) {
+          for (let x = filterSize; x < canvas.width - filterSize; x++) {
+            const neighbors = [];
+            for (let dy = -filterSize; dy <= filterSize; dy++) {
+              for (let dx = -filterSize; dx <= filterSize; dx++) {
+                const idx = ((y + dy) * canvas.width + (x + dx)) * 4;
+                neighbors.push(dilated[idx]);
               }
             }
             neighbors.sort((a, b) => a - b);
-            const median = neighbors[4];
+            const median = neighbors[Math.floor(neighbors.length / 2)];
             const idx = (y * canvas.width + x) * 4;
             filtered[idx] = median;
             filtered[idx + 1] = median;
@@ -335,17 +410,17 @@ const EPass = () => {
           }
         }
 
-        // Put processed image back
+        // Put final processed image back
         ctx.putImageData(new ImageData(filtered, canvas.width, canvas.height), 0, 0);
 
-        // Convert to blob
+        // Convert to high-quality PNG blob
         canvas.toBlob((blob) => {
           if (blob) {
             resolve(blob);
           } else {
             reject(new Error('Failed to create blob'));
           }
-        }, 'image/png');
+        }, 'image/png', 1.0);
       };
 
       img.onerror = () => reject(new Error('Failed to load image'));
@@ -354,81 +429,173 @@ const EPass = () => {
   };
 
   const extractDateFromText = (text: string): string | null => {
-    // Look for validity section and date after "to"
-    const lines = text.toLowerCase().split('\n');
-    let validityFound = false;
+    console.log('Extracting date from:', text);
     
-    const monthMap: { [key: string]: string } = {
-      'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04',
-      'may': '05', 'jun': '06', 'jul': '07', 'aug': '08',
-      'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12'
+    // Normalize text: fix common OCR errors
+    let normalizedText = text
+      .replace(/[|!]/g, 'I')  // Pipe and exclamation to I
+      .replace(/[O0]/g, '0')  // Normalize zeros
+      .replace(/[l1]/g, '1')  // Normalize ones
+      .replace(/\s+/g, ' ')   // Normalize whitespace
+      .trim();
+    
+    console.log('Normalized text:', normalizedText);
+    
+    // Enhanced month mapping with common OCR errors
+    const monthMap: Record<string, string> = {
+      'jan': '01', 'january': '01', 'jen': '01', 'jap': '01',
+      'feb': '02', 'february': '02', 'fep': '02', 'feh': '02',
+      'mar': '03', 'march': '03', 'mer': '03',
+      'apr': '04', 'april': '04', 'epr': '04',
+      'may': '05',
+      'jun': '06', 'june': '06', 'jup': '06', 'jue': '06',
+      'jul': '07', 'july': '07', 'jui': '07',
+      'aug': '08', 'august': '08', 'eug': '08',
+      'sep': '09', 'september': '09', 'sap': '09',
+      'oct': '10', 'october': '10', 'oot': '10', 'ost': '10',
+      'nov': '11', 'november': '11', 'nop': '11',
+      'dec': '12', 'december': '12', 'des': '12', 'deo': '12'
     };
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      
-      // Check if this line contains "validity"
-      if (line.includes('validity') || line.includes('valid')) {
-        validityFound = true;
-      }
-
-      // If we found validity section, look for "to" followed by date
-      if (validityFound && line.includes('to')) {
-        // Pattern: DD-MMM-YYYY (e.g., 03-sep-2025)
-        const datePattern = /(\d{1,2})[-\s]*(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[-\s]*(\d{4})/i;
-        const match = line.match(datePattern);
+    
+    // Priority 1: Look for "validity" or "valid to" section
+    const validityPatterns = [
+      /validity[:\s]+.*?to[:\s]+(\d{1,2})[-\/.\s]([a-z]{3,9})[-\/.\s](\d{2,4})/i,
+      /valid\s+to[:\s]+(\d{1,2})[-\/.\s]([a-z]{3,9})[-\/.\s](\d{2,4})/i,
+      /to[:\s]+(\d{1,2})[-\/.\s]([a-z]{3,9})[-\/.\s](\d{2,4})/i,
+    ];
+    
+    for (const pattern of validityPatterns) {
+      const match = normalizedText.match(pattern);
+      if (match) {
+        const day = match[1].padStart(2, '0');
+        const monthStr = match[2].toLowerCase().substring(0, 3);
+        let year = match[3];
         
-        if (match) {
-          const day = match[1].padStart(2, '0');
-          const monthAbbr = match[2].toLowerCase().substring(0, 3);
-          const year = match[3];
-          const month = monthMap[monthAbbr];
-          
-          if (month) {
-            console.log(`Found expiry date: ${day}-${monthAbbr}-${year} -> ${year}-${month}-${day}`);
-            return `${year}-${month}-${day}`;
-          }
+        // Handle 2-digit years
+        if (year.length === 2) {
+          year = '20' + year;
+        }
+        
+        const month = monthMap[monthStr];
+        if (month) {
+          console.log(`Found in validity section: ${day}-${monthStr}-${year} -> ${year}-${month}-${day}`);
+          return `${year}-${month}-${day}`;
         }
       }
     }
-
-    // Fallback: Try to find any DD-MMM-YYYY pattern
-    const fullText = text.toLowerCase();
-    const datePattern = /(\d{1,2})[-\s]*(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[-\s]*(\d{4})/gi;
-    const matches = [...fullText.matchAll(datePattern)];
     
-    // Return the last date found (usually expiry is at the end)
-    if (matches.length > 0) {
-      const lastMatch = matches[matches.length - 1];
-      const day = lastMatch[1].padStart(2, '0');
-      const monthAbbr = lastMatch[2].toLowerCase().substring(0, 3);
-      const year = lastMatch[3];
-      const month = monthMap[monthAbbr];
-      
-      if (month) {
-        console.log(`Fallback found date: ${day}-${monthAbbr}-${year} -> ${year}-${month}-${day}`);
-        return `${year}-${month}-${day}`;
+    // Priority 2: Look for expiry/expire keywords
+    const expiryPatterns = [
+      /expir(?:y|es?)[:\s]+(\d{1,2})[-\/.\s]([a-z]{3,9})[-\/.\s](\d{2,4})/i,
+      /exp[:\s]+(\d{1,2})[-\/.\s]([a-z]{3,9})[-\/.\s](\d{2,4})/i,
+    ];
+    
+    for (const pattern of expiryPatterns) {
+      const match = normalizedText.match(pattern);
+      if (match) {
+        const day = match[1].padStart(2, '0');
+        const monthStr = match[2].toLowerCase().substring(0, 3);
+        let year = match[3];
+        
+        if (year.length === 2) {
+          year = '20' + year;
+        }
+        
+        const month = monthMap[monthStr];
+        if (month) {
+          console.log(`Found in expiry section: ${day}-${monthStr}-${year} -> ${year}-${month}-${day}`);
+          return `${year}-${month}-${day}`;
+        }
       }
     }
     
+    // Priority 3: All date patterns in text
+    const datePatterns = [
+      /(\d{1,2})[-\/]([a-z]{3,9})[-\/](\d{2,4})/gi,
+      /(\d{1,2})[.]([a-z]{3,9})[.](\d{2,4})/gi,
+      /(\d{1,2})\s+([a-z]{3,9})\s+(\d{2,4})/gi,
+    ];
+    
+    const allMatches: Array<{day: string, month: string, year: string}> = [];
+    
+    for (const pattern of datePatterns) {
+      let match;
+      while ((match = pattern.exec(normalizedText)) !== null) {
+        const day = match[1].padStart(2, '0');
+        const monthStr = match[2].toLowerCase().substring(0, 3);
+        let year = match[3];
+        
+        if (year.length === 2) {
+          year = '20' + year;
+        }
+        
+        const month = monthMap[monthStr];
+        if (month) {
+          allMatches.push({ day, month, year });
+        }
+      }
+    }
+    
+    // Return the last valid date found (typically expiry is last)
+    if (allMatches.length > 0) {
+      const lastMatch = allMatches[allMatches.length - 1];
+      console.log(`Fallback found date: ${lastMatch.year}-${lastMatch.month}-${lastMatch.day}`);
+      return `${lastMatch.year}-${lastMatch.month}-${lastMatch.day}`;
+    }
+    
+    console.log('No date found in text');
     return null;
   };
 
   const extractPassIdFromText = (text: string): string | null => {
-    // Look for patterns like: ID: XXXXX, Pass ID: XXXXX, or standalone numbers
+    console.log('Extracting Pass ID from:', text);
+    
+    // Normalize text for better matching
+    let normalizedText = text
+      .replace(/[|!]/g, 'I')
+      .replace(/[o]/gi, '0')
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    console.log('Normalized text for ID:', normalizedText);
+    
+    // Enhanced patterns with multiple variations
     const idPatterns = [
-      /(?:ID|PASS\s*ID|P\.ID|PID)[\s:]*([A-Z0-9]+)/i,
-      /\b([A-Z]{2,3}\d{4,8})\b/,  // e.g., AP123456
-      /\b(\d{6,10})\b/  // Standalone 6-10 digit number
+      // Explicit ID labels
+      /(?:pass\s*id|passid|p\.?\s*id|pid|bus\s*pass\s*id)[\s:=]*([A-Z0-9]{4,15})/i,
+      /(?:id\s*no|id\s*number|identification)[\s:=]*([A-Z0-9]{4,15})/i,
+      /(?:^|\s)id[\s:=]*([A-Z0-9]{4,15})/i,
+      
+      // State-prefix patterns (e.g., AP123456, TS987654)
+      /\b([A-Z]{2}\d{6,10})\b/,
+      /\b([A-Z]{2}[-\s]?\d{6,10})\b/,
+      
+      // Mixed alphanumeric (e.g., ABC12345, X1Y2Z3)
+      /\b([A-Z]{2,4}\d{4,8})\b/,
+      /\b([A-Z]\d[A-Z]\d{4,7})\b/,
+      
+      // Pure numeric IDs (6-12 digits)
+      /\b(\d{8,12})\b/,
+      /\b(\d{6,7})\b/,
+      
+      // Hyphenated or spaced formats
+      /\b([A-Z0-9]{2,4}[-\s][A-Z0-9]{4,8})\b/,
     ];
 
     for (const pattern of idPatterns) {
-      const match = text.match(pattern);
+      const match = normalizedText.match(pattern);
       if (match && match[1]) {
-        return match[1].trim();
+        const passId = match[1].trim().replace(/[-\s]/g, '').toUpperCase();
+        
+        // Validate: must be at least 4 characters, mix of letters and numbers preferred
+        if (passId.length >= 4) {
+          console.log(`Found Pass ID: ${passId}`);
+          return passId;
+        }
       }
     }
     
+    console.log('No Pass ID found in text');
     return null;
   };
 
