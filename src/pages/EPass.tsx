@@ -114,19 +114,66 @@ const EPass = () => {
     }
   };
 
+  const enhanceImageQuality = async (file: File): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      
+      if (!ctx) {
+        reject(new Error('Canvas not supported'));
+        return;
+      }
+
+      img.onload = () => {
+        // Use original dimensions or scale up slightly for better quality
+        const scaleFactor = 1.5;
+        canvas.width = img.width * scaleFactor;
+        canvas.height = img.height * scaleFactor;
+
+        // Enable image smoothing for better quality
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+
+        // Draw image with high quality
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        // Convert to high-quality PNG (lossless)
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              console.log('Enhanced image quality - size:', blob.size);
+              resolve(blob);
+            } else {
+              reject(new Error('Failed to create blob'));
+            }
+          },
+          'image/png',
+          1.0  // Maximum quality
+        );
+      };
+
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
   const uploadFile = async (file: File, type: 'identity_card' | 'monthly_pass') => {
     if (!user) return null;
 
     // Clean up old files before uploading new one
     await cleanupOldFiles(type);
 
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${user.id}/${type}.${fileExt}`;
+    // Enhance image quality before upload
+    const enhancedBlob = await enhanceImageQuality(file);
+    const enhancedFile = new File([enhancedBlob], `${type}.png`, { type: 'image/png' });
+
+    const fileName = `${user.id}/${type}.png`;
     const filePath = fileName;
 
     const { error: uploadError } = await supabase.storage
       .from('pass-documents')
-      .upload(filePath, file, { upsert: true });
+      .upload(filePath, enhancedFile, { upsert: true });
 
     if (uploadError) throw uploadError;
 
