@@ -20,6 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface UserProfile {
   id: string;
@@ -294,6 +296,55 @@ const AdminUserProfile = () => {
     }
   };
 
+  const downloadFeeHistoryPDF = () => {
+    if (!profile) return;
+
+    const doc = new jsPDF();
+    
+    // Add title
+    doc.setFontSize(18);
+    doc.text('Fee History Report', 14, 20);
+    
+    // Add student details
+    doc.setFontSize(12);
+    doc.text(`Name: ${profile.name}`, 14, 35);
+    doc.text(`Role: ${profile.role}`, 14, 42);
+    doc.text(`Registration ID: ${profile.registration_id || 'N/A'}`, 14, 49);
+    doc.text(`Bus Number: ${profile.bus_number}`, 14, 56);
+    doc.text(`College: ${profile.college}`, 14, 63);
+    if (profile.branch) {
+      doc.text(`Branch: ${profile.branch} - Year ${profile.year}`, 14, 70);
+    }
+    if (profile.buss_pass_id) {
+      doc.text(`Bus Pass ID: ${profile.buss_pass_id}`, 14, 77);
+    }
+    
+    // Add fee history table
+    const tableData = feeHistory.map(fee => [
+      fee.month,
+      fee.year.toString(),
+      fee.status.toUpperCase(),
+      fee.isCurrentMonth ? 'Current Month' : ''
+    ]);
+    
+    autoTable(doc, {
+      startY: 85,
+      head: [['Month', 'Year', 'Status', 'Notes']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [41, 128, 185] },
+      styles: { fontSize: 10 },
+    });
+    
+    // Save the PDF
+    doc.save(`fee-history-${profile.name.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`);
+    
+    toast({
+      title: 'Success',
+      description: 'Fee history PDF downloaded successfully',
+    });
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -403,26 +454,35 @@ const AdminUserProfile = () => {
 
         <Card>
           <CardHeader>
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
               <CardTitle>Fee History</CardTitle>
-              {selectedMonths.size > 0 && (
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="default"
-                    onClick={() => handleBulkStatusChange('paid')}
-                  >
-                    Mark {selectedMonths.size} as Paid
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    onClick={() => handleBulkStatusChange('due')}
-                  >
-                    Mark {selectedMonths.size} as Due
-                  </Button>
-                </div>
-              )}
+              <div className="flex gap-2 flex-wrap">
+                {selectedMonths.size > 0 && (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="default"
+                      onClick={() => handleBulkStatusChange('paid')}
+                    >
+                      Mark {selectedMonths.size} as Paid
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => handleBulkStatusChange('due')}
+                    >
+                      Mark {selectedMonths.size} as Due
+                    </Button>
+                  </>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={downloadFeeHistoryPDF}
+                >
+                  Download PDF
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>

@@ -22,6 +22,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { formatTo12Hour } from '@/lib/utils';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 // College configuration - same as in SignupStudent
 const collegeConfig = {
@@ -519,6 +521,118 @@ const AdminBusDashboard = () => {
     }
   };
 
+  const downloadBulkFeeReport = async () => {
+    if (!busDetails) return;
+
+    // Fetch all users on this bus
+    let query = supabase
+      .from('profiles')
+      .select('id, name, role, college, branch, year, phone')
+      .eq('bus_number', busNumber);
+
+    if (selectedCollege !== 'all') {
+      query = query.eq('college', selectedCollege);
+    }
+    if (selectedBranch !== 'all') {
+      query = query.eq('branch', selectedBranch);
+    }
+    if (selectedYear !== 'all') {
+      query = query.eq('year', selectedYear);
+    }
+
+    const { data: profiles } = await query;
+
+    if (!profiles || profiles.length === 0) {
+      toast({
+        title: 'No Data',
+        description: 'No users found for the selected filters',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Fetch fee history for all users
+    const currentYear = new Date().getFullYear();
+    const { data: feeData } = await supabase
+      .from('fee_history')
+      .select('*')
+      .eq('year', currentYear)
+      .in('user_id', profiles.map(p => p.id));
+
+    // Fetch bus pass IDs
+    const { data: passData } = await supabase
+      .from('passes')
+      .select('user_id, buss_pass_id')
+      .in('user_id', profiles.map(p => p.id));
+
+    const passIdMap = new Map(passData?.map(p => [p.user_id, p.buss_pass_id]) || []);
+
+    const doc = new jsPDF('landscape');
+    
+    // Add title
+    doc.setFontSize(18);
+    doc.text(`Bus ${busNumber} - Fee History Report`, 14, 20);
+    
+    // Add bus details
+    doc.setFontSize(12);
+    doc.text(`Route: ${busDetails.route}`, 14, 30);
+    doc.text(`Departure: ${formatTo12Hour(busDetails.departure_time)} | Arrival: ${formatTo12Hour(busDetails.arrival_time)}`, 14, 37);
+    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 44);
+    
+    // Prepare table data
+    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const tableData = profiles.map(profile => {
+      const userFees = feeData?.filter(f => f.user_id === profile.id) || [];
+      const feeMap = new Map(userFees.map(f => [f.month, f.status]));
+      
+      const monthStatuses = months.map(month => {
+        const status = feeMap.get(month);
+        return status ? status.charAt(0).toUpperCase() : '-';
+      });
+
+      return [
+        profile.name,
+        profile.role,
+        profile.college,
+        profile.branch || '-',
+        profile.year || '-',
+        passIdMap.get(profile.id) || '-',
+        ...monthStatuses
+      ];
+    });
+
+    // Create table
+    autoTable(doc, {
+      startY: 52,
+      head: [['Name', 'Role', 'College', 'Branch', 'Year', 'Pass ID', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [41, 128, 185], fontSize: 8 },
+      styles: { fontSize: 7, cellPadding: 2 },
+      columnStyles: {
+        0: { cellWidth: 30 },
+        1: { cellWidth: 15 },
+        2: { cellWidth: 25 },
+        3: { cellWidth: 20 },
+        4: { cellWidth: 12 },
+        5: { cellWidth: 25 },
+      },
+    });
+    
+    // Add legend
+    const finalY = (doc as any).lastAutoTable.finalY || 52;
+    doc.setFontSize(10);
+    doc.text('Legend: P = Paid, D = Due, - = No Record', 14, finalY + 10);
+    
+    // Save the PDF
+    doc.save(`bus-${busNumber}-fee-report-${new Date().toISOString().split('T')[0]}.pdf`);
+    
+    toast({
+      title: 'Success',
+      description: 'Bulk fee report downloaded successfully',
+    });
+  };
+
   if (loading && !busDetails) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -538,11 +652,16 @@ const AdminBusDashboard = () => {
   return (
     <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto space-y-4 md:space-y-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <h1 className="text-2xl md:text-3xl font-bold">Bus {busNumber} Dashboard</h1>
-          <Button onClick={() => navigate('/admin/buses')} variant="outline" className="w-full sm:w-auto">
-            Back to Buses
-          </Button>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Button onClick={downloadBulkFeeReport} variant="outline" className="flex-1 sm:flex-initial">
+              Download Fee Report
+            </Button>
+            <Button onClick={() => navigate('/admin/buses')} variant="outline" className="flex-1 sm:flex-initial">
+              Back to Buses
+            </Button>
+          </div>
         </div>
 
         <Card>
