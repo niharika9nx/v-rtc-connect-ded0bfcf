@@ -389,11 +389,15 @@ const EPass = () => {
     
     toast({
       title: "Preprocessing image...",
-      description: "Enhancing image quality for better OCR"
+      description: "This may take 10-15 seconds"
     });
 
-    // Preprocess image
+    // Preprocess image (give UI time to update)
+    await new Promise(resolve => setTimeout(resolve, 50));
     const preprocessedBlob = await preprocessImage(file);
+    
+    // Give UI time to breathe
+    await new Promise(resolve => setTimeout(resolve, 50));
     
     toast({
       title: "Running OCR...",
@@ -406,7 +410,17 @@ const EPass = () => {
       {
         logger: (m) => {
           if (m.status === 'recognizing text') {
-            setOcrProgress(Math.round(m.progress * 100));
+            const progress = Math.round(m.progress * 100);
+            setOcrProgress(progress);
+            
+            // Update progress every 25%
+            if (progress % 25 === 0) {
+              toast({
+                title: `OCR Progress: ${progress}%`,
+                description: "Please wait...",
+                duration: 2000
+              });
+            }
           }
         }
       }
@@ -439,27 +453,43 @@ const EPass = () => {
         description: "Extracting expiry date and pass ID"
       });
 
-      // Run OCR on the uploaded image
-      const ocrText = await runOCR(monthlyPassFile);
-      console.log('OCR Text:', ocrText);
+      // Run OCR on the uploaded image (async to prevent blocking)
+      setTimeout(async () => {
+        try {
+          const ocrText = await runOCR(monthlyPassFile);
+          console.log('OCR Text:', ocrText);
 
-      // Extract expiry date and pass ID
-      const expiryDate = extractDateFromText(ocrText);
-      const passId = extractPassIdFromText(ocrText);
+          // Extract expiry date and pass ID
+          const expiryDate = extractDateFromText(ocrText);
+          const passId = extractPassIdFromText(ocrText);
 
-      console.log('Extracted - Expiry:', expiryDate, 'Pass ID:', passId);
+          console.log('Extracted - Expiry:', expiryDate, 'Pass ID:', passId);
 
-      // Set extracted values for user verification
-      setExtractedExpiryDate(expiryDate || '');
-      setExtractedPassId(passId || '');
+          // Set extracted values for user verification
+          setExtractedExpiryDate(expiryDate || '');
+          setExtractedPassId(passId || '');
 
-      // Show verification dialog
-      setShowVerificationDialog(true);
+          // Show verification dialog and enable button
+          setShowVerificationDialog(true);
+          setUploading(false);
 
-      toast({
-        title: "OCR Complete",
-        description: "Please verify the extracted information",
-      });
+          toast({
+            title: "OCR Complete",
+            description: "Please verify the extracted information",
+          });
+        } catch (ocrError: any) {
+          console.error('OCR error:', ocrError);
+          toast({
+            title: "OCR failed",
+            description: "Please enter pass details manually",
+            variant: "destructive"
+          });
+          setExtractedExpiryDate('');
+          setExtractedPassId('');
+          setShowVerificationDialog(true);
+          setUploading(false);
+        }
+      }, 100);
 
     } catch (error: any) {
       toast({
@@ -768,18 +798,21 @@ const EPass = () => {
                   setShowVerificationDialog(false);
                   setUploading(false);
                   setMonthlyPassFile(null);
+                  setExtractedPassId('');
+                  setExtractedExpiryDate('');
                 }}
                 className="flex-1"
+                disabled={uploading}
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleVerificationConfirm}
-                disabled={uploading || (!extractedPassId && !extractedExpiryDate)}
+                disabled={uploading}
                 className="flex-1 bg-primary hover:bg-primary/90"
               >
                 <Check className="h-4 w-4 mr-2" />
-                Confirm & Save
+                {uploading ? "Saving..." : "Confirm & Save"}
               </Button>
             </div>
           </div>
