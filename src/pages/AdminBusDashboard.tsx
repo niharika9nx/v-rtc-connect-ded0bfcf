@@ -83,6 +83,7 @@ interface Profile {
   year?: string;
   phone: string;
   feeStatus?: 'paid' | 'due';
+  buss_pass_id?: string;
 }
 
 interface Stats {
@@ -303,6 +304,22 @@ const AdminBusDashboard = () => {
 
     const { data: profiles } = await query;
 
+    // Fetch bus pass IDs for all users
+    let profilesWithPassIds = profiles || [];
+    if (profiles && profiles.length > 0) {
+      const userIds = profiles.map(p => p.id);
+      const { data: passesData } = await supabase
+        .from('passes')
+        .select('user_id, buss_pass_id')
+        .in('user_id', userIds);
+
+      const passIdMap = new Map(passesData?.map(p => [p.user_id, p.buss_pass_id]) || []);
+      profilesWithPassIds = profiles.map(p => ({
+        ...p,
+        buss_pass_id: passIdMap.get(p.id)
+      }));
+    }
+
     if (type === 'feePaid' || type === 'feeDue') {
       const currentMonth = new Date().toLocaleString('default', { month: 'long' });
       const currentYear = new Date().getFullYear();
@@ -316,7 +333,7 @@ const AdminBusDashboard = () => {
         .eq('status', status);
 
       const feeUserIds = feeData?.map((f) => f.user_id) || [];
-      const filteredProfiles = profiles?.filter((p) => feeUserIds.includes(p.id)).map(p => ({
+      const filteredProfiles = profilesWithPassIds?.filter((p) => feeUserIds.includes(p.id)).map(p => ({
         ...p,
         feeStatus: status as 'paid' | 'due'
       })) || [];
@@ -332,7 +349,23 @@ const AdminBusDashboard = () => {
         .lte('pass_expiry_date', fiveDaysFromNow.toISOString().split('T')[0])
         .gte('pass_expiry_date', new Date().toISOString().split('T')[0]);
 
-      setUserList(passProfiles || []);
+      // Fetch bus pass IDs for expiring passes
+      let expiringWithPassIds = passProfiles || [];
+      if (passProfiles && passProfiles.length > 0) {
+        const userIds = passProfiles.map(p => p.id);
+        const { data: passesData } = await supabase
+          .from('passes')
+          .select('user_id, buss_pass_id')
+          .in('user_id', userIds);
+
+        const passIdMap = new Map(passesData?.map(p => [p.user_id, p.buss_pass_id]) || []);
+        expiringWithPassIds = passProfiles.map(p => ({
+          ...p,
+          buss_pass_id: passIdMap.get(p.id)
+        }));
+      }
+
+      setUserList(expiringWithPassIds);
     } else if (type === 'passesIssued') {
       // Fetch users who have uploaded monthly passes
       const { data: passesData } = await supabase
@@ -348,7 +381,23 @@ const AdminBusDashboard = () => {
         .eq('bus_number', busNumber)
         .in('id', passUserIds);
 
-      setUserList(passProfiles || []);
+      // Fetch bus pass IDs for issued passes
+      let issuedWithPassIds = passProfiles || [];
+      if (passProfiles && passProfiles.length > 0) {
+        const userIds = passProfiles.map(p => p.id);
+        const { data: passIdData } = await supabase
+          .from('passes')
+          .select('user_id, buss_pass_id')
+          .in('user_id', userIds);
+
+        const passIdMap = new Map(passIdData?.map(p => [p.user_id, p.buss_pass_id]) || []);
+        issuedWithPassIds = passProfiles.map(p => ({
+          ...p,
+          buss_pass_id: passIdMap.get(p.id)
+        }));
+      }
+
+      setUserList(issuedWithPassIds);
     } else if (type === 'passesExpired') {
       // Fetch users who answered "No" to pass renewal reminder
       const { data: expiredAlertsData } = await supabase
@@ -366,9 +415,25 @@ const AdminBusDashboard = () => {
         .eq('bus_number', busNumber)
         .in('id', expiredUserIds);
 
-      setUserList(expiredProfiles || []);
+      // Fetch bus pass IDs for expired passes
+      let expiredWithPassIds = expiredProfiles || [];
+      if (expiredProfiles && expiredProfiles.length > 0) {
+        const userIds = expiredProfiles.map(p => p.id);
+        const { data: passesData } = await supabase
+          .from('passes')
+          .select('user_id, buss_pass_id')
+          .in('user_id', userIds);
+
+        const passIdMap = new Map(passesData?.map(p => [p.user_id, p.buss_pass_id]) || []);
+        expiredWithPassIds = expiredProfiles.map(p => ({
+          ...p,
+          buss_pass_id: passIdMap.get(p.id)
+        }));
+      }
+
+      setUserList(expiredWithPassIds);
     } else {
-      setUserList(profiles || []);
+      setUserList(profilesWithPassIds || []);
     }
 
     setUserListType(type);
@@ -709,6 +774,11 @@ const AdminBusDashboard = () => {
                           </p>
                         )}
                         <p className="text-xs md:text-sm">{user.phone}</p>
+                        {user.buss_pass_id && (
+                          <p className="text-xs md:text-sm font-medium">
+                            Pass ID: <span className="text-primary">{user.buss_pass_id}</span>
+                          </p>
+                        )}
                       </div>
                       <div className="flex flex-col gap-2 w-full sm:w-auto">
                         {(userListType === 'feePaid' || userListType === 'feeDue') && (
