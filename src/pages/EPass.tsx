@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ArrowLeft, CreditCard, Upload, RefreshCw, ZoomIn, ZoomOut, Maximize2, X, Check } from 'lucide-react';
+import { ArrowLeft, CreditCard, Upload, RefreshCw, ZoomIn, ZoomOut, Maximize2, X, Check, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { AlertNotifications } from '@/components/AlertNotifications';
 import Tesseract from 'tesseract.js';
@@ -28,6 +28,7 @@ const EPass = () => {
   const [extractedPassId, setExtractedPassId] = useState('');
   const [extractedExpiryDate, setExtractedExpiryDate] = useState('');
   const [ocrProgress, setOcrProgress] = useState(0);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     fetchPass();
@@ -557,6 +558,56 @@ const EPass = () => {
     }
   };
 
+  const handleDeletePass = async () => {
+    if (!user || !pass) return;
+
+    if (!confirm('Are you sure you want to delete your pass? This action cannot be undone.')) {
+      return;
+    }
+
+    setDeleting(true);
+
+    try {
+      // Delete storage files
+      const filesToDelete = [];
+      if (pass.identity_card_url) {
+        filesToDelete.push(`${user.id}/identity_card.png`);
+      }
+      if (pass.monthly_pass_url) {
+        filesToDelete.push(`${user.id}/monthly_pass.png`);
+      }
+
+      if (filesToDelete.length > 0) {
+        await supabase.storage
+          .from('pass-documents')
+          .remove(filesToDelete);
+      }
+
+      // Delete database record
+      const { error } = await supabase
+        .from('passes')
+        .delete()
+        .eq('id', pass.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Pass deleted",
+        description: "Your pass has been removed successfully"
+      });
+
+      setPass(null);
+    } catch (error: any) {
+      toast({
+        title: "Delete failed",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   // Images persist until replaced with new uploads - delete functionality removed
 
   if (loading) {
@@ -603,9 +654,23 @@ const EPass = () => {
         
         <Card className="glass border-border/50 shadow-lg hover:shadow-glow transition-all animate-slide-up">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-foreground">
-              <CreditCard className="h-5 w-5 text-primary" />
-              Your E-Pass
+            <CardTitle className="flex items-center justify-between gap-2 text-foreground">
+              <div className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5 text-primary" />
+                Your E-Pass
+              </div>
+              {pass && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleDeletePass}
+                  disabled={deleting}
+                  className="ml-auto"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  {deleting ? "Deleting..." : "Delete Pass"}
+                </Button>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -698,19 +763,39 @@ const EPass = () => {
                             </div>
                           </div>
                         )}
+                        {pass.verified === false && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/70 rounded-lg backdrop-blur-sm pointer-events-none">
+                            <div className="text-center">
+                              <p className="text-red-500 text-4xl font-bold font-display animate-pulse drop-shadow-lg">
+                                FAKE PASS
+                              </p>
+                              <p className="text-white text-lg mt-2 font-semibold">
+                                ⚠️ DUPLICATE PASS ID DETECTED
+                              </p>
+                              <p className="text-white text-sm mt-1">
+                                Contact admin immediately
+                              </p>
+                            </div>
+                          </div>
+                        )}
                       </div>
                       <p className="text-xs text-muted-foreground text-center">Click to view full size</p>
-                      <div className="text-center">
-                        {pass.verified === false ? (
+                      {pass.verified === false ? (
+                        <div className="text-center">
                           <p className="text-red-500 text-2xl font-bold font-display animate-pulse drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]">
-                            ⚠️ UNVERIFIED - DUPLICATE PASS ID DETECTED
+                            ⚠️ FAKE PASS - DUPLICATE ID DETECTED
                           </p>
-                        ) : (
+                          <p className="text-red-400 text-sm mt-1">
+                            Contact admin immediately
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="text-center">
                           <p className="text-green-400 text-2xl font-bold font-display drop-shadow-[0_0_10px_rgba(74,222,128,0.8)]">
                             ✓ VERIFIED
                           </p>
-                        )}
-                      </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
