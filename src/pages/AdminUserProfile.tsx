@@ -38,6 +38,7 @@ interface UserProfile {
   bus_number: string;
   pass_expiry_date?: string;
   buss_pass_id?: string;
+  seat_number?: number;
 }
 
 interface FeeHistory {
@@ -311,12 +312,15 @@ const AdminUserProfile = () => {
     doc.text(`Role: ${profile.role}`, 14, 42);
     doc.text(`Registration ID: ${profile.registration_id || 'N/A'}`, 14, 49);
     doc.text(`Bus Number: ${profile.bus_number}`, 14, 56);
-    doc.text(`College: ${profile.college}`, 14, 63);
+    if (profile.seat_number) {
+      doc.text(`Seat Number: ${profile.seat_number}`, 14, 63);
+    }
+    doc.text(`College: ${profile.college}`, 14, profile.seat_number ? 70 : 63);
     if (profile.branch) {
-      doc.text(`Branch: ${profile.branch} - Year ${profile.year}`, 14, 70);
+      doc.text(`Branch: ${profile.branch} - Year ${profile.year}`, 14, profile.seat_number ? 77 : 70);
     }
     if (profile.buss_pass_id) {
-      doc.text(`Bus Pass ID: ${profile.buss_pass_id}`, 14, 77);
+      doc.text(`Bus Pass ID: ${profile.buss_pass_id}`, 14, profile.seat_number ? (profile.branch ? 84 : 77) : (profile.branch ? 77 : 70));
     }
     
     // Add fee history table
@@ -328,7 +332,7 @@ const AdminUserProfile = () => {
     ]);
     
     autoTable(doc, {
-      startY: 85,
+      startY: profile.seat_number ? (profile.buss_pass_id ? 92 : (profile.branch ? 84 : 77)) : (profile.buss_pass_id ? 85 : (profile.branch ? 77 : 70)),
       head: [['Month', 'Year', 'Status', 'Notes']],
       body: tableData,
       theme: 'grid',
@@ -434,6 +438,12 @@ const AdminUserProfile = () => {
                 <p className="text-sm text-muted-foreground">Bus Number</p>
                 <p className="font-semibold">{profile.bus_number}</p>
               </div>
+              {profile.seat_number && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Seat Number</p>
+                  <p className="font-semibold text-primary">{profile.seat_number}</p>
+                </div>
+              )}
               {profile.buss_pass_id && (
                 <div>
                   <p className="text-sm text-muted-foreground">Bus Pass ID</p>
