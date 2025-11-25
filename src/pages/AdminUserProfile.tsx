@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/select';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import vishnuLogo from '@/assets/vishnu-logo.png';
 
 interface UserProfile {
   id: string;
@@ -302,25 +303,37 @@ const AdminUserProfile = () => {
 
     const doc = new jsPDF();
     
+    // Add logo and header
+    const img = new Image();
+    img.src = vishnuLogo;
+    doc.addImage(img, 'PNG', 14, 10, 30, 30);
+    
+    // Add organization name header
+    doc.setFontSize(16);
+    doc.setFont(undefined, 'bold');
+    doc.text('Shri Vishnu Educational Society (SVES)', 105, 20, { align: 'center' });
+    
     // Add title
-    doc.setFontSize(18);
-    doc.text('Fee History Report', 14, 20);
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.text('Fee History Report', 105, 30, { align: 'center' });
+    doc.setFont(undefined, 'normal');
     
     // Add student details
-    doc.setFontSize(12);
-    doc.text(`Name: ${profile.name}`, 14, 35);
-    doc.text(`Role: ${profile.role}`, 14, 42);
-    doc.text(`Registration ID: ${profile.registration_id || 'N/A'}`, 14, 49);
-    doc.text(`Bus Number: ${profile.bus_number}`, 14, 56);
+    doc.setFontSize(11);
+    doc.text(`Name: ${profile.name}`, 14, 50);
+    doc.text(`Role: ${profile.role}`, 14, 57);
+    doc.text(`Registration ID: ${profile.registration_id || 'N/A'}`, 14, 64);
+    doc.text(`Bus Number: ${profile.bus_number}`, 14, 71);
     if (profile.seat_number) {
-      doc.text(`Seat Number: ${profile.seat_number}`, 14, 63);
+      doc.text(`Seat Number: ${profile.seat_number}`, 14, 78);
     }
-    doc.text(`College: ${profile.college}`, 14, profile.seat_number ? 70 : 63);
+    doc.text(`College: ${profile.college}`, 14, profile.seat_number ? 85 : 78);
     if (profile.branch) {
-      doc.text(`Branch: ${profile.branch} - Year ${profile.year}`, 14, profile.seat_number ? 77 : 70);
+      doc.text(`Branch: ${profile.branch} - Year ${profile.year}`, 14, profile.seat_number ? 92 : 85);
     }
     if (profile.buss_pass_id) {
-      doc.text(`Bus Pass ID: ${profile.buss_pass_id}`, 14, profile.seat_number ? (profile.branch ? 84 : 77) : (profile.branch ? 77 : 70));
+      doc.text(`Bus Pass ID: ${profile.buss_pass_id}`, 14, profile.seat_number ? (profile.branch ? 99 : 92) : (profile.branch ? 92 : 85));
     }
     
     // Add fee history table
@@ -332,7 +345,7 @@ const AdminUserProfile = () => {
     ]);
     
     autoTable(doc, {
-      startY: profile.seat_number ? (profile.buss_pass_id ? 92 : (profile.branch ? 84 : 77)) : (profile.buss_pass_id ? 85 : (profile.branch ? 77 : 70)),
+      startY: profile.seat_number ? (profile.buss_pass_id ? 107 : (profile.branch ? 99 : 92)) : (profile.buss_pass_id ? 100 : (profile.branch ? 92 : 85)),
       head: [['Month', 'Year', 'Status', 'Notes']],
       body: tableData,
       theme: 'grid',
