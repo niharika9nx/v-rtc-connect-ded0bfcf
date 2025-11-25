@@ -323,18 +323,40 @@ const AdminUserProfile = () => {
     doc.setFontSize(11);
     doc.text(`Name: ${profile.name}`, 14, 50);
     doc.text(`Role: ${profile.role}`, 14, 57);
-    doc.text(`Registration ID: ${profile.registration_id || 'N/A'}`, 14, 64);
+    
+    if (profile.role === 'student') {
+      doc.text(`Registration ID: ${profile.registration_id || 'N/A'}`, 14, 64);
+    } else if (profile.role === 'faculty') {
+      doc.text(`Phone Number: ${profile.phone}`, 14, 64);
+    }
+    
     doc.text(`Bus Number: ${profile.bus_number}`, 14, 71);
+    
     if (profile.seat_number) {
       doc.text(`Seat Number: ${profile.seat_number}`, 14, 78);
     }
-    doc.text(`College: ${profile.college}`, 14, profile.seat_number ? 85 : 78);
-    if (profile.branch) {
-      doc.text(`Branch: ${profile.branch} - Year ${profile.year}`, 14, profile.seat_number ? 92 : 85);
+    
+    let currentY = profile.seat_number ? 85 : 78;
+    
+    if (profile.role === 'faculty' && profile.department) {
+      doc.text(`Department: ${profile.department}`, 14, currentY);
+      currentY += 7;
     }
+    
+    doc.text(`College: ${profile.college}`, 14, currentY);
+    currentY += 7;
+    
+    if (profile.branch && profile.role === 'student') {
+      doc.text(`Branch: ${profile.branch} - Year ${profile.year}`, 14, currentY);
+      currentY += 7;
+    }
+    
     if (profile.buss_pass_id) {
-      doc.text(`Bus Pass ID: ${profile.buss_pass_id}`, 14, profile.seat_number ? (profile.branch ? 99 : 92) : (profile.branch ? 92 : 85));
+      doc.text(`Bus Pass ID: ${profile.buss_pass_id}`, 14, currentY);
+      currentY += 7;
     }
+    
+    const tableStartY = currentY + 8;
     
     // Add fee history table
     const tableData = feeHistory.map(fee => [
@@ -345,7 +367,7 @@ const AdminUserProfile = () => {
     ]);
     
     autoTable(doc, {
-      startY: profile.seat_number ? (profile.buss_pass_id ? 107 : (profile.branch ? 99 : 92)) : (profile.buss_pass_id ? 100 : (profile.branch ? 92 : 85)),
+      startY: tableStartY,
       head: [['Month', 'Year', 'Status', 'Notes']],
       body: tableData,
       theme: 'grid',
