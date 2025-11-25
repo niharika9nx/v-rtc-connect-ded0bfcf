@@ -24,6 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { formatTo12Hour } from '@/lib/utils';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import vishnuLogo from '@/assets/vishnu-logo.png';
 
 // College configuration - same as in SignupStudent
 const collegeConfig = {
@@ -570,15 +571,27 @@ const AdminBusDashboard = () => {
 
     const doc = new jsPDF('landscape');
     
+    // Add logo and header
+    const img = new Image();
+    img.src = vishnuLogo;
+    doc.addImage(img, 'PNG', 14, 10, 30, 30);
+    
+    // Add organization name header
+    doc.setFontSize(16);
+    doc.setFont(undefined, 'bold');
+    doc.text('Shri Vishnu Educational Society (SVES)', 148, 20, { align: 'center' });
+    
     // Add title
-    doc.setFontSize(18);
-    doc.text(`Bus ${busNumber} - Fee History Report`, 14, 20);
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.text(`Bus ${busNumber} - Fee History Report`, 148, 30, { align: 'center' });
+    doc.setFont(undefined, 'normal');
     
     // Add bus details
-    doc.setFontSize(12);
-    doc.text(`Route: ${busDetails.route}`, 14, 30);
-    doc.text(`Departure: ${formatTo12Hour(busDetails.departure_time)} | Arrival: ${formatTo12Hour(busDetails.arrival_time)}`, 14, 37);
-    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 44);
+    doc.setFontSize(11);
+    doc.text(`Route: ${busDetails.route}`, 14, 50);
+    doc.text(`Departure: ${formatTo12Hour(busDetails.departure_time)} | Arrival: ${formatTo12Hour(busDetails.arrival_time)}`, 14, 57);
+    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 64);
     
     // Prepare table data
     const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -604,7 +617,7 @@ const AdminBusDashboard = () => {
 
     // Create table
     autoTable(doc, {
-      startY: 52,
+      startY: 72,
       head: [['Name', 'Role', 'College', 'Branch', 'Year', 'Pass ID', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']],
       body: tableData,
       theme: 'grid',
@@ -621,7 +634,7 @@ const AdminBusDashboard = () => {
     });
     
     // Add legend
-    const finalY = (doc as any).lastAutoTable.finalY || 52;
+    const finalY = (doc as any).lastAutoTable.finalY || 72;
     doc.setFontSize(10);
     doc.text('Legend: P = Paid, D = Due, - = No Record', 14, finalY + 10);
     
