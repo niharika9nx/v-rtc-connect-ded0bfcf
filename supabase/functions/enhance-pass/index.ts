@@ -122,7 +122,15 @@ serve(async (req) => {
     });
 
     if (!aiResponse.ok) {
-      console.error('AI gateway error:', await aiResponse.text());
+      const errorText = await aiResponse.text();
+      console.error('AI gateway error:', errorText);
+      
+      if (aiResponse.status === 402) {
+        throw new Error('Lovable AI credits exhausted. Please add credits to your workspace at Settings → Workspace → Usage to continue using pass enhancement features.');
+      } else if (aiResponse.status === 429) {
+        throw new Error('Rate limit exceeded. Please try again in a few moments.');
+      }
+      
       throw new Error('Failed to process image with AI');
     }
 

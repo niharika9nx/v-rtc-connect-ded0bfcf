@@ -210,10 +210,12 @@ const EPass = () => {
 
         if (enhanceError) {
           console.error('Enhancement error:', enhanceError);
+          const errorMessage = enhanceError.message || enhanceData?.error || "Pass uploaded but enhancement failed. You may need to manually verify the expiry date.";
           toast({
-            title: "Processing warning",
-            description: "Pass uploaded but enhancement failed. You may need to manually verify the expiry date.",
-            variant: "destructive"
+            title: "Processing Error",
+            description: errorMessage,
+            variant: "destructive",
+            duration: 10000
           });
         } else if (enhanceData?.success) {
           const details = [];
