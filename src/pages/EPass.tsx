@@ -200,7 +200,7 @@ const EPass = () => {
 
       toast({
         title: "Processing pass...",
-        description: "Enhancing image and detecting expiry date"
+        description: "Detecting expiry date and pass ID from image"
       });
       
       try {
@@ -209,8 +209,8 @@ const EPass = () => {
         });
 
         if (enhanceError) {
-          console.error('Enhancement error:', enhanceError);
-          const errorMessage = enhanceError.message || enhanceData?.error || "Pass uploaded but enhancement failed. You may need to manually verify the expiry date.";
+          console.error('Processing error:', enhanceError);
+          const errorMessage = enhanceError.message || enhanceData?.error || "Pass uploaded but processing failed. You may need to manually verify the details.";
           toast({
             title: "Processing Error",
             description: errorMessage,
@@ -224,14 +224,14 @@ const EPass = () => {
           
           toast({
             title: "Pass processed!",
-            description: details.length > 0 ? details.join(' | ') : "Enhancement complete",
+            description: details.length > 0 ? details.join(' | ') : "Processing complete",
           });
         }
       } catch (error: any) {
-        console.error('Enhancement error:', error);
+        console.error('Processing error:', error);
         toast({
           title: "Processing warning",
-          description: "Pass uploaded but enhancement failed",
+          description: "Pass uploaded but processing failed",
           variant: "destructive"
         });
         
@@ -253,9 +253,9 @@ const EPass = () => {
         }
       }
 
-      // Edge function already updates the database with enhanced image URL
-      // Wait for edge function to complete processing and storage to propagate
-      await new Promise(resolve => setTimeout(resolve, 10000));
+      // Edge function already updates the database
+      // Wait for processing to complete and storage to propagate
+      await new Promise(resolve => setTimeout(resolve, 3000));
 
       toast({
         title: "Success",

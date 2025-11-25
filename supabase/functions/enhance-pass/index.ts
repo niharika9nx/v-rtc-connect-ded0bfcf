@@ -33,14 +33,13 @@ serve(async (req) => {
 
     console.log('Image downloaded successfully');
 
-    // Convert blob to array buffer
+    // Convert blob to array buffer and base64 for OCR
     const arrayBuffer = await fileData.arrayBuffer();
-    let uint8Array = new Uint8Array(arrayBuffer);
+    const uint8Array = new Uint8Array(arrayBuffer);
     
-    // Compress image to reduce size for faster processing
     console.log('Original image size:', uint8Array.length, 'bytes');
     
-    // Convert to base64 for compression via AI
+    // Convert to base64 for OCR
     let binary = '';
     const chunkSize = 8192;
     for (let i = 0; i < uint8Array.length; i += chunkSize) {
@@ -48,49 +47,7 @@ serve(async (req) => {
       binary += String.fromCharCode.apply(null, Array.from(chunk));
     }
     const base64Image = btoa(binary);
-    
-    // Compress image using Lovable AI (resize to max 800px width for aggressive compression)
-    console.log('Compressing image...');
-    const compressionResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash-image',
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: 'Resize this image to a maximum width of 800px while maintaining aspect ratio. Compress it aggressively to reduce file size. Return the compressed image.'
-              },
-              {
-                type: 'image_url',
-                image_url: { url: `data:image/jpeg;base64,${base64Image}` }
-              }
-            ]
-          }
-        ],
-        modalities: ['image']
-      }),
-    });
-
-    let compressedBase64 = base64Image;
-    if (compressionResponse.ok) {
-      const compressionData = await compressionResponse.json();
-      const compressedUrl = compressionData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-      if (compressedUrl) {
-        compressedBase64 = compressedUrl.split(',')[1];
-        console.log('Image compressed successfully');
-      }
-    } else {
-      console.log('Compression failed, using original image');
-    }
-    
-    const dataUrl = `data:image/jpeg;base64,${compressedBase64}`;
+    const dataUrl = `data:image/jpeg;base64,${base64Image}`;
 
     console.log('Starting OCR processing with Lovable AI...');
     
@@ -149,57 +106,12 @@ serve(async (req) => {
     const isExpired = expiryDate ? new Date(expiryDate) < new Date() : false;
     console.log('Pass expired:', isExpired);
 
-    // Enhance and process image - convert compressed base64 back to blob
-    const compressedBinary = atob(compressedBase64);
-    const compressedBytes = new Uint8Array(compressedBinary.length);
-    for (let i = 0; i < compressedBinary.length; i++) {
-      compressedBytes[i] = compressedBinary.charCodeAt(i);
-    }
-    const enhancedImageBlob = await enhanceImage(compressedBytes, isExpired);
-
-    console.log('Compressed image size:', compressedBytes.length, 'bytes');
-
-    // Clean up old enhanced files before uploading new one
-    try {
-      const userFolder = filePath.split('/')[0];
-      const { data: oldFiles } = await supabase.storage
-        .from('pass-documents')
-        .list(userFolder, {
-          search: 'monthly_pass_enhanced'
-        });
-
-      if (oldFiles && oldFiles.length > 0) {
-        const filesToDelete = oldFiles.map(file => `${userFolder}/${file.name}`);
-        await supabase.storage
-          .from('pass-documents')
-          .remove(filesToDelete);
-        console.log(`Cleaned up ${filesToDelete.length} old enhanced files`);
-      }
-    } catch (cleanupError) {
-      console.error('Cleanup error:', cleanupError);
-      // Don't throw - cleanup failure shouldn't block upload
-    }
-
-    // Upload enhanced image as JPEG for smaller file size
-    const enhancedFileName = filePath.replace('monthly_pass', 'monthly_pass_enhanced').replace(/\.\w+$/, '.jpg');
-    const { error: uploadError } = await supabase.storage
-      .from('pass-documents')
-      .upload(enhancedFileName, enhancedImageBlob, { 
-        upsert: true,
-        contentType: 'image/jpeg'
-      });
-
-    if (uploadError) {
-      console.error('Upload error:', uploadError);
-      throw new Error('Failed to upload enhanced image');
-    }
-
-    console.log('Enhanced image uploaded');
-
-    // Get public URL
+    // Get public URL of the original uploaded file
     const { data: { publicUrl } } = supabase.storage
       .from('pass-documents')
-      .getPublicUrl(enhancedFileName);
+      .getPublicUrl(filePath);
+    
+    console.log('Using original image URL:', publicUrl);
 
     // Update passes table
     const updateData: any = {
@@ -292,7 +204,7 @@ serve(async (req) => {
         expiryDate,
         passId,
         isExpired,
-        enhancedUrl: publicUrl 
+        imageUrl: publicUrl 
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
@@ -406,17 +318,3 @@ function parseDateString(dateStr: string): Date | null {
   return null;
 }
 
-async function enhanceImage(imageData: Uint8Array, isExpired: boolean): Promise<Blob> {
-  // For image enhancement in Deno, we'll use a simple approach
-  // In production, you might want to use more sophisticated image processing
-  
-  // Convert to blob with proper typing
-  const buffer = imageData.buffer as ArrayBuffer;
-  const blob = new Blob([buffer], { type: 'image/jpeg' });
-  
-  // If expired, we need to overlay text
-  // For now, we'll return the original image and handle overlay on client side
-  // In a full implementation, you'd use canvas or image processing library
-  
-  return blob;
-}
