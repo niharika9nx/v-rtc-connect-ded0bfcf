@@ -529,7 +529,7 @@ const AdminBusDashboard = () => {
     // Fetch all users on this bus
     let query = supabase
       .from('profiles')
-      .select('id, name, role, college, branch, year, phone, seat_number')
+      .select('id, name, role, college, branch, year, phone, seat_number, department')
       .eq('bus_number', busNumber);
 
     if (selectedCollege !== 'all') {
@@ -608,7 +608,7 @@ const AdminBusDashboard = () => {
         profile.name,
         profile.role,
         profile.college,
-        profile.branch || '-',
+        profile.role === 'student' ? (profile.branch || '-') : (profile.department || '-'),
         profile.year || '-',
         passIdMap.get(profile.id) || '-',
         ...monthStatuses
@@ -618,7 +618,7 @@ const AdminBusDashboard = () => {
     // Create table
     autoTable(doc, {
       startY: 72,
-      head: [['Name', 'Role', 'College', 'Branch', 'Year', 'Pass ID', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']],
+      head: [['Name', 'Role', 'College', 'Branch/Dept', 'Year', 'Pass ID', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']],
       body: tableData,
       theme: 'grid',
       headStyles: { fillColor: [41, 128, 185], fontSize: 8 },
