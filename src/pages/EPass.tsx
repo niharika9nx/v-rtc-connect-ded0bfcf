@@ -29,12 +29,45 @@ const EPass = () => {
   const [ocrProgress, setOcrProgress] = useState(0);
   const [deletingIdentity, setDeletingIdentity] = useState(false);
   const [deletingMonthly, setDeletingMonthly] = useState(false);
-
   const [feeStatus, setFeeStatus] = useState<any>(null);
 
   useEffect(() => {
     fetchPass();
     checkFeeStatus();
+    
+    // Set up real-time subscription for pass changes (to detect when marked as fake)
+    if (user) {
+      const channel = supabase
+        .channel('pass-updates')
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'passes',
+            filter: `user_id=eq.${user.id}`
+          },
+          (payload) => {
+            console.log('Pass updated:', payload);
+            setPass(payload.new);
+            
+            // Show notification if pass was marked as fake
+            if (payload.new.verified === false && payload.old?.verified === true) {
+              toast({
+                title: "⚠️ Pass Marked as FAKE",
+                description: "Your pass has been marked as unverified due to duplicate numeric ID detection.",
+                variant: "destructive",
+                duration: 10000
+              });
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
   }, [user]);
 
   const checkFeeStatus = async () => {
@@ -601,7 +634,7 @@ const EPass = () => {
     
     // Normalize text for better matching
     let normalizedText = text
-      .replace(/[|!]/g, 'I')
+      .replace(/[|!]/g, 'i')
       .replace(/[o]/gi, '0')
       .replace(/\s+/g, ' ')
       .trim();
@@ -636,15 +669,16 @@ const EPass = () => {
       if (match && match[1]) {
         const passId = match[1].trim().replace(/[-\s]/g, '').toUpperCase();
         
-        // Validate: must be at least 4 characters, mix of letters and numbers preferred
+        // Validate: must be at least 4 characters
         if (passId.length >= 4) {
-          console.log(`Found Pass ID: ${passId}`);
+          const numericPortion = passId.replace(/\D/g, '');
+          console.log(`✅ Found Pass ID: ${passId} (numeric portion: ${numericPortion})`);
           return passId;
         }
       }
     }
     
-    console.log('No Pass ID found in text');
+    console.log('❌ No Pass ID found in text');
     return null;
   };
 
@@ -772,49 +806,77 @@ const EPass = () => {
       if (!uploadResult) throw new Error('Upload failed');
 
       // Extract only numeric characters from pass ID for duplicate checking
-      const numericPassId = extractedPassId ? extractedPassId.replace(/\D/g, '') : '';
+      const numericPassId = extractedPassId ? extractedPassId.replace(/\D/g, '').trim() : '';
+      console.log('Original Pass ID:', extractedPassId);
+      console.log('Numeric Pass ID for comparison:', numericPassId);
 
-      // Check for duplicate numeric pass IDs if pass ID exists
+      // Check for duplicate numeric pass IDs BEFORE saving
+      let isDuplicate = false;
+      const duplicatePassIds: string[] = [];
+      
       if (numericPassId && numericPassId.length >= 4) {
-        const { data: allPasses } = await supabase
+        const { data: allPasses, error: queryError } = await supabase
           .from('passes')
           .select('id, user_id, buss_pass_id')
-          .neq('user_id', user.id);
+          .not('buss_pass_id', 'is', null);
 
-        const duplicateFound = allPasses?.some(existingPass => {
-          if (!existingPass.buss_pass_id) return false;
-          const existingNumeric = existingPass.buss_pass_id.replace(/\D/g, '');
-          return existingNumeric === numericPassId && existingNumeric.length >= 4;
-        });
+        if (queryError) {
+          console.error('Error querying passes:', queryError);
+        } else {
+          console.log('Total passes to check:', allPasses?.length || 0);
+          
+          allPasses?.forEach(existingPass => {
+            if (existingPass.user_id === user.id) {
+              console.log('Skipping own pass:', existingPass.buss_pass_id);
+              return; // Skip current user's existing pass
+            }
+            
+            const existingNumeric = (existingPass.buss_pass_id || '').replace(/\D/g, '').trim();
+            console.log('Comparing with pass:', existingPass.buss_pass_id, '-> numeric:', existingNumeric);
+            
+            if (existingNumeric && existingNumeric === numericPassId && existingNumeric.length >= 4) {
+              isDuplicate = true;
+              duplicatePassIds.push(existingPass.id);
+              console.log('🚨 DUPLICATE FOUND:', existingPass.buss_pass_id, 'matches', extractedPassId);
+            }
+          });
+        }
 
-        if (duplicateFound) {
+        if (isDuplicate) {
+          console.log('⚠️ Duplicate detected! Total duplicates:', duplicatePassIds.length);
           toast({
-            title: "Duplicate Pass ID Detected",
-            description: "This pass ID already exists. Your pass will be marked as unverified.",
-            variant: "destructive"
+            title: "⚠️ Duplicate Pass ID Detected",
+            description: `This numeric pass ID (${numericPassId}) already exists. Pass will be marked as FAKE.`,
+            variant: "destructive",
+            duration: 5000
           });
         }
       }
 
-      // Update database with verified information
+      // Save pass to database with correct verification status
       const passData: any = {
         user_id: user.id,
         monthly_pass_url: uploadResult.publicUrl,
-        verified: true // Will be set to false by edge function if duplicate detected
+        verified: !isDuplicate, // Mark as false if duplicate found
+        buss_pass_id: extractedPassId || null,
+        expiry_date: extractedExpiryDate || null
       };
 
-      if (extractedPassId) passData.buss_pass_id = extractedPassId;
-      if (extractedExpiryDate) passData.expiry_date = extractedExpiryDate;
-
+      let currentPassId: string;
+      
       if (pass) {
         await supabase
           .from('passes')
           .update(passData)
           .eq('id', pass.id);
+        currentPassId = pass.id;
       } else {
-        await supabase
+        const { data: newPass } = await supabase
           .from('passes')
-          .insert(passData);
+          .insert(passData)
+          .select('id')
+          .single();
+        currentPassId = newPass?.id;
       }
 
       // Update profile with expiry date
@@ -825,68 +887,59 @@ const EPass = () => {
           .eq('id', user.id);
       }
 
-      // After saving, check for duplicates again (numeric comparison)
-      if (numericPassId && numericPassId.length >= 4) {
-        const { data: allPasses } = await supabase
-          .from('passes')
-          .select('id, user_id, buss_pass_id')
-          .not('buss_pass_id', 'is', null);
-
-        const duplicates: any[] = [];
-        allPasses?.forEach(existingPass => {
-          const existingNumeric = existingPass.buss_pass_id?.replace(/\D/g, '') || '';
-          if (existingNumeric === numericPassId && existingNumeric.length >= 4 && existingPass.user_id !== user.id) {
-            duplicates.push(existingPass);
-          }
-        });
-
-        if (duplicates.length > 0) {
-          // Mark current pass as unverified
+      // If duplicates found, mark all duplicate passes as unverified
+      if (isDuplicate && duplicatePassIds.length > 0) {
+        console.log('Marking all duplicate passes as unverified...');
+        
+        // Mark all duplicate passes as unverified
+        for (const duplicateId of duplicatePassIds) {
           await supabase
             .from('passes')
             .update({ verified: false })
-            .eq('user_id', user.id);
+            .eq('id', duplicateId);
+          console.log('Marked pass as unverified:', duplicateId);
+        }
 
-          // Mark all duplicates as unverified
-          for (const duplicate of duplicates) {
-            await supabase
-              .from('passes')
-              .update({ verified: false })
-              .eq('id', duplicate.id);
-          }
+        // Notify admins
+        const { data: admins } = await supabase
+          .from('user_roles')
+          .select('user_id')
+          .eq('role', 'admin');
 
-          // Notify admins
-          const { data: admins } = await supabase
-            .from('user_roles')
-            .select('user_id')
-            .eq('role', 'admin');
-
-          if (admins && admins.length > 0) {
-            const alertPromises = admins.map(admin =>
-              supabase.from('alerts').insert({
-                user_id: admin.user_id,
-                type: 'duplicate_pass',
-                status: 'pending',
-                message: `Duplicate Bus Pass ID detected (numeric: ${numericPassId}). Multiple users have passes with the same numeric ID. Please investigate immediately.`,
-                send_at: new Date().toISOString()
-              })
-            );
-            await Promise.all(alertPromises);
-          }
+        if (admins && admins.length > 0) {
+          console.log('Notifying admins about duplicate...');
+          const alertPromises = admins.map(admin =>
+            supabase.from('alerts').insert({
+              user_id: admin.user_id,
+              type: 'duplicate_pass',
+              status: 'pending',
+              message: `🚨 FAKE PASS DETECTED: Duplicate numeric ID ${numericPassId} found. Pass IDs involved: ${[extractedPassId, ...duplicatePassIds.map(id => `ID:${id}`)].join(', ')}. Immediate investigation required.`,
+              send_at: new Date().toISOString()
+            })
+          );
+          await Promise.all(alertPromises);
+          console.log('Admin alerts sent successfully');
         }
       }
 
       toast({
         title: "Success",
-        description: "Monthly pass saved successfully"
+        description: isDuplicate 
+          ? "Pass uploaded but marked as FAKE due to duplicate numeric ID" 
+          : "Monthly pass saved successfully"
       });
 
       setShowVerificationDialog(false);
       setMonthlyPassFile(null);
       setExtractedPassId('');
       setExtractedExpiryDate('');
+      
+      // Force refresh pass data
+      await new Promise(resolve => setTimeout(resolve, 500)); // Small delay to ensure DB is updated
       await fetchPass();
+      
     } catch (error: any) {
+      console.error('Save error:', error);
       toast({
         title: "Save failed",
         description: error.message,
@@ -1139,7 +1192,22 @@ const EPass = () => {
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center pointer-events-none">
                           <Maximize2 className="h-12 w-12 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
                         </div>
-                        {pass.expiry_date && new Date(pass.expiry_date) < new Date() && (
+                        {/* FAKE PASS takes priority over EXPIRED */}
+                        {pass.verified === false ? (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/70 rounded-lg backdrop-blur-sm pointer-events-none">
+                            <div className="text-center">
+                              <p className="text-red-500 text-4xl font-bold font-display animate-pulse drop-shadow-lg">
+                                FAKE PASS
+                              </p>
+                              <p className="text-white text-lg mt-2 font-semibold">
+                                ⚠️ DUPLICATE NUMERIC ID DETECTED
+                              </p>
+                              <p className="text-white text-sm mt-1">
+                                Contact admin immediately
+                              </p>
+                            </div>
+                          </div>
+                        ) : pass.expiry_date && new Date(pass.expiry_date) < new Date() ? (
                           <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-lg backdrop-blur-sm pointer-events-none">
                             <div className="text-center">
                               <p className="text-red-500 text-4xl font-bold font-display animate-pulse drop-shadow-lg">
@@ -1150,22 +1218,7 @@ const EPass = () => {
                               </p>
                             </div>
                           </div>
-                        )}
-                        {pass.verified === false && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/70 rounded-lg backdrop-blur-sm pointer-events-none">
-                            <div className="text-center">
-                              <p className="text-red-500 text-4xl font-bold font-display animate-pulse drop-shadow-lg">
-                                FAKE PASS
-                              </p>
-                              <p className="text-white text-lg mt-2 font-semibold">
-                                ⚠️ DUPLICATE PASS ID DETECTED
-                              </p>
-                              <p className="text-white text-sm mt-1">
-                                Contact admin immediately
-                              </p>
-                            </div>
-                          </div>
-                        )}
+                        ) : null}
                       </div>
                       <div className="flex items-center justify-between">
                         <p className="text-xs text-muted-foreground">Click to view full size</p>
