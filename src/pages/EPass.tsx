@@ -452,11 +452,11 @@ const EPass = () => {
   const extractDateFromText = (text: string): string | null => {
     console.log('Extracting date from:', text);
     
-    // Normalize text: fix common OCR errors
+    // Normalize text: fix common OCR errors and make case-insensitive
     let normalizedText = text
-      .replace(/[|!]/g, 'I')  // Pipe and exclamation to I
-      .replace(/[O0]/g, '0')  // Normalize zeros
-      .replace(/[l1]/g, '1')  // Normalize ones
+      .toLowerCase()
+      .replace(/[|!]/g, 'i')  // Pipe and exclamation to i
+      .replace(/[o]/g, '0')   // o to 0 for numbers
       .replace(/\s+/g, ' ')   // Normalize whitespace
       .trim();
     
@@ -475,17 +475,21 @@ const EPass = () => {
       'sep': '09', 'september': '09', 'sap': '09',
       'oct': '10', 'october': '10', 'oot': '10', 'ost': '10',
       'nov': '11', 'november': '11', 'nop': '11',
-      'dec': '12', 'december': '12', 'des': '12', 'deo': '12'
+      'dec': '12', 'december': '12', 'des': '12', 'deo': '12', 'dea': '12'
     };
     
-    // Priority 1: Look for "validity" or "valid to" section
-    const validityPatterns = [
+    // PRIORITY 1: Find "validity" section and extract date after "to"
+    // This targets the specific format: "VALIDITY 01-jan-2025 to 05-dec-2025"
+    const validityToPatterns = [
+      // Match "validity ... to DD-MMM-YYYY" with various separators
       /validity[:\s]+.*?to[:\s]+(\d{1,2})[-\/.\s]([a-z]{3,9})[-\/.\s](\d{2,4})/i,
-      /valid\s+to[:\s]+(\d{1,2})[-\/.\s]([a-z]{3,9})[-\/.\s](\d{2,4})/i,
-      /to[:\s]+(\d{1,2})[-\/.\s]([a-z]{3,9})[-\/.\s](\d{2,4})/i,
+      // Match "to DD-MMM-YYYY" after any "from" or start date
+      /(?:from|validity)[:\s]+\d{1,2}[-\/.\s][a-z]{3,9}[-\/.\s]\d{2,4}[:\s]+to[:\s]+(\d{1,2})[-\/.\s]([a-z]{3,9})[-\/.\s](\d{2,4})/i,
+      // Simpler: just look for "to DD-MMM-YYYY" pattern
+      /\bto[:\s]+(\d{1,2})[-\/.\s]([a-z]{3,9})[-\/.\s](\d{2,4})/i,
     ];
     
-    for (const pattern of validityPatterns) {
+    for (const pattern of validityToPatterns) {
       const match = normalizedText.match(pattern);
       if (match) {
         const day = match[1].padStart(2, '0');
@@ -499,15 +503,39 @@ const EPass = () => {
         
         const month = monthMap[monthStr];
         if (month) {
-          console.log(`Found in validity section: ${day}-${monthStr}-${year} -> ${year}-${month}-${day}`);
+          console.log(`✅ Found date after "to" in validity section: ${day}-${monthStr}-${year} -> ${year}-${month}-${day}`);
           return `${year}-${month}-${day}`;
         }
       }
     }
     
-    // Priority 2: Look for expiry/expire keywords
+    // PRIORITY 2: Look for "valid to" or "valid till" patterns
+    const validToPatterns = [
+      /valid\s*(?:to|till|until)[:\s]+(\d{1,2})[-\/.\s]([a-z]{3,9})[-\/.\s](\d{2,4})/i,
+    ];
+    
+    for (const pattern of validToPatterns) {
+      const match = normalizedText.match(pattern);
+      if (match) {
+        const day = match[1].padStart(2, '0');
+        const monthStr = match[2].toLowerCase().substring(0, 3);
+        let year = match[3];
+        
+        if (year.length === 2) {
+          year = '20' + year;
+        }
+        
+        const month = monthMap[monthStr];
+        if (month) {
+          console.log(`✅ Found in valid to/till section: ${day}-${monthStr}-${year} -> ${year}-${month}-${day}`);
+          return `${year}-${month}-${day}`;
+        }
+      }
+    }
+    
+    // PRIORITY 3: Look for expiry/expire keywords
     const expiryPatterns = [
-      /expir(?:y|es?)[:\s]+(\d{1,2})[-\/.\s]([a-z]{3,9})[-\/.\s](\d{2,4})/i,
+      /expir(?:y|es?|ing)[:\s]+(\d{1,2})[-\/.\s]([a-z]{3,9})[-\/.\s](\d{2,4})/i,
       /exp[:\s]+(\d{1,2})[-\/.\s]([a-z]{3,9})[-\/.\s](\d{2,4})/i,
     ];
     
@@ -530,7 +558,7 @@ const EPass = () => {
       }
     }
     
-    // Priority 3: All date patterns in text
+    // PRIORITY 4: Fallback - find all dates and return the last one (likely expiry)
     const datePatterns = [
       /(\d{1,2})[-\/]([a-z]{3,9})[-\/](\d{2,4})/gi,
       /(\d{1,2})[.]([a-z]{3,9})[.](\d{2,4})/gi,
@@ -560,11 +588,11 @@ const EPass = () => {
     // Return the last valid date found (typically expiry is last)
     if (allMatches.length > 0) {
       const lastMatch = allMatches[allMatches.length - 1];
-      console.log(`Fallback found date: ${lastMatch.year}-${lastMatch.month}-${lastMatch.day}`);
+      console.log(`⚠️ Fallback found date: ${lastMatch.year}-${lastMatch.month}-${lastMatch.day}`);
       return `${lastMatch.year}-${lastMatch.month}-${lastMatch.day}`;
     }
     
-    console.log('No date found in text');
+    console.log('❌ No date found in text');
     return null;
   };
 
