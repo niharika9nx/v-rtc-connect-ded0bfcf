@@ -125,52 +125,68 @@ serve(async (req) => {
     if (passId) {
       updateData.buss_pass_id = passId;
       
-      // Check for duplicate pass IDs
-      const { data: duplicates, error: duplicateError } = await supabase
-        .from('passes')
-        .select('user_id, id')
-        .eq('buss_pass_id', passId)
-        .neq('user_id', userId);
+      // Extract only numeric characters for duplicate checking
+      const numericPassId = passId.replace(/\D/g, '');
+      
+      // Check for duplicate pass IDs (numeric comparison) if numeric portion is at least 4 digits
+      if (numericPassId.length >= 4) {
+        const { data: allPasses, error: duplicateError } = await supabase
+          .from('passes')
+          .select('user_id, id, buss_pass_id')
+          .not('buss_pass_id', 'is', null)
+          .neq('user_id', userId);
 
-      if (duplicateError) {
-        console.error('Duplicate check error:', duplicateError);
-      }
-
-      if (duplicates && duplicates.length > 0) {
-        console.log('Duplicate pass ID detected:', passId);
-        
-        // Mark current pass as unverified
-        updateData.verified = false;
-        
-        // Mark all duplicate passes as unverified
-        for (const duplicate of duplicates) {
-          await supabase
-            .from('passes')
-            .update({ verified: false })
-            .eq('id', duplicate.id);
+        if (duplicateError) {
+          console.error('Duplicate check error:', duplicateError);
         }
 
-        // Get admin user IDs
-        const { data: admins } = await supabase
-          .from('user_roles')
-          .select('user_id')
-          .eq('role', 'admin');
-
-        // Create alerts for all admins
-        if (admins && admins.length > 0) {
-          const alertPromises = admins.map(admin =>
-            supabase.from('alerts').insert({
-              user_id: admin.user_id,
-              type: 'duplicate_pass',
-              status: 'pending',
-              message: `Duplicate Bus Pass ID detected: ${passId}. Multiple users have the same pass ID. Please investigate immediately.`,
-              send_at: new Date().toISOString()
-            })
-          );
-          await Promise.all(alertPromises);
+        // Find duplicates by comparing numeric portions
+        const duplicates: any[] = [];
+        if (allPasses) {
+          for (const existingPass of allPasses) {
+            const existingNumeric = (existingPass.buss_pass_id || '').replace(/\D/g, '');
+            if (existingNumeric === numericPassId && existingNumeric.length >= 4) {
+              duplicates.push(existingPass);
+            }
+          }
         }
 
-        console.log('Admins notified about duplicate pass ID');
+        if (duplicates.length > 0) {
+          console.log('Duplicate numeric pass ID detected:', numericPassId);
+          
+          // Mark current pass as unverified
+          updateData.verified = false;
+          
+          // Mark all duplicate passes as unverified
+          for (const duplicate of duplicates) {
+            await supabase
+              .from('passes')
+              .update({ verified: false })
+              .eq('id', duplicate.id);
+          }
+
+          // Get admin user IDs
+          const { data: admins } = await supabase
+            .from('user_roles')
+            .select('user_id')
+            .eq('role', 'admin');
+
+          // Create alerts for all admins
+          if (admins && admins.length > 0) {
+            const alertPromises = admins.map(admin =>
+              supabase.from('alerts').insert({
+                user_id: admin.user_id,
+                type: 'duplicate_pass',
+                status: 'pending',
+                message: `Duplicate Bus Pass ID detected (numeric: ${numericPassId}). Multiple users have passes with the same numeric ID. Please investigate immediately.`,
+                send_at: new Date().toISOString()
+              })
+            );
+            await Promise.all(alertPromises);
+          }
+
+          console.log('Admins notified about duplicate numeric pass ID');
+        }
       }
     }
 

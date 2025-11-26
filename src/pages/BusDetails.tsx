@@ -177,7 +177,7 @@ const BusDetails = () => {
                       <p className="font-medium text-lg">{busDetails.capacity} seats</p>
                     </div>
                   )}
-                  {passData?.buss_pass_id && (
+                   {passData?.buss_pass_id && feeStatus?.status === 'paid' && (
                     <div className="p-4 rounded-lg bg-gradient-primary/5 border border-primary/10">
                       <p className="text-sm text-muted-foreground mb-1">Bus Pass ID</p>
                       <p className="font-bold text-xl font-display text-primary">{passData.buss_pass_id}</p>
@@ -189,7 +189,7 @@ const BusDetails = () => {
                       <p className="font-bold text-2xl font-display text-accent">{profile.seat_number}</p>
                     </div>
                   )}
-                  {(passData?.expiry_date || profile?.pass_expiry_date) && (
+                   {(passData?.expiry_date || profile?.pass_expiry_date) && feeStatus?.status === 'paid' && (
                     <div className="p-4 rounded-lg bg-muted/50">
                       <p className="text-sm text-muted-foreground flex items-center gap-1 mb-1">
                         <Calendar className="h-4 w-4 text-primary" />
@@ -203,7 +203,7 @@ const BusDetails = () => {
                       )}
                     </div>
                   )}
-                  {passData && (
+                   {passData && feeStatus?.status === 'paid' && (
                     <div className="p-4 rounded-lg bg-muted/50 md:col-span-2">
                       <p className="text-sm text-muted-foreground mb-2">Pass Verification Status</p>
                       {passData.verified === false ? (

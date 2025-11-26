@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ArrowLeft, CreditCard, Upload, RefreshCw, ZoomIn, ZoomOut, Maximize2, X, Check, Trash2 } from 'lucide-react';
+import { ArrowLeft, CreditCard, Upload, RefreshCw, ZoomIn, ZoomOut, Maximize2, X, Check, Trash2, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Tesseract from 'tesseract.js';
 
@@ -30,9 +30,30 @@ const EPass = () => {
   const [deletingIdentity, setDeletingIdentity] = useState(false);
   const [deletingMonthly, setDeletingMonthly] = useState(false);
 
+  const [feeStatus, setFeeStatus] = useState<any>(null);
+
   useEffect(() => {
     fetchPass();
+    checkFeeStatus();
   }, [user]);
+
+  const checkFeeStatus = async () => {
+    if (!user) return;
+    
+    const currentMonth = new Date().toLocaleString('default', { month: 'long' });
+    const currentYear = new Date().getFullYear();
+    
+    const { data: feeData } = await supabase
+      .from('fee_history')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('month', currentMonth)
+      .eq('year', currentYear)
+      .eq('status', 'paid')
+      .maybeSingle();
+    
+    setFeeStatus(feeData);
+  };
 
   const fetchPass = async () => {
     if (user) {
@@ -659,16 +680,12 @@ const EPass = () => {
     setOcrProgress(0);
 
     try {
-      const uploadResult = await uploadFile(monthlyPassFile, 'monthly_pass');
-      
-      if (!uploadResult) throw new Error('Upload failed');
-
       toast({
         title: "Analyzing pass...",
         description: "Extracting expiry date and pass ID"
       });
 
-      // Run OCR on the uploaded image (async to prevent blocking)
+      // Run OCR on the file (don't upload yet, wait for verification)
       setTimeout(async () => {
         try {
           const ocrText = await runOCR(monthlyPassFile);
@@ -708,7 +725,7 @@ const EPass = () => {
 
     } catch (error: any) {
       toast({
-        title: "Upload failed",
+        title: "Processing failed",
         description: error.message,
         variant: "destructive"
       });
@@ -719,14 +736,43 @@ const EPass = () => {
   const handleVerificationConfirm = async () => {
     if (!user || !monthlyPassFile) return;
 
+    setUploading(true);
+
     try {
+      // Now upload the file after user verification
       const uploadResult = await uploadFile(monthlyPassFile, 'monthly_pass');
       if (!uploadResult) throw new Error('Upload failed');
+
+      // Extract only numeric characters from pass ID for duplicate checking
+      const numericPassId = extractedPassId ? extractedPassId.replace(/\D/g, '') : '';
+
+      // Check for duplicate numeric pass IDs if pass ID exists
+      if (numericPassId && numericPassId.length >= 4) {
+        const { data: allPasses } = await supabase
+          .from('passes')
+          .select('id, user_id, buss_pass_id')
+          .neq('user_id', user.id);
+
+        const duplicateFound = allPasses?.some(existingPass => {
+          if (!existingPass.buss_pass_id) return false;
+          const existingNumeric = existingPass.buss_pass_id.replace(/\D/g, '');
+          return existingNumeric === numericPassId && existingNumeric.length >= 4;
+        });
+
+        if (duplicateFound) {
+          toast({
+            title: "Duplicate Pass ID Detected",
+            description: "This pass ID already exists. Your pass will be marked as unverified.",
+            variant: "destructive"
+          });
+        }
+      }
 
       // Update database with verified information
       const passData: any = {
         user_id: user.id,
-        monthly_pass_url: uploadResult.publicUrl
+        monthly_pass_url: uploadResult.publicUrl,
+        verified: true // Will be set to false by edge function if duplicate detected
       };
 
       if (extractedPassId) passData.buss_pass_id = extractedPassId;
@@ -749,6 +795,57 @@ const EPass = () => {
           .from('profiles')
           .update({ pass_expiry_date: extractedExpiryDate })
           .eq('id', user.id);
+      }
+
+      // After saving, check for duplicates again (numeric comparison)
+      if (numericPassId && numericPassId.length >= 4) {
+        const { data: allPasses } = await supabase
+          .from('passes')
+          .select('id, user_id, buss_pass_id')
+          .not('buss_pass_id', 'is', null);
+
+        const duplicates: any[] = [];
+        allPasses?.forEach(existingPass => {
+          const existingNumeric = existingPass.buss_pass_id?.replace(/\D/g, '') || '';
+          if (existingNumeric === numericPassId && existingNumeric.length >= 4 && existingPass.user_id !== user.id) {
+            duplicates.push(existingPass);
+          }
+        });
+
+        if (duplicates.length > 0) {
+          // Mark current pass as unverified
+          await supabase
+            .from('passes')
+            .update({ verified: false })
+            .eq('user_id', user.id);
+
+          // Mark all duplicates as unverified
+          for (const duplicate of duplicates) {
+            await supabase
+              .from('passes')
+              .update({ verified: false })
+              .eq('id', duplicate.id);
+          }
+
+          // Notify admins
+          const { data: admins } = await supabase
+            .from('user_roles')
+            .select('user_id')
+            .eq('role', 'admin');
+
+          if (admins && admins.length > 0) {
+            const alertPromises = admins.map(admin =>
+              supabase.from('alerts').insert({
+                user_id: admin.user_id,
+                type: 'duplicate_pass',
+                status: 'pending',
+                message: `Duplicate Bus Pass ID detected (numeric: ${numericPassId}). Multiple users have passes with the same numeric ID. Please investigate immediately.`,
+                send_at: new Date().toISOString()
+              })
+            );
+            await Promise.all(alertPromises);
+          }
+        }
       }
 
       toast({
@@ -904,7 +1001,21 @@ const EPass = () => {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-6">
-        <Card className="glass border-border/50 shadow-lg hover:shadow-glow transition-all animate-slide-up">
+        {!feeStatus && (
+          <Card className="glass border-destructive/50 shadow-lg mb-6 animate-slide-up">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3 text-destructive">
+                <AlertCircle className="h-6 w-6" />
+                <div>
+                  <p className="font-bold text-lg">Monthly Fee Not Paid</p>
+                  <p className="text-sm text-muted-foreground">You must pay your monthly fee before uploading or viewing pass documents.</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
+        <Card className={`glass border-border/50 shadow-lg hover:shadow-glow transition-all animate-slide-up ${!feeStatus ? 'opacity-50 pointer-events-none' : ''}`}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-foreground">
               <CreditCard className="h-5 w-5 text-primary" />
