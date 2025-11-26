@@ -1160,18 +1160,47 @@ const EPass = () => {
 
                 <div className="space-y-3">
                   <Label htmlFor="monthly-pass" className="text-foreground font-semibold">MONTHLY PASS</Label>
+                  
+                  {/* Show alert if user has active pass */}
+                  {pass?.monthly_pass_url && pass?.expiry_date && 
+                   new Date(pass.expiry_date) >= new Date() && 
+                   pass.verified !== false && (
+                    <div className="bg-primary/10 border border-primary/30 rounded-lg p-3 flex items-start gap-2">
+                      <AlertCircle className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                      <div className="text-sm">
+                        <p className="font-semibold text-foreground">Active Pass Detected</p>
+                        <p className="text-muted-foreground">
+                          You have an active pass valid until{" "}
+                          <span className="font-semibold text-foreground">
+                            {new Date(pass.expiry_date).toLocaleDateString('en-US', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric'
+                            })}
+                          </span>
+                          . You can upload a new pass after it expires.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  
                   <div className="flex gap-2">
                     <Input
                       id="monthly-pass"
                       type="file"
                       accept="image/*"
                       onChange={(e) => setMonthlyPassFile(e.target.files?.[0] || null)}
-                      disabled={uploading}
+                      disabled={uploading || (pass?.monthly_pass_url && pass?.expiry_date && 
+                        new Date(pass.expiry_date) >= new Date() && 
+                        pass.verified !== false)}
                       className="bg-muted/30 border-border/50 text-foreground flex-1"
                     />
                     <Button 
                       onClick={handleMonthlyPassUpload} 
-                      disabled={uploading || !monthlyPassFile}
+                      disabled={uploading || !monthlyPassFile || 
+                        (pass?.monthly_pass_url && pass?.expiry_date && 
+                          new Date(pass.expiry_date) >= new Date() && 
+                          pass.verified !== false)}
                       className="bg-primary hover:bg-primary/90"
                     >
                       <Upload className="h-4 w-4 mr-2" />
@@ -1226,7 +1255,12 @@ const EPass = () => {
                           variant="destructive"
                           size="sm"
                           onClick={handleDeleteMonthlyPass}
-                          disabled={deletingMonthly}
+                          disabled={deletingMonthly || (pass?.expiry_date && 
+                            new Date(pass.expiry_date) >= new Date() && 
+                            pass.verified !== false)}
+                          title={pass?.expiry_date && new Date(pass.expiry_date) >= new Date() && pass.verified !== false 
+                            ? "Cannot delete active pass. Wait until expiry." 
+                            : ""}
                         >
                           <Trash2 className="h-3 w-3 mr-1" />
                           {deletingMonthly ? "Deleting..." : "Delete"}
