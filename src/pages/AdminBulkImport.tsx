@@ -419,25 +419,47 @@ const AdminBulkImport = () => {
                         ⚠️ Important: This only UPDATES existing profiles. Users must sign up first before their profiles can be updated via import.
                       </p>
                     </div>
-                    <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                      <li>name, email, phone, gender (male/female/other)</li>
-                      <li>role (student/faculty/admin)</li>
-                      <li>college, registration_id</li>
-                      <li>branch, year, section, department</li>
-                      <li>bus_number</li>
+                    <p className="text-xs text-muted-foreground mb-2">Required columns:</p>
+                    <ul className="list-disc list-inside space-y-1 text-muted-foreground text-sm">
+                      <li><strong>name</strong> - Full name</li>
+                      <li><strong>email</strong> - Must match existing user's email</li>
+                      <li><strong>phone</strong> - 10-digit phone number</li>
+                      <li><strong>gender</strong> - male, female, or other</li>
+                      <li><strong>role</strong> - student, faculty, or admin</li>
+                      <li><strong>college</strong> - College name</li>
+                      <li><strong>registration_id</strong> - Student registration ID</li>
+                      <li><strong>branch</strong> - Branch/Department</li>
+                      <li><strong>year</strong> - Year of study</li>
+                      <li><strong>section</strong> - Section (A, B, C, etc.)</li>
+                      <li><strong>department</strong> - Department name</li>
+                      <li><strong>bus_number</strong> - Assigned bus number</li>
                     </ul>
+                    <div className="mt-3 p-2 bg-muted/30 rounded text-xs">
+                      <p className="font-semibold mb-1">Example row:</p>
+                      <code className="text-primary break-all">John Doe,john@example.com,9876543210,male,student,SVECW,20B01A0501,CSE,2,A,CSE,1</code>
+                    </div>
                   </div>
                 )}
                 {importType === 'bus_details' && (
                   <div className="space-y-2">
                     <h4 className="font-semibold">Bus Details:</h4>
-                    <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                      <li>bus_number (unique identifier)</li>
-                      <li>route (description)</li>
-                      <li>capacity (number)</li>
-                      <li>departure_time (HH:MM:SS)</li>
-                      <li>arrival_time (HH:MM:SS)</li>
+                    <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-2 mb-2">
+                      <p className="text-green-600 text-xs font-medium">
+                        ✅ This creates NEW bus records. No pre-existing data required.
+                      </p>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-2">Required columns:</p>
+                    <ul className="list-disc list-inside space-y-1 text-muted-foreground text-sm">
+                      <li><strong>bus_number</strong> - Unique identifier (e.g., "1", "2", "3")</li>
+                      <li><strong>route</strong> - Route description text</li>
+                      <li><strong>capacity</strong> - Number of seats (must be a number)</li>
+                      <li><strong>departure_time</strong> - Format: HH:MM:SS (e.g., "08:00:00")</li>
+                      <li><strong>arrival_time</strong> - Format: HH:MM:SS (e.g., "18:00:00")</li>
                     </ul>
+                    <div className="mt-3 p-2 bg-muted/30 rounded text-xs">
+                      <p className="font-semibold mb-1">Example row:</p>
+                      <code className="text-primary">1,Route A - College to City,50,08:00:00,18:00:00</code>
+                    </div>
                   </div>
                 )}
                 {importType === 'fee_history' && (
@@ -448,14 +470,19 @@ const AdminBulkImport = () => {
                         ⚠️ Important: Users must exist in the system. The user_email must match an existing profile's email.
                       </p>
                     </div>
-                    <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                      <li>user_email (must exist in profiles)</li>
-                      <li>bus_number</li>
-                      <li>month (January, February, etc.)</li>
-                      <li>year (number)</li>
-                      <li>amount (number)</li>
-                      <li>status (paid/due)</li>
+                    <p className="text-xs text-muted-foreground mb-2">Required columns:</p>
+                    <ul className="list-disc list-inside space-y-1 text-muted-foreground text-sm">
+                      <li><strong>user_email</strong> - Must match an existing user's email</li>
+                      <li><strong>bus_number</strong> - Must match an existing bus number</li>
+                      <li><strong>month</strong> - Full month name (January, February, March, April, May, June, July, August, September, October, November, December)</li>
+                      <li><strong>year</strong> - 4-digit year (e.g., 2025)</li>
+                      <li><strong>amount</strong> - Fee amount (number, e.g., 1000)</li>
+                      <li><strong>status</strong> - Must be exactly "paid" or "due"</li>
                     </ul>
+                    <div className="mt-3 p-2 bg-muted/30 rounded text-xs">
+                      <p className="font-semibold mb-1">Example row:</p>
+                      <code className="text-primary">john@example.com,1,January,2025,1000,paid</code>
+                    </div>
                   </div>
                 )}
               </div>
