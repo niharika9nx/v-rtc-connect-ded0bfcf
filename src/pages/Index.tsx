@@ -156,7 +156,7 @@ const Index = () => {
         </div>
 
         <div className="space-y-3 md:space-y-4">
-          <h1 className="text-4xl md:text-7xl font-bold font-display text-foreground tracking-tight">
+          <h1 className="text-4xl font-bold font-display text-foreground tracking-tight md:text-6xl">
             Welcome to{" "}
             <span className="bg-gradient-primary bg-clip-text text-transparent">V-RTC CONNECT</span>
           </h1>
