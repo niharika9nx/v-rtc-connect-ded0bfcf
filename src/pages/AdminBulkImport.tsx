@@ -411,9 +411,14 @@ const AdminBulkImport = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4 text-sm">
-                {importType === 'profiles' && (
+              {importType === 'profiles' && (
                   <div className="space-y-2">
                     <h4 className="font-semibold">Student/Faculty Profiles:</h4>
+                    <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-2 mb-2">
+                      <p className="text-amber-600 text-xs font-medium">
+                        ⚠️ Important: This only UPDATES existing profiles. Users must sign up first before their profiles can be updated via import.
+                      </p>
+                    </div>
                     <ul className="list-disc list-inside space-y-1 text-muted-foreground">
                       <li>name, email, phone, gender (male/female/other)</li>
                       <li>role (student/faculty/admin)</li>
@@ -438,6 +443,11 @@ const AdminBulkImport = () => {
                 {importType === 'fee_history' && (
                   <div className="space-y-2">
                     <h4 className="font-semibold">Fee History:</h4>
+                    <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-2 mb-2">
+                      <p className="text-amber-600 text-xs font-medium">
+                        ⚠️ Important: Users must exist in the system. The user_email must match an existing profile's email.
+                      </p>
+                    </div>
                     <ul className="list-disc list-inside space-y-1 text-muted-foreground">
                       <li>user_email (must exist in profiles)</li>
                       <li>bus_number</li>
