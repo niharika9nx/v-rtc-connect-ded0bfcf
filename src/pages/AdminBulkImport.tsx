@@ -31,6 +31,8 @@ const AdminBulkImport = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [importResults, setImportResults] = useState<{ success: number; failed: number } | null>(null);
 
+  const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
   const templateData = {
     profiles: {
       headers: ['name', 'email', 'phone', 'gender', 'role', 'college', 'registration_id', 'branch', 'year', 'section', 'department', 'bus_number'],
@@ -41,8 +43,8 @@ const AdminBulkImport = () => {
       sample: '1,Route A - College to City,50,08:00:00,18:00:00'
     },
     fee_history: {
-      headers: ['user_email', 'bus_number', 'month', 'year', 'amount', 'status'],
-      sample: 'john@example.com,1,January,2025,1000,paid'
+      headers: ['user_email', 'bus_number', 'year', 'amount', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+      sample: 'john@example.com,1,2025,1000,paid,paid,paid,due,due,due,due,due,due,due,due,due'
     }
   };
 
@@ -85,10 +87,16 @@ const AdminBulkImport = () => {
     
     if (!row.user_email || !row.user_email.includes('@')) errors.push('Valid user email is required');
     if (!row.bus_number) errors.push('Bus number is required');
-    if (!row.month) errors.push('Month is required');
     if (!row.year || isNaN(parseInt(row.year))) errors.push('Valid year is required');
     if (!row.amount || isNaN(parseFloat(row.amount))) errors.push('Valid amount is required');
-    if (!['paid', 'due'].includes(row.status?.toLowerCase())) errors.push('Status must be paid or due');
+    
+    // Validate each month column
+    for (const month of MONTHS) {
+      const value = row[month]?.toLowerCase()?.trim();
+      if (value && !['paid', 'due'].includes(value)) {
+        errors.push(`${month} must be 'paid' or 'due'`);
+      }
+    }
     
     return { isValid: errors.length === 0, errors };
   };
@@ -284,39 +292,45 @@ const AdminBulkImport = () => {
             
             if (!profile) throw new Error('User not found');
             
-            // Check if fee record exists for this user, month, year
-            const { data: existingFee } = await supabase
-              .from('fee_history')
-              .select('id')
-              .eq('user_id', profile.id)
-              .eq('month', row.data.month)
-              .eq('year', parseInt(row.data.year))
-              .maybeSingle();
-            
-            if (existingFee) {
-              // Update existing fee record
-              const { error } = await supabase
+            // Process each month column
+            for (const month of MONTHS) {
+              const status = row.data[month]?.toLowerCase()?.trim();
+              if (!status || !['paid', 'due'].includes(status)) continue;
+              
+              // Check if fee record exists for this user, month, year
+              const { data: existingFee } = await supabase
                 .from('fee_history')
-                .update({
+                .select('id')
+                .eq('user_id', profile.id)
+                .eq('month', month)
+                .eq('year', parseInt(row.data.year))
+                .maybeSingle();
+              
+              if (existingFee) {
+                // Update existing fee record
+                const { error } = await supabase
+                  .from('fee_history')
+                  .update({
+                    bus_number: row.data.bus_number,
+                    amount: parseFloat(row.data.amount),
+                    status: status
+                  })
+                  .eq('id', existingFee.id);
+                
+                if (error) throw error;
+              } else {
+                // Insert new fee record
+                const { error } = await supabase.from('fee_history').insert({
+                  user_id: profile.id,
                   bus_number: row.data.bus_number,
+                  month: month,
+                  year: parseInt(row.data.year),
                   amount: parseFloat(row.data.amount),
-                  status: row.data.status?.toLowerCase()
-                })
-                .eq('id', existingFee.id);
-              
-              if (error) throw error;
-            } else {
-              // Insert new fee record
-              const { error } = await supabase.from('fee_history').insert({
-                user_id: profile.id,
-                bus_number: row.data.bus_number,
-                month: row.data.month,
-                year: parseInt(row.data.year),
-                amount: parseFloat(row.data.amount),
-                status: row.data.status?.toLowerCase()
-              });
-              
-              if (error) throw error;
+                  status: status
+                });
+                
+                if (error) throw error;
+              }
             }
           }
           
@@ -522,18 +536,21 @@ const AdminBulkImport = () => {
                         ⚠️ Users must exist in the system. The user_email must match an existing profile's email.
                       </p>
                     </div>
-                    <p className="text-xs text-muted-foreground mb-2">Required columns:</p>
+                    <p className="text-xs text-muted-foreground mb-2">Required columns (16 columns total):</p>
                     <ul className="list-disc list-inside space-y-1 text-muted-foreground text-sm">
                       <li><strong>user_email</strong> - Must match an existing user's email</li>
                       <li><strong>bus_number</strong> - Must match an existing bus number</li>
-                      <li><strong>month</strong> - Full month name (January, February, March, April, May, June, July, August, September, October, November, December)</li>
                       <li><strong>year</strong> - 4-digit year (e.g., 2025)</li>
-                      <li><strong>amount</strong> - Fee amount (number, e.g., 1000)</li>
-                      <li><strong>status</strong> - Must be exactly "paid" or "due"</li>
+                      <li><strong>amount</strong> - Fee amount per month (number, e.g., 1000)</li>
+                      <li><strong>January to December</strong> - Each month column contains "paid" or "due"</li>
                     </ul>
                     <div className="mt-3 p-2 bg-muted/30 rounded text-xs">
                       <p className="font-semibold mb-1">Example row:</p>
-                      <code className="text-primary">john@example.com,1,January,2025,1000,paid</code>
+                      <code className="text-primary break-all">john@example.com,1,2025,1000,paid,paid,paid,due,due,due,due,due,due,due,due,due</code>
+                    </div>
+                    <div className="mt-2 p-2 bg-muted/30 rounded text-xs">
+                      <p className="font-semibold mb-1">Column order:</p>
+                      <code className="text-muted-foreground break-all">user_email, bus_number, year, amount, January, February, March, April, May, June, July, August, September, October, November, December</code>
                     </div>
                   </div>
                 )}
