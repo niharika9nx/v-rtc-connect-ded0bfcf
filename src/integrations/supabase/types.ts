@@ -202,6 +202,7 @@ export type Database = {
           id: string
           identity_card_url: string | null
           monthly_pass_url: string | null
+          Name: string | null
           user_id: string | null
           verified: boolean | null
         }
@@ -212,6 +213,7 @@ export type Database = {
           id?: string
           identity_card_url?: string | null
           monthly_pass_url?: string | null
+          Name?: string | null
           user_id?: string | null
           verified?: boolean | null
         }
@@ -222,10 +224,19 @@ export type Database = {
           id?: string
           identity_card_url?: string | null
           monthly_pass_url?: string | null
+          Name?: string | null
           user_id?: string | null
           verified?: boolean | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "passes_Name_fkey"
+            columns: ["Name"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["name"]
+          },
+        ]
       }
       profiles: {
         Row: {
