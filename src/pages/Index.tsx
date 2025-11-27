@@ -149,7 +149,7 @@ const Index = () => {
             <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full" style={{
             animationDuration: '6s'
           }} />
-            <div className="relative p-3 md:p-5 rounded-2xl bg-gradient-primary/10 border border-primary/30 backdrop-blur-sm shadow-glow">
+            <div className="relative p-3 md:p-5 bg-gradient-primary/10 border border-primary/30 backdrop-blur-sm shadow-glow rounded-xl">
               <Bus className="h-12 w-12 md:h-16 md:w-16 text-primary" />
             </div>
           </div>
