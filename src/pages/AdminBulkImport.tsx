@@ -242,35 +242,82 @@ const AdminBulkImport = () => {
             
             if (error) throw error;
           } else if (importType === 'bus_details') {
-            const { error } = await supabase.from('bus_details').insert({
-              bus_number: row.data.bus_number,
-              route: row.data.route,
-              capacity: parseInt(row.data.capacity),
-              departure_time: row.data.departure_time,
-              arrival_time: row.data.arrival_time
-            });
+            // Check if bus exists to update or insert
+            const { data: existingBus } = await supabase
+              .from('bus_details')
+              .select('ID')
+              .eq('bus_number', row.data.bus_number)
+              .maybeSingle();
             
-            if (error) throw error;
+            if (existingBus) {
+              // Update existing bus
+              const { error } = await supabase
+                .from('bus_details')
+                .update({
+                  route: row.data.route,
+                  capacity: parseInt(row.data.capacity),
+                  departure_time: row.data.departure_time,
+                  arrival_time: row.data.arrival_time
+                })
+                .eq('ID', existingBus.ID);
+              
+              if (error) throw error;
+            } else {
+              // Insert new bus
+              const { error } = await supabase.from('bus_details').insert({
+                bus_number: row.data.bus_number,
+                route: row.data.route,
+                capacity: parseInt(row.data.capacity),
+                departure_time: row.data.departure_time,
+                arrival_time: row.data.arrival_time
+              });
+              
+              if (error) throw error;
+            }
           } else if (importType === 'fee_history') {
             // First, get user_id from email
             const { data: profile } = await supabase
               .from('profiles')
               .select('id')
               .eq('email', row.data.user_email)
-              .single();
+              .maybeSingle();
             
             if (!profile) throw new Error('User not found');
             
-            const { error } = await supabase.from('fee_history').insert({
-              user_id: profile.id,
-              bus_number: row.data.bus_number,
-              month: row.data.month,
-              year: parseInt(row.data.year),
-              amount: parseFloat(row.data.amount),
-              status: row.data.status?.toLowerCase()
-            });
+            // Check if fee record exists for this user, month, year
+            const { data: existingFee } = await supabase
+              .from('fee_history')
+              .select('id')
+              .eq('user_id', profile.id)
+              .eq('month', row.data.month)
+              .eq('year', parseInt(row.data.year))
+              .maybeSingle();
             
-            if (error) throw error;
+            if (existingFee) {
+              // Update existing fee record
+              const { error } = await supabase
+                .from('fee_history')
+                .update({
+                  bus_number: row.data.bus_number,
+                  amount: parseFloat(row.data.amount),
+                  status: row.data.status?.toLowerCase()
+                })
+                .eq('id', existingFee.id);
+              
+              if (error) throw error;
+            } else {
+              // Insert new fee record
+              const { error } = await supabase.from('fee_history').insert({
+                user_id: profile.id,
+                bus_number: row.data.bus_number,
+                month: row.data.month,
+                year: parseInt(row.data.year),
+                amount: parseFloat(row.data.amount),
+                status: row.data.status?.toLowerCase()
+              });
+              
+              if (error) throw error;
+            }
           }
           
           successCount++;
@@ -443,14 +490,14 @@ const AdminBulkImport = () => {
                 {importType === 'bus_details' && (
                   <div className="space-y-2">
                     <h4 className="font-semibold">Bus Details:</h4>
-                    <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-2 mb-2">
-                      <p className="text-green-600 text-xs font-medium">
-                        ✅ This creates NEW bus records. No pre-existing data required.
+                    <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-2 mb-2">
+                      <p className="text-blue-600 text-xs font-medium">
+                        ✅ Creates NEW buses or UPDATES existing ones (matched by bus_number).
                       </p>
                     </div>
                     <p className="text-xs text-muted-foreground mb-2">Required columns:</p>
                     <ul className="list-disc list-inside space-y-1 text-muted-foreground text-sm">
-                      <li><strong>bus_number</strong> - Unique identifier (e.g., "1", "2", "3")</li>
+                      <li><strong>bus_number</strong> - Unique identifier (e.g., "1", "2", "3") - used to match existing records</li>
                       <li><strong>route</strong> - Route description text</li>
                       <li><strong>capacity</strong> - Number of seats (must be a number)</li>
                       <li><strong>departure_time</strong> - Format: HH:MM:SS (e.g., "08:00:00")</li>
@@ -465,9 +512,14 @@ const AdminBulkImport = () => {
                 {importType === 'fee_history' && (
                   <div className="space-y-2">
                     <h4 className="font-semibold">Fee History:</h4>
+                    <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-2 mb-2">
+                      <p className="text-blue-600 text-xs font-medium">
+                        ✅ Creates NEW fee records or UPDATES existing ones (matched by user_email + month + year).
+                      </p>
+                    </div>
                     <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-2 mb-2">
                       <p className="text-amber-600 text-xs font-medium">
-                        ⚠️ Important: Users must exist in the system. The user_email must match an existing profile's email.
+                        ⚠️ Users must exist in the system. The user_email must match an existing profile's email.
                       </p>
                     </div>
                     <p className="text-xs text-muted-foreground mb-2">Required columns:</p>
