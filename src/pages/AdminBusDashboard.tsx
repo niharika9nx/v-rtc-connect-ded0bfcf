@@ -96,7 +96,6 @@ interface Stats {
   feePaid: number;
   feeDue: number;
   expiringPasses: number;
-  passesIssued: number;
   passesExpired: number;
   passesUploaded: number;
 }
@@ -112,7 +111,6 @@ const AdminBusDashboard = () => {
     feePaid: 0,
     feeDue: 0,
     expiringPasses: 0,
-    passesIssued: 0,
     passesExpired: 0,
     passesUploaded: 0,
   });
@@ -308,33 +306,35 @@ const AdminBusDashboard = () => {
         .lte('pass_expiry_date', fiveDaysFromNow.toISOString().split('T')[0])
         .gte('pass_expiry_date', new Date().toISOString().split('T')[0]);
 
-      // Fetch passes issued count - first get filtered profile IDs, then count passes
-      const passesIssuedUserIds = profiles.map(p => p.id);
+      const profileUserIds = profiles.map(p => p.id);
+
+      // Fetch passes expired count (users whose pass_expiry_date is in the past)
+      const today = new Date().toISOString().split('T')[0];
+      let expiredQuery = supabase
+        .from('profiles')
+        .select('id')
+        .eq('bus_number', busNumber)
+        .lt('pass_expiry_date', today)
+        .not('pass_expiry_date', 'is', null);
       
-      const { data: passesIssuedData } = await supabase
-        .from('passes')
-        .select('user_id')
-        .in('user_id', passesIssuedUserIds)
-        .not('monthly_pass_url', 'is', null);
+      if (selectedCollege !== 'all') {
+        expiredQuery = expiredQuery.eq('college', selectedCollege);
+      }
+      if (selectedBranch !== 'all') {
+        expiredQuery = expiredQuery.eq('branch', selectedBranch);
+      }
+      if (selectedYear !== 'all') {
+        expiredQuery = expiredQuery.eq('year', selectedYear);
+      }
 
-      const filteredPasses = passesIssuedData || [];
-
-      // Fetch passes expired count (users who answered "No" to pass renewal) - use filtered profile IDs
-      const { data: expiredAlertsData } = await supabase
-        .from('alerts')
-        .select('user_id')
-        .in('user_id', passesIssuedUserIds)
-        .eq('type', 'pass_renewal_reminder')
-        .eq('user_response', 'no')
-        .eq('status', 'pending');
-
-      const filteredExpiredAlerts = expiredAlertsData || [];
+      const { data: expiredPassesData } = await expiredQuery;
+      const filteredExpiredPasses = expiredPassesData || [];
 
       // Fetch passes uploaded count (users who have either monthly_pass_url or identity_card_url)
       const { data: passesUploadedData } = await supabase
         .from('passes')
         .select('user_id')
-        .in('user_id', passesIssuedUserIds)
+        .in('user_id', profileUserIds)
         .or('monthly_pass_url.not.is.null,identity_card_url.not.is.null');
 
       const filteredPassesUploaded = passesUploadedData || [];
@@ -345,8 +345,7 @@ const AdminBusDashboard = () => {
         feePaid: feePaidCount,
         feeDue: feeDueCount,
         expiringPasses: passData?.length || 0,
-        passesIssued: filteredPasses?.length || 0,
-        passesExpired: filteredExpiredAlerts?.length || 0,
+        passesExpired: filteredExpiredPasses?.length || 0,
         passesUploaded: filteredPassesUploaded?.length || 0,
       });
     }
@@ -440,54 +439,27 @@ const AdminBusDashboard = () => {
       }
 
       setUserList(expiringWithPassIds);
-    } else if (type === 'passesIssued') {
-      // Fetch users who have uploaded monthly passes
-      const { data: passesData } = await supabase
-        .from('passes')
-        .select('user_id')
-        .not('monthly_pass_url', 'is', null);
-
-      const passUserIds = passesData?.map((p) => p.user_id) || [];
-      
-      const { data: passProfiles } = await supabase
+    } else if (type === 'passesExpired') {
+      // Fetch users whose pass_expiry_date is in the past
+      const today = new Date().toISOString().split('T')[0];
+      let expiredQuery = supabase
         .from('profiles')
         .select('id, name, role, college, branch, year, phone, seat_number')
         .eq('bus_number', busNumber)
-        .in('id', passUserIds);
-
-      // Fetch bus pass IDs for issued passes
-      let issuedWithPassIds = passProfiles || [];
-      if (passProfiles && passProfiles.length > 0) {
-        const userIds = passProfiles.map(p => p.id);
-        const { data: passIdData } = await supabase
-          .from('passes')
-          .select('user_id, buss_pass_id')
-          .in('user_id', userIds);
-
-        const passIdMap = new Map(passIdData?.map(p => [p.user_id, p.buss_pass_id]) || []);
-        issuedWithPassIds = passProfiles.map(p => ({
-          ...p,
-          buss_pass_id: passIdMap.get(p.id)
-        }));
+        .lt('pass_expiry_date', today)
+        .not('pass_expiry_date', 'is', null);
+      
+      if (selectedCollege !== 'all') {
+        expiredQuery = expiredQuery.eq('college', selectedCollege);
+      }
+      if (selectedBranch !== 'all') {
+        expiredQuery = expiredQuery.eq('branch', selectedBranch);
+      }
+      if (selectedYear !== 'all') {
+        expiredQuery = expiredQuery.eq('year', selectedYear);
       }
 
-      setUserList(issuedWithPassIds);
-    } else if (type === 'passesExpired') {
-      // Fetch users who answered "No" to pass renewal reminder
-      const { data: expiredAlertsData } = await supabase
-        .from('alerts')
-        .select('user_id')
-        .eq('type', 'pass_renewal_reminder')
-        .eq('user_response', 'no')
-        .eq('status', 'pending');
-
-      const expiredUserIds = expiredAlertsData?.map((a) => a.user_id) || [];
-      
-      const { data: expiredProfiles } = await supabase
-        .from('profiles')
-        .select('id, name, role, college, branch, year, phone, seat_number')
-        .eq('bus_number', busNumber)
-        .in('id', expiredUserIds);
+      const { data: expiredProfiles } = await expiredQuery;
 
       // Fetch bus pass IDs for expired passes
       let expiredWithPassIds = expiredProfiles || [];
@@ -976,20 +948,6 @@ const AdminBusDashboard = () => {
             <CardContent>
               <p className="text-2xl md:text-3xl font-bold text-orange-600">
                 {stats.expiringPasses}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card
-            className="hover:shadow-lg transition-shadow cursor-pointer"
-            onClick={() => handleStatClick('passesIssued')}
-          >
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base md:text-lg">Passes Issued</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl md:text-3xl font-bold text-blue-600">
-                {stats.passesIssued}
               </p>
             </CardContent>
           </Card>
