@@ -98,6 +98,7 @@ interface Stats {
   expiringPasses: number;
   passesIssued: number;
   passesExpired: number;
+  passesUploaded: number;
 }
 
 const AdminBusDashboard = () => {
@@ -113,6 +114,7 @@ const AdminBusDashboard = () => {
     expiringPasses: 0,
     passesIssued: 0,
     passesExpired: 0,
+    passesUploaded: 0,
   });
   const [loading, setLoading] = useState(true);
   const [selectedCollege, setSelectedCollege] = useState<string>('all');
@@ -144,6 +146,12 @@ const AdminBusDashboard = () => {
   const [showAlertDialog, setShowAlertDialog] = useState(false);
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
   const [alertMessage, setAlertMessage] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showPassesUploadedDialog, setShowPassesUploadedDialog] = useState(false);
+  const [studentsWithPasses, setStudentsWithPasses] = useState<Profile[]>([]);
+  const [facultyWithPasses, setFacultyWithPasses] = useState<Profile[]>([]);
+  const [studentSearchQuery, setStudentSearchQuery] = useState('');
+  const [facultySearchQuery, setFacultySearchQuery] = useState('');
 
   useEffect(() => {
     if (busNumber) {
@@ -270,6 +278,15 @@ const AdminBusDashboard = () => {
 
       const filteredExpiredAlerts = expiredAlertsData || [];
 
+      // Fetch passes uploaded count (users who have either monthly_pass_url or identity_card_url)
+      const { data: passesUploadedData } = await supabase
+        .from('passes')
+        .select('user_id')
+        .in('user_id', passesIssuedUserIds)
+        .or('monthly_pass_url.not.is.null,identity_card_url.not.is.null');
+
+      const filteredPassesUploaded = passesUploadedData || [];
+
       setStats({
         totalStudents: students.length,
         totalFaculty: faculty.length,
@@ -278,6 +295,7 @@ const AdminBusDashboard = () => {
         expiringPasses: passData?.length || 0,
         passesIssued: filteredPasses?.length || 0,
         passesExpired: filteredExpiredAlerts?.length || 0,
+        passesUploaded: filteredPassesUploaded?.length || 0,
       });
     }
 
@@ -440,9 +458,76 @@ const AdminBusDashboard = () => {
       setUserList(profilesWithPassIds || []);
     }
 
+    setSearchQuery('');
     setUserListType(type);
     setShowUserList(true);
   };
+
+  const handlePassesUploadedClick = async () => {
+    // Fetch users who have uploaded passes (either monthly pass or identity card)
+    const { data: passesData } = await supabase
+      .from('passes')
+      .select('user_id')
+      .or('monthly_pass_url.not.is.null,identity_card_url.not.is.null');
+
+    const passUserIds = passesData?.map((p) => p.user_id) || [];
+    
+    let query = supabase
+      .from('profiles')
+      .select('id, name, role, college, branch, year, phone, seat_number')
+      .eq('bus_number', busNumber)
+      .in('id', passUserIds);
+
+    if (selectedCollege !== 'all') {
+      query = query.eq('college', selectedCollege);
+    }
+    if (selectedBranch !== 'all') {
+      query = query.eq('branch', selectedBranch);
+    }
+    if (selectedYear !== 'all') {
+      query = query.eq('year', selectedYear);
+    }
+
+    const { data: passProfiles } = await query;
+
+    // Fetch bus pass IDs for all users
+    let profilesWithPassIds = passProfiles || [];
+    if (passProfiles && passProfiles.length > 0) {
+      const userIds = passProfiles.map(p => p.id);
+      const { data: passIdData } = await supabase
+        .from('passes')
+        .select('user_id, buss_pass_id')
+        .in('user_id', userIds);
+
+      const passIdMap = new Map(passIdData?.map(p => [p.user_id, p.buss_pass_id]) || []);
+      profilesWithPassIds = passProfiles.map(p => ({
+        ...p,
+        buss_pass_id: passIdMap.get(p.id)
+      }));
+    }
+
+    // Separate by role
+    const students = profilesWithPassIds.filter(p => p.role === 'student');
+    const faculty = profilesWithPassIds.filter(p => p.role === 'faculty');
+
+    setStudentsWithPasses(students);
+    setFacultyWithPasses(faculty);
+    setStudentSearchQuery('');
+    setFacultySearchQuery('');
+    setShowPassesUploadedDialog(true);
+  };
+
+  const filteredUserList = userList.filter(user => 
+    user.name?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredStudentsWithPasses = studentsWithPasses.filter(user =>
+    user.name?.toLowerCase().includes(studentSearchQuery.toLowerCase())
+  );
+
+  const filteredFacultyWithPasses = facultyWithPasses.filter(user =>
+    user.name?.toLowerCase().includes(facultySearchQuery.toLowerCase())
+  );
 
   const handleFeeStatusChange = async (userId: string, newStatus: 'paid' | 'due') => {
     const currentMonth = new Date().toLocaleString('default', { month: 'long' });
@@ -867,6 +952,20 @@ const AdminBusDashboard = () => {
               </p>
             </CardContent>
           </Card>
+
+          <Card
+            className="hover:shadow-lg transition-shadow cursor-pointer"
+            onClick={handlePassesUploadedClick}
+          >
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base md:text-lg">Passes Uploaded</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl md:text-3xl font-bold text-purple-600">
+                {stats.passesUploaded}
+              </p>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
@@ -883,11 +982,18 @@ const AdminBusDashboard = () => {
               {userListType === 'passesExpired' && 'Passes Expired - Awaiting New Pass'}
             </DialogTitle>
           </DialogHeader>
+          {/* Search Bar */}
+          <Input
+            placeholder="Search by name..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="mb-3"
+          />
           <div className="space-y-2 md:space-y-3">
-            {userList.length === 0 ? (
+            {filteredUserList.length === 0 ? (
               <p className="text-muted-foreground text-center py-4 text-sm md:text-base">No users found</p>
             ) : (
-              userList.map((user) => (
+              filteredUserList.map((user) => (
                 <Card key={user.id}>
                   <CardContent className="pt-3 md:pt-4 p-3 md:p-6">
                     <div className="flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-4">
@@ -951,6 +1057,83 @@ const AdminBusDashboard = () => {
                 </Card>
               ))
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Passes Uploaded Dialog */}
+      <Dialog open={showPassesUploadedDialog} onOpenChange={setShowPassesUploadedDialog}>
+        <DialogContent className="max-w-[95vw] sm:max-w-5xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-base md:text-lg">Passes Uploaded</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Students List */}
+            <div className="space-y-3">
+              <h3 className="font-semibold text-lg">Students ({filteredStudentsWithPasses.length})</h3>
+              <Input
+                placeholder="Search students by name..."
+                value={studentSearchQuery}
+                onChange={(e) => setStudentSearchQuery(e.target.value)}
+              />
+              <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+                {filteredStudentsWithPasses.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-4 text-sm">No students found</p>
+                ) : (
+                  filteredStudentsWithPasses.map((user) => (
+                    <Card key={user.id}>
+                      <CardContent className="pt-3 p-3">
+                        <Link
+                          to={`/admin/user/${user.id}`}
+                          className="font-semibold text-primary hover:underline text-sm"
+                        >
+                          {user.name}
+                        </Link>
+                        <p className="text-xs text-muted-foreground">{user.college}</p>
+                        {user.branch && (
+                          <p className="text-xs text-muted-foreground">{user.branch} - Year {user.year}</p>
+                        )}
+                        <p className="text-xs font-medium">
+                          Pass ID: <span className="text-primary">{user.buss_pass_id || 'N/A'}</span>
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Faculty List */}
+            <div className="space-y-3">
+              <h3 className="font-semibold text-lg">Faculty ({filteredFacultyWithPasses.length})</h3>
+              <Input
+                placeholder="Search faculty by name..."
+                value={facultySearchQuery}
+                onChange={(e) => setFacultySearchQuery(e.target.value)}
+              />
+              <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+                {filteredFacultyWithPasses.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-4 text-sm">No faculty found</p>
+                ) : (
+                  filteredFacultyWithPasses.map((user) => (
+                    <Card key={user.id}>
+                      <CardContent className="pt-3 p-3">
+                        <Link
+                          to={`/admin/user/${user.id}`}
+                          className="font-semibold text-primary hover:underline text-sm"
+                        >
+                          {user.name}
+                        </Link>
+                        <p className="text-xs text-muted-foreground">{user.college}</p>
+                        <p className="text-xs font-medium">
+                          Pass ID: <span className="text-primary">{user.buss_pass_id || 'N/A'}</span>
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </div>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
