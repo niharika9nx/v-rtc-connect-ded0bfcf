@@ -168,6 +168,11 @@ const AdminUserProfile = () => {
 
   const getPassImageUrl = (path: string | null): string | null => {
     if (!path) return null;
+    // Check if it's already a full URL
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return path;
+    }
+    // Otherwise, construct the URL from the storage path
     const { data } = supabase.storage.from('pass-documents').getPublicUrl(path);
     return data?.publicUrl || null;
   };
