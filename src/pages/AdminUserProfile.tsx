@@ -20,6 +20,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import vishnuLogo from '@/assets/vishnu-logo.png';
@@ -52,6 +60,14 @@ interface FeeHistory {
   isCurrentMonth?: boolean;
 }
 
+interface PassInfo {
+  monthly_pass_url: string | null;
+  identity_card_url: string | null;
+  expiry_date: string | null;
+  verified: boolean | null;
+  buss_pass_id: string | null;
+}
+
 const AdminUserProfile = () => {
   const { userId } = useParams();
   const navigate = useNavigate();
@@ -61,6 +77,9 @@ const AdminUserProfile = () => {
   const [loading, setLoading] = useState(true);
   const [selectedMonths, setSelectedMonths] = useState<Set<string>>(new Set());
   const [selectAll, setSelectAll] = useState(false);
+  const [passInfo, setPassInfo] = useState<PassInfo | null>(null);
+  const [showAlertDialog, setShowAlertDialog] = useState(false);
+  const [alertMessage, setAlertMessage] = useState('');
 
   const months = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -71,6 +90,7 @@ const AdminUserProfile = () => {
     if (userId) {
       fetchUserProfile();
       fetchFeeHistory();
+      fetchPassInfo();
     }
   }, [userId]);
 
@@ -103,6 +123,84 @@ const AdminUserProfile = () => {
       buss_pass_id: passData?.buss_pass_id
     });
     setLoading(false);
+  };
+
+  const fetchPassInfo = async () => {
+    const { data, error } = await supabase
+      .from('passes')
+      .select('monthly_pass_url, identity_card_url, expiry_date, verified, buss_pass_id')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (!error && data) {
+      setPassInfo(data);
+    }
+  };
+
+  const getPassStatus = (): { status: 'expired' | 'expiring' | 'fake' | 'valid' | null; message: string } => {
+    if (!passInfo) return { status: null, message: '' };
+    
+    // Check if pass is fake (duplicate ID detected)
+    if (passInfo.verified === false) {
+      return { status: 'fake', message: 'FAKE PASS - Duplicate ID Detected' };
+    }
+    
+    // Check expiry
+    if (passInfo.expiry_date) {
+      const expiryDate = new Date(passInfo.expiry_date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const diffTime = expiryDate.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (diffDays < 0) {
+        return { status: 'expired', message: 'PASS EXPIRED' };
+      } else if (diffDays <= 5) {
+        return { status: 'expiring', message: `ABOUT TO EXPIRE (${diffDays} day${diffDays === 1 ? '' : 's'} left)` };
+      }
+    }
+    
+    return { status: 'valid', message: '' };
+  };
+
+  const getPassImageUrl = (path: string | null): string | null => {
+    if (!path) return null;
+    const { data } = supabase.storage.from('pass-documents').getPublicUrl(path);
+    return data?.publicUrl || null;
+  };
+
+  const handleSendNoPassAlert = async () => {
+    if (!alertMessage.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Please enter an alert message',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const { error } = await supabase.from('alerts').insert({
+      user_id: userId,
+      type: 'custom',
+      message: alertMessage,
+      status: 'unread',
+    });
+
+    if (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to send alert',
+        variant: 'destructive',
+      });
+    } else {
+      toast({
+        title: 'Success',
+        description: 'Alert sent successfully',
+      });
+      setShowAlertDialog(false);
+      setAlertMessage('');
+    }
   };
 
   const fetchFeeHistory = async () => {
@@ -625,7 +723,154 @@ const AdminUserProfile = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Pass Documents Section */}
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <CardTitle>Pass Documents</CardTitle>
+              {(!passInfo?.monthly_pass_url && !passInfo?.identity_card_url) && (
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => setShowAlertDialog(true)}
+                >
+                  Send Alert (No Pass Uploaded)
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {(!passInfo?.monthly_pass_url && !passInfo?.identity_card_url) ? (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground mb-4">No pass documents uploaded by this user</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Pass Status Banner */}
+                {(() => {
+                  const passStatus = getPassStatus();
+                  if (passStatus.status && passStatus.status !== 'valid') {
+                    return (
+                      <div className={`p-4 rounded-lg text-center font-bold text-lg ${
+                        passStatus.status === 'fake' 
+                          ? 'bg-destructive/20 text-destructive border-2 border-destructive' 
+                          : passStatus.status === 'expired' 
+                            ? 'bg-destructive/20 text-destructive border-2 border-destructive'
+                            : 'bg-orange-500/20 text-orange-600 border-2 border-orange-500'
+                      }`}>
+                        {passStatus.message}
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Identity Card */}
+                  <div className="space-y-3">
+                    <h3 className="font-semibold text-lg">Identity Card</h3>
+                    {passInfo?.identity_card_url ? (
+                      <div className="border rounded-lg overflow-hidden">
+                        <img
+                          src={getPassImageUrl(passInfo.identity_card_url) || ''}
+                          alt="Identity Card"
+                          className="w-full h-auto max-h-80 object-contain bg-muted"
+                        />
+                      </div>
+                    ) : (
+                      <div className="border rounded-lg p-8 text-center bg-muted/50">
+                        <p className="text-muted-foreground">No identity card uploaded</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Monthly Pass */}
+                  <div className="space-y-3">
+                    <h3 className="font-semibold text-lg">Monthly Pass</h3>
+                    {passInfo?.monthly_pass_url ? (
+                      <div className="space-y-2">
+                        <div className="border rounded-lg overflow-hidden relative">
+                          <img
+                            src={getPassImageUrl(passInfo.monthly_pass_url) || ''}
+                            alt="Monthly Pass"
+                            className="w-full h-auto max-h-80 object-contain bg-muted"
+                          />
+                          {/* Status overlay */}
+                          {(() => {
+                            const passStatus = getPassStatus();
+                            if (passStatus.status === 'expired' || passStatus.status === 'fake') {
+                              return (
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                                  <span className={`text-2xl font-bold ${
+                                    passStatus.status === 'fake' ? 'text-red-500' : 'text-red-500'
+                                  } transform -rotate-12`}>
+                                    {passStatus.status === 'fake' ? 'FAKE PASS' : 'EXPIRED'}
+                                  </span>
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </div>
+                        {passInfo.buss_pass_id && (
+                          <p className="text-sm">
+                            <span className="text-muted-foreground">Pass ID:</span>{' '}
+                            <span className="font-semibold text-primary">{passInfo.buss_pass_id}</span>
+                          </p>
+                        )}
+                        {passInfo.expiry_date && (
+                          <p className="text-sm">
+                            <span className="text-muted-foreground">Expiry Date:</span>{' '}
+                            <span className="font-semibold">{new Date(passInfo.expiry_date).toLocaleDateString()}</span>
+                          </p>
+                        )}
+                        {passInfo.verified !== null && (
+                          <Badge variant={passInfo.verified ? 'default' : 'destructive'}>
+                            {passInfo.verified ? 'Verified' : 'Unverified (Fake)'}
+                          </Badge>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="border rounded-lg p-8 text-center bg-muted/50">
+                        <p className="text-muted-foreground">No monthly pass uploaded</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Alert Dialog */}
+      <Dialog open={showAlertDialog} onOpenChange={setShowAlertDialog}>
+        <DialogContent className="max-w-[95vw] sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base md:text-lg">Send Alert to {profile?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 md:space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="alert-message" className="text-sm md:text-base">Alert Message</Label>
+              <Textarea
+                id="alert-message"
+                placeholder="Enter your alert message (e.g., Please upload your bus pass documents)..."
+                value={alertMessage}
+                onChange={(e) => setAlertMessage(e.target.value)}
+                rows={5}
+                className="text-sm md:text-base"
+              />
+            </div>
+            <div className="flex flex-col sm:flex-row justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowAlertDialog(false)} className="w-full sm:w-auto text-sm md:text-base">
+                Cancel
+              </Button>
+              <Button onClick={handleSendNoPassAlert} className="w-full sm:w-auto text-sm md:text-base">Send Alert</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
