@@ -80,6 +80,8 @@ const AdminUserProfile = () => {
   const [passInfo, setPassInfo] = useState<PassInfo | null>(null);
   const [showAlertDialog, setShowAlertDialog] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
+  const [showImageDialog, setShowImageDialog] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<{ url: string; title: string } | null>(null);
 
   const months = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -771,13 +773,20 @@ const AdminUserProfile = () => {
                   <div className="space-y-3">
                     <h3 className="font-semibold text-lg">Identity Card</h3>
                     {passInfo?.identity_card_url ? (
-                      <div className="border rounded-lg overflow-hidden">
-                        <img
-                          src={getPassImageUrl(passInfo.identity_card_url) || ''}
-                          alt="Identity Card"
-                          className="w-full h-auto max-h-80 object-contain bg-muted"
-                        />
-                      </div>
+                      <Button
+                        variant="outline"
+                        className="w-full h-24 flex flex-col gap-2"
+                        onClick={() => {
+                          setSelectedImage({
+                            url: getPassImageUrl(passInfo.identity_card_url) || '',
+                            title: 'Identity Card'
+                          });
+                          setShowImageDialog(true);
+                        }}
+                      >
+                        <span className="text-lg">📄</span>
+                        <span>View Identity Card</span>
+                      </Button>
                     ) : (
                       <div className="border rounded-lg p-8 text-center bg-muted/50">
                         <p className="text-muted-foreground">No identity card uploaded</p>
@@ -790,29 +799,20 @@ const AdminUserProfile = () => {
                     <h3 className="font-semibold text-lg">Monthly Pass</h3>
                     {passInfo?.monthly_pass_url ? (
                       <div className="space-y-2">
-                        <div className="border rounded-lg overflow-hidden relative">
-                          <img
-                            src={getPassImageUrl(passInfo.monthly_pass_url) || ''}
-                            alt="Monthly Pass"
-                            className="w-full h-auto max-h-80 object-contain bg-muted"
-                          />
-                          {/* Status overlay */}
-                          {(() => {
-                            const passStatus = getPassStatus();
-                            if (passStatus.status === 'expired' || passStatus.status === 'fake') {
-                              return (
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                                  <span className={`text-2xl font-bold ${
-                                    passStatus.status === 'fake' ? 'text-red-500' : 'text-red-500'
-                                  } transform -rotate-12`}>
-                                    {passStatus.status === 'fake' ? 'FAKE PASS' : 'EXPIRED'}
-                                  </span>
-                                </div>
-                              );
-                            }
-                            return null;
-                          })()}
-                        </div>
+                        <Button
+                          variant="outline"
+                          className="w-full h-24 flex flex-col gap-2"
+                          onClick={() => {
+                            setSelectedImage({
+                              url: getPassImageUrl(passInfo.monthly_pass_url) || '',
+                              title: 'Monthly Pass'
+                            });
+                            setShowImageDialog(true);
+                          }}
+                        >
+                          <span className="text-lg">🎫</span>
+                          <span>View Monthly Pass</span>
+                        </Button>
                         {passInfo.buss_pass_id && (
                           <p className="text-sm">
                             <span className="text-muted-foreground">Pass ID:</span>{' '}
@@ -843,6 +843,38 @@ const AdminUserProfile = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Image View Dialog */}
+      <Dialog open={showImageDialog} onOpenChange={setShowImageDialog}>
+        <DialogContent className="max-w-[95vw] sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-base md:text-lg">{selectedImage?.title}</DialogTitle>
+          </DialogHeader>
+          <div className="relative">
+            {selectedImage && (
+              <img
+                src={selectedImage.url}
+                alt={selectedImage.title}
+                className="w-full h-auto max-h-[70vh] object-contain rounded-lg"
+              />
+            )}
+            {/* Status overlay for Monthly Pass */}
+            {selectedImage?.title === 'Monthly Pass' && (() => {
+              const passStatus = getPassStatus();
+              if (passStatus.status === 'expired' || passStatus.status === 'fake') {
+                return (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
+                    <span className="text-4xl font-bold text-red-500 transform -rotate-12">
+                      {passStatus.status === 'fake' ? 'FAKE PASS' : 'EXPIRED'}
+                    </span>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Alert Dialog */}
       <Dialog open={showAlertDialog} onOpenChange={setShowAlertDialog}>
