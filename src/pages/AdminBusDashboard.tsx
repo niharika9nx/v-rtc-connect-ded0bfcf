@@ -152,6 +152,13 @@ const AdminBusDashboard = () => {
   const [facultyWithPasses, setFacultyWithPasses] = useState<Profile[]>([]);
   const [studentSearchQuery, setStudentSearchQuery] = useState('');
   const [facultySearchQuery, setFacultySearchQuery] = useState('');
+  const [showEditBusDialog, setShowEditBusDialog] = useState(false);
+  const [editBusForm, setEditBusForm] = useState({
+    route: '',
+    departure_time: '',
+    arrival_time: '',
+    capacity: 0,
+  });
 
   useEffect(() => {
     if (busNumber) {
@@ -180,6 +187,51 @@ const AdminBusDashboard = () => {
       });
     } else if (data) {
       setBusDetails(data);
+      setEditBusForm({
+        route: data.route || '',
+        departure_time: data.departure_time || '',
+        arrival_time: data.arrival_time || '',
+        capacity: data.capacity || 0,
+      });
+    }
+  };
+
+  const handleEditBusClick = () => {
+    if (busDetails) {
+      setEditBusForm({
+        route: busDetails.route || '',
+        departure_time: busDetails.departure_time || '',
+        arrival_time: busDetails.arrival_time || '',
+        capacity: busDetails.capacity || 0,
+      });
+      setShowEditBusDialog(true);
+    }
+  };
+
+  const handleSaveBusDetails = async () => {
+    const { error } = await supabase
+      .from('bus_details')
+      .update({
+        route: editBusForm.route,
+        departure_time: editBusForm.departure_time,
+        arrival_time: editBusForm.arrival_time,
+        capacity: editBusForm.capacity,
+      })
+      .eq('bus_number', busNumber);
+
+    if (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to update bus details',
+        variant: 'destructive',
+      });
+    } else {
+      toast({
+        title: 'Success',
+        description: 'Bus details updated successfully',
+      });
+      setShowEditBusDialog(false);
+      fetchBusDetails();
     }
   };
 
@@ -764,8 +816,11 @@ const AdminBusDashboard = () => {
         </div>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-lg md:text-xl">Route Details</CardTitle>
+            <Button variant="outline" size="sm" onClick={handleEditBusClick}>
+              Edit
+            </Button>
           </CardHeader>
           <CardContent className="space-y-2 md:space-y-3">
             <p className="text-sm md:text-base">
@@ -1160,6 +1215,64 @@ const AdminBusDashboard = () => {
                 Cancel
               </Button>
               <Button onClick={submitAlert} className="w-full sm:w-auto text-sm md:text-base">Send Alert</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Bus Details Dialog */}
+      <Dialog open={showEditBusDialog} onOpenChange={setShowEditBusDialog}>
+        <DialogContent className="max-w-[95vw] sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base md:text-lg">Edit Bus Details</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-route">Route</Label>
+              <Textarea
+                id="edit-route"
+                placeholder="Enter route details..."
+                value={editBusForm.route}
+                onChange={(e) => setEditBusForm({ ...editBusForm, route: e.target.value })}
+                rows={3}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-departure">Departure Time</Label>
+                <Input
+                  id="edit-departure"
+                  type="time"
+                  value={editBusForm.departure_time}
+                  onChange={(e) => setEditBusForm({ ...editBusForm, departure_time: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-arrival">Arrival Time</Label>
+                <Input
+                  id="edit-arrival"
+                  type="time"
+                  value={editBusForm.arrival_time}
+                  onChange={(e) => setEditBusForm({ ...editBusForm, arrival_time: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-capacity">Capacity</Label>
+              <Input
+                id="edit-capacity"
+                type="number"
+                value={editBusForm.capacity}
+                onChange={(e) => setEditBusForm({ ...editBusForm, capacity: parseInt(e.target.value) || 0 })}
+              />
+            </div>
+            <div className="flex flex-col sm:flex-row justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowEditBusDialog(false)} className="w-full sm:w-auto">
+                Cancel
+              </Button>
+              <Button onClick={handleSaveBusDetails} className="w-full sm:w-auto">
+                Save Changes
+              </Button>
             </div>
           </div>
         </DialogContent>
