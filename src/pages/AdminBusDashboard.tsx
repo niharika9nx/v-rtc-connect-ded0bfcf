@@ -906,12 +906,9 @@ const AdminBusDashboard = () => {
                             {user.branch} - Year {user.year}
                           </p>
                         )}
-                        <p className="text-xs md:text-sm">{user.phone}</p>
-                        {user.buss_pass_id && (
-                          <p className="text-xs md:text-sm font-medium">
-                            Pass ID: <span className="text-primary">{user.buss_pass_id}</span>
-                          </p>
-                        )}
+                        <p className="text-xs md:text-sm font-medium">
+                          Pass ID: <span className="text-primary">{user.buss_pass_id || 'N/A'}</span>
+                        </p>
                         {user.seat_number && (
                           <p className="text-xs md:text-sm font-medium">
                             Seat Number: <span className="text-primary">{user.seat_number}</span>
