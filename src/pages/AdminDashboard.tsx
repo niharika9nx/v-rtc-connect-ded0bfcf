@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { User, Bus, MessageSquare, Megaphone, Trash2, Upload } from 'lucide-react';
+import { User, Bus, MessageSquare, Megaphone, Trash2, Upload, Send } from 'lucide-react';
 
 interface Complaint {
   id: string;
@@ -36,6 +36,7 @@ const AdminDashboard = () => {
   const [announcementsOpen, setAnnouncementsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [routeImageUrl, setRouteImageUrl] = useState<string | null>(null);
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
 
   useEffect(() => {
     if (user) {
@@ -49,8 +50,17 @@ const AdminDashboard = () => {
       fetchComplaints();
       fetchAnnouncements();
       fetchRouteImage();
+      fetchPendingRequestsCount();
     }
   }, [user]);
+
+  const fetchPendingRequestsCount = async () => {
+    const { count } = await supabase
+      .from('bus_requests')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'pending');
+    setPendingRequestsCount(count || 0);
+  };
 
   const fetchRouteImage = async () => {
     // Try to fetch a default route image
@@ -264,6 +274,27 @@ const AdminDashboard = () => {
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground">Import data using CSV / Excel files</p>
+            </CardContent>
+          </Card>
+
+          <Card 
+            className="glass border-border/50 hover:shadow-glow transition-all cursor-pointer animate-slide-up group"
+            onClick={() => navigate('/admin/bus-requests')}
+            style={{ animationDelay: '0.3s' }}
+          >
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-foreground group-hover:text-primary transition-colors">
+                <Send className="h-5 w-5" />
+                Bus Requests
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">Manage bus assignment requests</p>
+              {pendingRequestsCount > 0 && (
+                <Badge variant="destructive" className="mt-2">
+                  {pendingRequestsCount} pending
+                </Badge>
+              )}
             </CardContent>
           </Card>
 
