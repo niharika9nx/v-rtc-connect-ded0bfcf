@@ -19,6 +19,7 @@ import AdminBuses from "./pages/AdminBuses";
 import AdminBusDashboard from "./pages/AdminBusDashboard";
 import AdminUserProfile from "./pages/AdminUserProfile";
 import AdminBulkImport from "./pages/AdminBulkImport";
+import AdminBusRequests from "./pages/AdminBusRequests";
 import ExpiredPassLetter from "./pages/ExpiredPassLetter";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
@@ -116,6 +117,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <AdminBulkImport />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/bus-requests"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminBusRequests />
                 </ProtectedRoute>
               }
             />

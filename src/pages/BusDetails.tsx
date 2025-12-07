@@ -5,8 +5,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Bus, Clock, MapPin, IndianRupee, Calendar } from 'lucide-react';
+import { ArrowLeft, Bus, Clock, MapPin, IndianRupee, Calendar, Send } from 'lucide-react';
 import { formatTo12Hour } from '@/lib/utils';
+import { BusRequestDialog } from '@/components/BusRequestDialog';
+import { BusRequestStatus } from '@/components/BusRequestStatus';
 
 const BusDetails = () => {
   const { user } = useAuth();
@@ -16,6 +18,7 @@ const BusDetails = () => {
   const [feeStatus, setFeeStatus] = useState<any>(null);
   const [passData, setPassData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [showRequestDialog, setShowRequestDialog] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -116,15 +119,32 @@ const BusDetails = () => {
 
       <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
         {!profile?.bus_number ? (
-          <Card className="glass shadow-lg animate-slide-up">
-            <CardContent className="pt-6">
-              <div className="text-center py-8">
-                <Bus className="h-20 w-20 mx-auto mb-4 text-primary animate-float" />
-                <p className="text-lg font-display font-medium mb-2">No Bus Assigned</p>
-                <p className="text-muted-foreground">You haven't been assigned to a bus yet. Please contact the admin.</p>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="space-y-6">
+            <Card className="glass shadow-lg animate-slide-up">
+              <CardContent className="pt-6">
+                <div className="text-center py-8">
+                  <Bus className="h-20 w-20 mx-auto mb-4 text-primary animate-float" />
+                  <p className="text-lg font-display font-medium mb-2">No Bus Assigned</p>
+                  <p className="text-muted-foreground mb-6">You haven't been assigned to a bus yet.</p>
+                  <Button 
+                    onClick={() => setShowRequestDialog(true)}
+                    className="bg-gradient-primary hover:shadow-glow"
+                  >
+                    <Send className="h-4 w-4 mr-2" />
+                    Request for Bus
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Show existing bus request status */}
+            <BusRequestStatus />
+
+            <BusRequestDialog 
+              open={showRequestDialog} 
+              onOpenChange={setShowRequestDialog}
+            />
+          </div>
         ) : (
           <>
             <Card className="glass shadow-lg animate-slide-up hover:shadow-glow transition-all">

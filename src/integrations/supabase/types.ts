@@ -114,6 +114,60 @@ export type Database = {
         }
         Relationships: []
       }
+      bus_requests: {
+        Row: {
+          assigned_bus_number: string | null
+          assigned_seat_number: number | null
+          college: string | null
+          comment: string | null
+          created_at: string
+          from_month: string | null
+          id: string
+          request_type: string
+          requested_bus_number: string | null
+          status: string
+          study_year: string | null
+          to_month: string | null
+          updated_at: string
+          user_id: string
+          year: number | null
+        }
+        Insert: {
+          assigned_bus_number?: string | null
+          assigned_seat_number?: number | null
+          college?: string | null
+          comment?: string | null
+          created_at?: string
+          from_month?: string | null
+          id?: string
+          request_type: string
+          requested_bus_number?: string | null
+          status?: string
+          study_year?: string | null
+          to_month?: string | null
+          updated_at?: string
+          user_id: string
+          year?: number | null
+        }
+        Update: {
+          assigned_bus_number?: string | null
+          assigned_seat_number?: number | null
+          college?: string | null
+          comment?: string | null
+          created_at?: string
+          from_month?: string | null
+          id?: string
+          request_type?: string
+          requested_bus_number?: string | null
+          status?: string
+          study_year?: string | null
+          to_month?: string | null
+          updated_at?: string
+          user_id?: string
+          year?: number | null
+        }
+        Relationships: []
+      }
       complaints: {
         Row: {
           created_at: string
