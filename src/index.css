@@ -2,99 +2,99 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Modern Tech Design System - Black & Neon Yellow Theme */
+/* Modern Tech Design System - Black & Cyan/Teal Theme */
 
 @layer base {
   :root {
-    --background: 0 0% 4%;
-    --foreground: 60 9% 90%;
-    --card: 0 0% 7%;
-    --card-foreground: 60 9% 90%;
-    --popover: 0 0% 7%;
-    --popover-foreground: 60 9% 90%;
-    --primary: 54 100% 50%;
-    --primary-foreground: 0 0% 4%;
-    --secondary: 60 5% 15%;
-    --secondary-foreground: 60 9% 90%;
-    --muted: 0 0% 12%;
-    --muted-foreground: 60 5% 55%;
-    --accent: 54 100% 60%;
-    --accent-foreground: 0 0% 4%;
+    --background: 220 20% 4%;
+    --foreground: 200 20% 92%;
+    --card: 220 20% 7%;
+    --card-foreground: 200 20% 92%;
+    --popover: 220 20% 7%;
+    --popover-foreground: 200 20% 92%;
+    --primary: 175 85% 45%;
+    --primary-foreground: 220 20% 4%;
+    --secondary: 220 15% 12%;
+    --secondary-foreground: 200 20% 92%;
+    --muted: 220 15% 14%;
+    --muted-foreground: 200 15% 55%;
+    --accent: 185 80% 50%;
+    --accent-foreground: 220 20% 4%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 60 5% 15%;
-    --input: 60 5% 15%;
-    --ring: 54 100% 50%;
+    --border: 220 15% 15%;
+    --input: 220 15% 15%;
+    --ring: 175 85% 45%;
     --radius: 1rem;
     
     /* Sidebar colors */
-    --sidebar-background: 0 0% 6%;
-    --sidebar-foreground: 60 9% 90%;
-    --sidebar-primary: 54 100% 50%;
-    --sidebar-primary-foreground: 0 0% 4%;
-    --sidebar-accent: 0 0% 12%;
-    --sidebar-accent-foreground: 60 9% 90%;
-    --sidebar-border: 60 5% 15%;
-    --sidebar-ring: 54 100% 50%;
+    --sidebar-background: 220 20% 6%;
+    --sidebar-foreground: 200 20% 92%;
+    --sidebar-primary: 175 85% 45%;
+    --sidebar-primary-foreground: 220 20% 4%;
+    --sidebar-accent: 220 15% 14%;
+    --sidebar-accent-foreground: 200 20% 92%;
+    --sidebar-border: 220 15% 15%;
+    --sidebar-ring: 175 85% 45%;
     
-    /* Gradients - Neon Yellow to Lime */
-    --gradient-primary: linear-gradient(135deg, hsl(54 100% 50%) 0%, hsl(75 100% 45%) 100%);
-    --gradient-secondary: linear-gradient(135deg, hsl(60 5% 15%) 0%, hsl(0 0% 12%) 100%);
-    --gradient-accent: linear-gradient(135deg, hsl(54 100% 60%) 0%, hsl(45 100% 55%) 100%);
-    --gradient-mesh: radial-gradient(at 40% 20%, hsl(54 100% 50% / 0.08) 0px, transparent 50%),
-                     radial-gradient(at 80% 0%, hsl(75 100% 45% / 0.06) 0px, transparent 50%),
-                     radial-gradient(at 0% 50%, hsl(45 100% 55% / 0.06) 0px, transparent 50%);
+    /* Gradients - Cyan to Teal */
+    --gradient-primary: linear-gradient(135deg, hsl(175 85% 45%) 0%, hsl(195 90% 50%) 100%);
+    --gradient-secondary: linear-gradient(135deg, hsl(220 15% 12%) 0%, hsl(220 20% 8%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(185 80% 50%) 0%, hsl(165 75% 45%) 100%);
+    --gradient-mesh: radial-gradient(at 40% 20%, hsl(175 85% 45% / 0.12) 0px, transparent 50%),
+                     radial-gradient(at 80% 0%, hsl(195 90% 50% / 0.08) 0px, transparent 50%),
+                     radial-gradient(at 0% 50%, hsl(185 80% 50% / 0.08) 0px, transparent 50%);
     
-    /* Shadows with neon glow */
+    /* Shadows with cyan glow */
     --shadow-sm: 0 2px 8px hsl(0 0% 0% / 0.4);
     --shadow-md: 0 4px 16px hsl(0 0% 0% / 0.5);
     --shadow-lg: 0 8px 32px hsl(0 0% 0% / 0.6);
-    --shadow-glow: 0 0 40px hsl(54 100% 50% / 0.3);
+    --shadow-glow: 0 0 40px hsl(175 85% 45% / 0.3);
   }
 
   .dark {
-    --background: 0 0% 3%;
-    --foreground: 60 9% 92%;
-    --card: 0 0% 6%;
-    --card-foreground: 60 9% 92%;
-    --popover: 0 0% 6%;
-    --popover-foreground: 60 9% 92%;
-    --primary: 54 100% 55%;
-    --primary-foreground: 0 0% 4%;
-    --secondary: 60 5% 12%;
-    --secondary-foreground: 60 9% 92%;
-    --muted: 0 0% 10%;
-    --muted-foreground: 60 5% 60%;
-    --accent: 54 100% 65%;
-    --accent-foreground: 0 0% 4%;
+    --background: 220 20% 3%;
+    --foreground: 200 20% 95%;
+    --card: 220 20% 6%;
+    --card-foreground: 200 20% 95%;
+    --popover: 220 20% 6%;
+    --popover-foreground: 200 20% 95%;
+    --primary: 175 85% 50%;
+    --primary-foreground: 220 20% 4%;
+    --secondary: 220 15% 10%;
+    --secondary-foreground: 200 20% 95%;
+    --muted: 220 15% 12%;
+    --muted-foreground: 200 15% 60%;
+    --accent: 185 80% 55%;
+    --accent-foreground: 220 20% 4%;
     --destructive: 0 84% 65%;
     --destructive-foreground: 0 0% 100%;
-    --border: 60 5% 12%;
-    --input: 60 5% 12%;
-    --ring: 54 100% 55%;
+    --border: 220 15% 12%;
+    --input: 220 15% 12%;
+    --ring: 175 85% 50%;
     
     /* Dark Sidebar */
-    --sidebar-background: 0 0% 5%;
-    --sidebar-foreground: 60 9% 92%;
-    --sidebar-primary: 54 100% 55%;
-    --sidebar-primary-foreground: 0 0% 4%;
-    --sidebar-accent: 0 0% 10%;
-    --sidebar-accent-foreground: 60 9% 92%;
-    --sidebar-border: 60 5% 12%;
-    --sidebar-ring: 54 100% 55%;
+    --sidebar-background: 220 20% 5%;
+    --sidebar-foreground: 200 20% 95%;
+    --sidebar-primary: 175 85% 50%;
+    --sidebar-primary-foreground: 220 20% 4%;
+    --sidebar-accent: 220 15% 12%;
+    --sidebar-accent-foreground: 200 20% 95%;
+    --sidebar-border: 220 15% 12%;
+    --sidebar-ring: 175 85% 50%;
     
     /* Dark gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(54 100% 55%) 0%, hsl(75 100% 50%) 100%);
-    --gradient-secondary: linear-gradient(135deg, hsl(60 5% 12%) 0%, hsl(0 0% 10%) 100%);
-    --gradient-accent: linear-gradient(135deg, hsl(54 100% 65%) 0%, hsl(45 100% 60%) 100%);
-    --gradient-mesh: radial-gradient(at 40% 20%, hsl(54 100% 55% / 0.1) 0px, transparent 50%),
-                     radial-gradient(at 80% 0%, hsl(75 100% 50% / 0.08) 0px, transparent 50%),
-                     radial-gradient(at 0% 50%, hsl(45 100% 60% / 0.08) 0px, transparent 50%);
+    --gradient-primary: linear-gradient(135deg, hsl(175 85% 50%) 0%, hsl(195 90% 55%) 100%);
+    --gradient-secondary: linear-gradient(135deg, hsl(220 15% 10%) 0%, hsl(220 20% 6%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(185 80% 55%) 0%, hsl(165 75% 50%) 100%);
+    --gradient-mesh: radial-gradient(at 40% 20%, hsl(175 85% 50% / 0.15) 0px, transparent 50%),
+                     radial-gradient(at 80% 0%, hsl(195 90% 55% / 0.1) 0px, transparent 50%),
+                     radial-gradient(at 0% 50%, hsl(185 80% 55% / 0.1) 0px, transparent 50%);
     
     --shadow-sm: 0 2px 8px hsl(0 0% 0% / 0.5);
     --shadow-md: 0 4px 16px hsl(0 0% 0% / 0.6);
     --shadow-lg: 0 8px 32px hsl(0 0% 0% / 0.7);
-    --shadow-glow: 0 0 40px hsl(54 100% 55% / 0.4);
+    --shadow-glow: 0 0 40px hsl(175 85% 50% / 0.4);
   }
 }
 
@@ -174,6 +174,58 @@
     }
   }
   
+  @keyframes glow-pulse {
+    0%, 100% {
+      opacity: 0.4;
+      filter: blur(40px);
+    }
+    50% {
+      opacity: 0.8;
+      filter: blur(60px);
+    }
+  }
+  
+  @keyframes gradient-shift {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+  
+  @keyframes shimmer {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
+  
+  @keyframes orbit {
+    0% {
+      transform: rotate(0deg) translateX(120px) rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg) translateX(120px) rotate(-360deg);
+    }
+  }
+  
+  @keyframes scale-pulse {
+    0%, 100% {
+      transform: scale(1);
+      opacity: 0.8;
+    }
+    50% {
+      transform: scale(1.1);
+      opacity: 1;
+    }
+  }
+  
   .animate-slide-up {
     animation: slide-up 0.5s ease-out;
   }
@@ -188,5 +240,26 @@
   
   .animate-float {
     animation: float 3s ease-in-out infinite;
+  }
+  
+  .animate-glow-pulse {
+    animation: glow-pulse 4s ease-in-out infinite;
+  }
+  
+  .animate-gradient-shift {
+    background-size: 200% 200%;
+    animation: gradient-shift 8s ease infinite;
+  }
+  
+  .animate-shimmer {
+    animation: shimmer 2s ease-in-out infinite;
+  }
+  
+  .animate-orbit {
+    animation: orbit 20s linear infinite;
+  }
+  
+  .animate-scale-pulse {
+    animation: scale-pulse 3s ease-in-out infinite;
   }
 }
