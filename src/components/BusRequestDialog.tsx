@@ -56,6 +56,7 @@ export const BusRequestDialog = ({ open, onOpenChange, onSuccess }: BusRequestDi
   const [step, setStep] = useState<'select' | 'existing' | 'new'>('select');
   const [submitting, setSubmitting] = useState(false);
   const [buses, setBuses] = useState<any[]>([]);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   // Existing user form
   const [busNumber, setBusNumber] = useState('');
@@ -66,15 +67,27 @@ export const BusRequestDialog = ({ open, onOpenChange, onSuccess }: BusRequestDi
   const [year, setYear] = useState(new Date().getFullYear().toString());
   const [college, setCollege] = useState('');
   const [studyYear, setStudyYear] = useState('');
+  const [department, setDepartment] = useState('');
   const [comment, setComment] = useState('');
 
   useEffect(() => {
     if (open) {
       fetchBuses();
+      fetchUserRole();
       setStep('select');
       resetForm();
     }
   }, [open]);
+
+  const fetchUserRole = async () => {
+    if (!user?.id) return;
+    const { data } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+    setUserRole(data?.role || null);
+  };
 
   const fetchBuses = async () => {
     const { data } = await supabase
@@ -91,6 +104,7 @@ export const BusRequestDialog = ({ open, onOpenChange, onSuccess }: BusRequestDi
     setYear(new Date().getFullYear().toString());
     setCollege('');
     setStudyYear('');
+    setDepartment('');
     setComment('');
   };
 
@@ -129,7 +143,9 @@ export const BusRequestDialog = ({ open, onOpenChange, onSuccess }: BusRequestDi
   };
 
   const handleSubmitNew = async () => {
-    if (!fromMonth || !toMonth || !year || !college || !studyYear) {
+    const isFaculty = userRole === 'faculty';
+    
+    if (!fromMonth || !toMonth || !year || !college || (isFaculty ? !department : !studyYear)) {
       toast({
         title: 'Error',
         description: 'Please fill in all required fields',
@@ -146,7 +162,7 @@ export const BusRequestDialog = ({ open, onOpenChange, onSuccess }: BusRequestDi
       to_month: toMonth,
       year: parseInt(year),
       college,
-      study_year: studyYear,
+      study_year: isFaculty ? department : studyYear,
       comment: comment.trim() || null,
     });
 
@@ -306,7 +322,7 @@ export const BusRequestDialog = ({ open, onOpenChange, onSuccess }: BusRequestDi
               </Select>
             </div>
 
-            {collegeData && (
+            {collegeData && userRole === 'student' && (
               <div className="space-y-2">
                 <Label>Study Year</Label>
                 <Select value={studyYear} onValueChange={setStudyYear}>
@@ -316,6 +332,22 @@ export const BusRequestDialog = ({ open, onOpenChange, onSuccess }: BusRequestDi
                   <SelectContent>
                     {collegeData.years.map((yr) => (
                       <SelectItem key={yr} value={yr}>Year {yr}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {collegeData && userRole === 'faculty' && (
+              <div className="space-y-2">
+                <Label>Department</Label>
+                <Select value={department} onValueChange={setDepartment}>
+                  <SelectTrigger className="bg-muted/30 border-border/50">
+                    <SelectValue placeholder="Select department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[...collegeData.branches, 'Freshman Engineering'].map((dept) => (
+                      <SelectItem key={dept} value={dept}>{dept}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
