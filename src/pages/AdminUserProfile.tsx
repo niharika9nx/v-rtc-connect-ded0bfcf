@@ -25,9 +25,13 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Trash2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import vishnuLogo from '@/assets/vishnu-logo.png';
@@ -82,6 +86,9 @@ const AdminUserProfile = () => {
   const [alertMessage, setAlertMessage] = useState('');
   const [showImageDialog, setShowImageDialog] = useState(false);
   const [selectedImage, setSelectedImage] = useState<{ url: string; title: string } | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const months = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -489,6 +496,64 @@ const AdminUserProfile = () => {
     });
   };
 
+  const handleDeleteUser = async () => {
+    if (deleteConfirmation !== 'DELETE') {
+      toast({
+        title: 'Error',
+        description: 'Please type DELETE to confirm',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsDeleting(true);
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      if (!sessionData.session) {
+        toast({
+          title: 'Error',
+          description: 'You must be logged in to perform this action',
+          variant: 'destructive',
+        });
+        setIsDeleting(false);
+        return;
+      }
+
+      const response = await supabase.functions.invoke('delete-user', {
+        body: { userId },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+
+      if (response.data?.error) {
+        throw new Error(response.data.error);
+      }
+
+      toast({
+        title: 'Success',
+        description: 'User deleted successfully',
+      });
+
+      // Navigate back to buses page
+      navigate('/admin/buses');
+    } catch (error: any) {
+      console.error('Error deleting user:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to delete user',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteDialog(false);
+      setDeleteConfirmation('');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -510,12 +575,22 @@ const AdminUserProfile = () => {
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">User Profile</h1>
-          <Button 
-            onClick={() => profile?.bus_number ? navigate(`/admin/bus/${profile.bus_number}`) : navigate('/admin/buses')} 
-            variant="outline"
-          >
-            Back
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => setShowDeleteDialog(true)} 
+              variant="destructive"
+              className="gap-2"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete User
+            </Button>
+            <Button 
+              onClick={() => profile?.bus_number ? navigate(`/admin/bus/${profile.bus_number}`) : navigate('/admin/buses')} 
+              variant="outline"
+            >
+              Back
+            </Button>
+          </div>
         </div>
 
         <Card>
@@ -906,6 +981,61 @@ const AdminUserProfile = () => {
               <Button onClick={handleSendNoPassAlert} className="w-full sm:w-auto text-sm md:text-base">Send Alert</Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete User Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={(open) => {
+        setShowDeleteDialog(open);
+        if (!open) setDeleteConfirmation('');
+      }}>
+        <DialogContent className="max-w-[95vw] sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base md:text-lg text-destructive">Delete User</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. This will permanently delete the user account for <strong>{profile?.name}</strong> and all associated data including:
+              <ul className="list-disc list-inside mt-2 text-sm">
+                <li>Profile information</li>
+                <li>Fee history records</li>
+                <li>Pass documents</li>
+                <li>Bus requests</li>
+                <li>Complaints and alerts</li>
+              </ul>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Label htmlFor="delete-confirmation" className="text-sm">
+                Type <strong>DELETE</strong> to confirm
+              </Label>
+              <Input
+                id="delete-confirmation"
+                value={deleteConfirmation}
+                onChange={(e) => setDeleteConfirmation(e.target.value)}
+                placeholder="Type DELETE to confirm"
+                className="text-sm"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowDeleteDialog(false);
+                setDeleteConfirmation('');
+              }}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleDeleteUser}
+              disabled={deleteConfirmation !== 'DELETE' || isDeleting}
+            >
+              {isDeleting ? 'Deleting...' : 'Delete User'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
