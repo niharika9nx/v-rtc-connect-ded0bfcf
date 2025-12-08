@@ -20,6 +20,7 @@ import AdminBusDashboard from "./pages/AdminBusDashboard";
 import AdminUserProfile from "./pages/AdminUserProfile";
 import AdminBulkImport from "./pages/AdminBulkImport";
 import AdminBusRequests from "./pages/AdminBusRequests";
+import AdminUsers from "./pages/AdminUsers";
 import ExpiredPassLetter from "./pages/ExpiredPassLetter";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
@@ -125,6 +126,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <AdminBusRequests />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/users"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminUsers />
                 </ProtectedRoute>
               }
             />
