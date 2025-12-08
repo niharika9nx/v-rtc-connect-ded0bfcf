@@ -16,11 +16,14 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { formatTo12Hour } from '@/lib/utils';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -157,6 +160,10 @@ const AdminBusDashboard = () => {
     arrival_time: '',
     capacity: 0,
   });
+  const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
+  const [bulkDeleteConfirmation, setBulkDeleteConfirmation] = useState('');
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   useEffect(() => {
     if (busNumber) {
@@ -632,6 +639,90 @@ const AdminBusDashboard = () => {
     }
   };
 
+  const toggleUserSelection = (userId: string) => {
+    const newSelection = new Set(selectedUsers);
+    if (newSelection.has(userId)) {
+      newSelection.delete(userId);
+    } else {
+      newSelection.add(userId);
+    }
+    setSelectedUsers(newSelection);
+  };
+
+  const selectAllUsers = () => {
+    const allSelected = userList.every(u => selectedUsers.has(u.id));
+    const newSelection = new Set(selectedUsers);
+    if (allSelected) {
+      userList.forEach(u => newSelection.delete(u.id));
+    } else {
+      userList.forEach(u => newSelection.add(u.id));
+    }
+    setSelectedUsers(newSelection);
+  };
+
+  const handleBulkDelete = async () => {
+    if (bulkDeleteConfirmation !== 'DELETE') {
+      toast({
+        title: 'Error',
+        description: 'Please type DELETE to confirm',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsBulkDeleting(true);
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      if (!sessionData.session) {
+        toast({
+          title: 'Error',
+          description: 'You must be logged in to perform this action',
+          variant: 'destructive',
+        });
+        setIsBulkDeleting(false);
+        return;
+      }
+
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const userId of Array.from(selectedUsers)) {
+        const response = await supabase.functions.invoke('delete-user', {
+          body: { userId },
+        });
+
+        if (response.error || response.data?.error) {
+          errorCount++;
+        } else {
+          successCount++;
+        }
+      }
+
+      toast({
+        title: successCount > 0 ? 'Success' : 'Error',
+        description: `Deleted ${successCount} user(s)${errorCount > 0 ? `, ${errorCount} failed` : ''}`,
+        variant: errorCount > 0 && successCount === 0 ? 'destructive' : 'default',
+      });
+
+      setSelectedUsers(new Set());
+      setShowUserList(false);
+      fetchStats();
+    } catch (error: any) {
+      console.error('Error deleting users:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to delete users',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsBulkDeleting(false);
+      setShowBulkDeleteDialog(false);
+      setBulkDeleteConfirmation('');
+    }
+  };
+
   const downloadBulkFeeReport = async () => {
     if (!busDetails) return;
 
@@ -982,7 +1073,10 @@ const AdminBusDashboard = () => {
         </div>
       </div>
 
-      <Dialog open={showUserList} onOpenChange={setShowUserList}>
+      <Dialog open={showUserList} onOpenChange={(open) => {
+        setShowUserList(open);
+        if (!open) setSelectedUsers(new Set());
+      }}>
         <DialogContent className="max-w-[95vw] sm:max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-base md:text-lg">
@@ -995,44 +1089,67 @@ const AdminBusDashboard = () => {
               {userListType === 'passesExpired' && 'Passes Expired - Awaiting New Pass'}
             </DialogTitle>
           </DialogHeader>
-          {/* Search Bar */}
-          <Input
-            placeholder="Search by name..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="mb-3"
-          />
+          {/* Search Bar and Actions */}
+          <div className="flex flex-col sm:flex-row gap-2 mb-3">
+            <Input
+              placeholder="Search by name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-1"
+            />
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={selectAllUsers}>
+                {filteredUserList.every(u => selectedUsers.has(u.id)) ? 'Deselect All' : 'Select All'}
+              </Button>
+              {selectedUsers.size > 0 && (
+                <Button 
+                  variant="destructive" 
+                  size="sm" 
+                  onClick={() => setShowBulkDeleteDialog(true)}
+                >
+                  Delete ({selectedUsers.size})
+                </Button>
+              )}
+            </div>
+          </div>
           <div className="space-y-2 md:space-y-3">
             {filteredUserList.length === 0 ? (
               <p className="text-muted-foreground text-center py-4 text-sm md:text-base">No users found</p>
             ) : (
               filteredUserList.map((user) => (
-                <Card key={user.id}>
+                <Card key={user.id} className={selectedUsers.has(user.id) ? 'ring-2 ring-primary' : ''}>
                   <CardContent className="pt-3 md:pt-4 p-3 md:p-6">
                     <div className="flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-4">
-                      <div className="space-y-1 flex-1 w-full">
-                        <Link
-                          to={`/admin/user/${user.id}`}
-                          className="font-semibold text-primary hover:underline text-sm md:text-base"
-                        >
-                          {user.name}
-                        </Link>
-                        <p className="text-xs md:text-sm text-muted-foreground">
-                          {user.role} | {user.college}
-                        </p>
-                        {user.branch && (
+                      <div className="flex items-start gap-3 flex-1 w-full">
+                        <Checkbox
+                          checked={selectedUsers.has(user.id)}
+                          onCheckedChange={() => toggleUserSelection(user.id)}
+                          className="mt-1"
+                        />
+                        <div className="space-y-1 flex-1">
+                          <Link
+                            to={`/admin/user/${user.id}`}
+                            className="font-semibold text-primary hover:underline text-sm md:text-base"
+                          >
+                            {user.name}
+                          </Link>
                           <p className="text-xs md:text-sm text-muted-foreground">
-                            {user.branch} - Year {user.year}
+                            {user.role} | {user.college}
                           </p>
-                        )}
-                        <p className="text-xs md:text-sm font-medium">
-                          Pass ID: <span className="text-primary">{user.buss_pass_id || 'N/A'}</span>
-                        </p>
-                        {user.seat_number && (
+                          {user.branch && (
+                            <p className="text-xs md:text-sm text-muted-foreground">
+                              {user.branch} - Year {user.year}
+                            </p>
+                          )}
                           <p className="text-xs md:text-sm font-medium">
-                            Seat Number: <span className="text-primary">{user.seat_number}</span>
+                            Pass ID: <span className="text-primary">{user.buss_pass_id || 'N/A'}</span>
                           </p>
-                        )}
+                          {user.seat_number && (
+                            <p className="text-xs md:text-sm font-medium">
+                              Seat Number: <span className="text-primary">{user.seat_number}</span>
+                            </p>
+                          )}
+                        </div>
                       </div>
                       <div className="flex flex-col gap-2 w-full sm:w-auto">
                         {(userListType === 'feePaid' || userListType === 'feeDue') && (
@@ -1233,6 +1350,59 @@ const AdminBusDashboard = () => {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <Dialog open={showBulkDeleteDialog} onOpenChange={(open) => {
+        setShowBulkDeleteDialog(open);
+        if (!open) setBulkDeleteConfirmation('');
+      }}>
+        <DialogContent className="max-w-[95vw] sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Delete {selectedUsers.size} User(s)</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. This will permanently delete the selected user accounts and all associated data including:
+              <ul className="list-disc list-inside mt-2 text-sm">
+                <li>Profile information</li>
+                <li>Fee history records</li>
+                <li>Pass documents</li>
+                <li>Bus requests</li>
+                <li>Complaints and alerts</li>
+              </ul>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Label>
+                Type <strong>DELETE</strong> to confirm
+              </Label>
+              <Input
+                value={bulkDeleteConfirmation}
+                onChange={(e) => setBulkDeleteConfirmation(e.target.value)}
+                placeholder="Type DELETE to confirm"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowBulkDeleteDialog(false);
+                setBulkDeleteConfirmation('');
+              }}
+              disabled={isBulkDeleting}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleBulkDelete}
+              disabled={bulkDeleteConfirmation !== 'DELETE' || isBulkDeleting}
+            >
+              {isBulkDeleting ? 'Deleting...' : `Delete ${selectedUsers.size} User(s)`}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

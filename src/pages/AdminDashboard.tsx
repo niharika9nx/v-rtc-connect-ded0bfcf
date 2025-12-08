@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { User, Bus, MessageSquare, Megaphone, Trash2, Upload, Send } from 'lucide-react';
+import { User, Bus, MessageSquare, Megaphone, Trash2, Upload, Send, Users } from 'lucide-react';
 
 interface Complaint {
   id: string;
@@ -295,6 +295,22 @@ const AdminDashboard = () => {
                   {pendingRequestsCount} pending
                 </Badge>
               )}
+            </CardContent>
+          </Card>
+
+          <Card 
+            className="glass border-border/50 hover:shadow-glow transition-all cursor-pointer animate-slide-up group"
+            onClick={() => navigate('/admin/users')}
+            style={{ animationDelay: '0.35s' }}
+          >
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-foreground group-hover:text-primary transition-colors">
+                <Users className="h-5 w-5" />
+                All Users
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">View all students and faculty</p>
             </CardContent>
           </Card>
 
