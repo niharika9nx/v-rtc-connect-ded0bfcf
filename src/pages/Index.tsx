@@ -174,13 +174,12 @@ const Index = () => {
 
       <div className="relative z-10 text-center space-y-6 md:space-y-8 px-4 max-w-4xl mx-auto pb-32 md:pb-24">
         {/* Logo/Icon with enhanced glow */}
-        <div className="mb-4 md:mb-6 items-center justify-center flex flex-row animate-float">
+        <div className="mb-4 md:mb-6 flex justify-center animate-float">
           <div className="relative group">
             <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full animate-glow-pulse" />
             <div className="absolute -inset-4 bg-gradient-primary opacity-20 blur-2xl rounded-full group-hover:opacity-30 transition-opacity" />
             <div className="relative p-4 md:p-6 bg-gradient-to-br from-primary/20 to-accent/10 border border-primary/30 backdrop-blur-sm shadow-glow rounded-2xl group-hover:border-primary/50 transition-all duration-300">
               <Bus className="h-12 w-12 md:h-14 md:w-14 text-primary" />
-              <Sparkles className="absolute -top-2 -right-2 h-5 w-5 text-accent animate-scale-pulse" />
             </div>
           </div>
         </div>
