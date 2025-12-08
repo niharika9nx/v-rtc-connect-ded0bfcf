@@ -49,15 +49,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         await document.exitFullscreen();
       }
       
-      await supabase.auth.signOut();
-      // Clear local state immediately
-      setUser(null);
-      setSession(null);
-      // Force redirect to login
-      window.location.href = '/login';
+      // Use scope: 'local' to ensure local session is cleared even if server call fails
+      await supabase.auth.signOut({ scope: 'local' });
     } catch (error) {
       console.error('Error signing out:', error);
-      // Force redirect even on error
+    } finally {
+      // Always clear local state and redirect
+      setUser(null);
+      setSession(null);
       window.location.href = '/login';
     }
   };
