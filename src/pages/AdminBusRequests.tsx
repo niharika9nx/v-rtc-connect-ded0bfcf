@@ -35,6 +35,9 @@ interface BusRequest {
     phone: string | null;
     role: string | null;
     registration_id: string | null;
+    college: string | null;
+    year: string | null;
+    department: string | null;
   } | null;
 }
 
@@ -94,7 +97,7 @@ const AdminBusRequests = () => {
       const userIds = requestData.map(r => r.user_id);
       const { data: profilesData } = await supabase
         .from('profiles')
-        .select('id, name, email, phone, role, registration_id')
+        .select('id, name, email, phone, role, registration_id, college, year, department')
         .in('id', userIds);
 
       const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
@@ -452,6 +455,16 @@ const RequestsList = ({ title, requests, onAssign, onReject, showDetails }: Requ
                     <p className="text-sm text-muted-foreground">{request.profiles?.email}</p>
                     {request.profiles?.registration_id && (
                       <p className="text-xs text-muted-foreground">ID: {request.profiles.registration_id}</p>
+                    )}
+                    {request.profiles?.role === 'student' && (
+                      <p className="text-xs text-muted-foreground">
+                        {request.profiles?.college}{request.profiles?.year ? ` • Year ${request.profiles.year}` : ''}
+                      </p>
+                    )}
+                    {request.profiles?.role === 'faculty' && request.profiles?.department && (
+                      <p className="text-xs text-muted-foreground">
+                        {request.profiles?.college} • {request.profiles.department}
+                      </p>
                     )}
                   </div>
                   <Badge variant={request.request_type === 'new' ? 'default' : 'secondary'}>
