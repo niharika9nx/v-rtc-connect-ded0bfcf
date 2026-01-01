@@ -14,14 +14,56 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // Get the authorization header to verify the user
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: Missing authorization header' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+      );
+    }
+
+    // Create a client with the user's token to verify they're authenticated
+    const userSupabase = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    // Get the authenticated user
+    const { data: { user }, error: userError } = await userSupabase.auth.getUser();
+    if (userError || !user) {
+      console.error('Auth error:', userError);
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: Invalid user session' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+      );
+    }
+
+    // Create admin client to check role
+    const adminSupabase = createClient(supabaseUrl, supabaseKey);
+
+    // Check if user has admin role
+    const { data: roleData, error: roleError } = await adminSupabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('role', 'admin')
+      .single();
+
+    if (roleError || !roleData) {
+      console.error('Role check failed:', roleError);
+      return new Response(
+        JSON.stringify({ error: 'Forbidden: Admin access required' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
+      );
+    }
 
     const { userId, type, message } = await req.json();
 
-    console.log('Creating test alert for user:', userId);
+    console.log('Admin', user.id, 'creating test alert for user:', userId);
 
-    // Create a test alert
-    const { data, error } = await supabase
+    // Create a test alert using admin client
+    const { data, error } = await adminSupabase
       .from('alerts')
       .insert({
         user_id: userId,
