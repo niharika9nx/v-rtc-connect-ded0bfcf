@@ -30,6 +30,8 @@ const EPass = () => {
   const [deletingIdentity, setDeletingIdentity] = useState(false);
   const [deletingMonthly, setDeletingMonthly] = useState(false);
   const [feeStatus, setFeeStatus] = useState<any>(null);
+  const [identityCardSignedUrl, setIdentityCardSignedUrl] = useState<string | null>(null);
+  const [monthlyPassSignedUrl, setMonthlyPassSignedUrl] = useState<string | null>(null);
 
   useEffect(() => {
     fetchPass();
@@ -96,7 +98,68 @@ const EPass = () => {
         .eq('user_id', user.id)
         .maybeSingle();
       setPass(data);
+      
+      // Fetch signed URLs for existing pass documents
+      if (data) {
+        await fetchSignedUrls(data);
+      }
+      
       setLoading(false);
+    }
+  };
+
+  const fetchSignedUrls = async (passData: any) => {
+    if (!user) return;
+    
+    try {
+      // Fetch signed URL for identity card
+      if (passData.identity_card_url) {
+        const filePath = extractFilePath(passData.identity_card_url);
+        if (filePath) {
+          const signedUrl = await getSignedUrl(filePath);
+          setIdentityCardSignedUrl(signedUrl);
+        }
+      }
+      
+      // Fetch signed URL for monthly pass
+      if (passData.monthly_pass_url) {
+        const filePath = extractFilePath(passData.monthly_pass_url);
+        if (filePath) {
+          const signedUrl = await getSignedUrl(filePath);
+          setMonthlyPassSignedUrl(signedUrl);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching signed URLs:', error);
+    }
+  };
+
+  const extractFilePath = (url: string): string | null => {
+    if (!url) return null;
+    // Check if it's already just a file path (no http)
+    if (!url.startsWith('http')) {
+      return url;
+    }
+    // Extract file path from public URL
+    const match = url.match(/pass-documents\/(.+?)(\?|$)/);
+    return match ? match[1] : null;
+  };
+
+  const getSignedUrl = async (filePath: string): Promise<string | null> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('get-signed-url', {
+        body: { filePath }
+      });
+      
+      if (error) {
+        console.error('Error getting signed URL:', error);
+        return null;
+      }
+      
+      return data?.signedUrl || null;
+    } catch (error) {
+      console.error('Error invoking get-signed-url:', error);
+      return null;
     }
   };
 
@@ -221,8 +284,7 @@ const EPass = () => {
     const enhancedBlob = await enhanceImageQuality(file);
     const enhancedFile = new File([enhancedBlob], `${type}.png`, { type: 'image/png' });
 
-    const fileName = `${user.id}/${type}.png`;
-    const filePath = fileName;
+    const filePath = `${user.id}/${type}.png`;
 
     const { error: uploadError } = await supabase.storage
       .from('pass-documents')
@@ -230,11 +292,8 @@ const EPass = () => {
 
     if (uploadError) throw uploadError;
 
-    const { data: { publicUrl } } = supabase.storage
-      .from('pass-documents')
-      .getPublicUrl(filePath);
-
-    return { publicUrl, filePath };
+    // Return the file path instead of public URL (bucket is now private)
+    return { filePath };
   };
 
   const handleIdentityCardUpload = async () => {
@@ -256,13 +315,13 @@ const EPass = () => {
 
       const passData = {
         user_id: user.id,
-        identity_card_url: uploadResult.publicUrl
+        identity_card_url: uploadResult.filePath // Store file path instead of public URL
       };
 
       if (pass) {
         await supabase
           .from('passes')
-          .update({ identity_card_url: uploadResult.publicUrl })
+          .update({ identity_card_url: uploadResult.filePath })
           .eq('id', pass.id);
       } else {
         await supabase
@@ -853,10 +912,10 @@ const EPass = () => {
         }
       }
 
-      // Save pass to database with correct verification status
+      // Save pass to database with correct verification status (store file path, not public URL)
       const passData: any = {
         user_id: user.id,
-        monthly_pass_url: uploadResult.publicUrl,
+        monthly_pass_url: uploadResult.filePath,
         verified: !isDuplicate, // Mark as false if duplicate found
         buss_pass_id: extractedPassId || null,
         expiry_date: extractedExpiryDate || null
@@ -1127,14 +1186,14 @@ const EPass = () => {
                       Upload
                     </Button>
                   </div>
-                  {pass?.identity_card_url && (
+                  {pass?.identity_card_url && identityCardSignedUrl && (
                     <div className="mt-2 space-y-2">
                       <div 
                         className="relative group cursor-pointer overflow-hidden rounded-lg border border-border/50 shadow-md hover:shadow-glow transition-all"
-                        onClick={() => openImageModal(pass.identity_card_url, 'Identity Card')}
+                        onClick={() => openImageModal(identityCardSignedUrl, 'Identity Card')}
                       >
                         <img 
-                          src={pass.identity_card_url} 
+                          src={identityCardSignedUrl} 
                           alt="Identity Card" 
                           className="max-w-full h-auto transition-transform duration-300 group-hover:scale-105"
                         />
@@ -1154,6 +1213,12 @@ const EPass = () => {
                           {deletingIdentity ? "Deleting..." : "Delete"}
                         </Button>
                       </div>
+                    </div>
+                  )}
+                  {pass?.identity_card_url && !identityCardSignedUrl && (
+                    <div className="mt-2 p-4 bg-muted/30 rounded-lg flex items-center gap-2">
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      <span className="text-sm text-muted-foreground">Loading image...</span>
                     </div>
                   )}
                 </div>
@@ -1207,14 +1272,14 @@ const EPass = () => {
                       Upload
                     </Button>
                   </div>
-                  {pass?.monthly_pass_url && (
+                  {pass?.monthly_pass_url && monthlyPassSignedUrl && (
                     <div className="mt-2 space-y-3">
                       <div 
                         className="relative group cursor-pointer overflow-hidden rounded-lg border border-border/50 shadow-md hover:shadow-glow transition-all"
-                        onClick={() => openImageModal(`${pass.monthly_pass_url}?t=${new Date().getTime()}`, 'Monthly Pass')}
+                        onClick={() => openImageModal(monthlyPassSignedUrl, 'Monthly Pass')}
                       >
                         <img 
-                          src={`${pass.monthly_pass_url}?t=${new Date().getTime()}`} 
+                          src={monthlyPassSignedUrl} 
                           alt="Monthly Pass" 
                           className="max-w-full h-auto transition-transform duration-300 group-hover:scale-105"
                         />
@@ -1282,6 +1347,12 @@ const EPass = () => {
                           </p>
                         </div>
                       )}
+                    </div>
+                  )}
+                  {pass?.monthly_pass_url && !monthlyPassSignedUrl && (
+                    <div className="mt-2 p-4 bg-muted/30 rounded-lg flex items-center gap-2">
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      <span className="text-sm text-muted-foreground">Loading image...</span>
                     </div>
                   )}
                 </div>

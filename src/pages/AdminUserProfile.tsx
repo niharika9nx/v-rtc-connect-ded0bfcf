@@ -89,6 +89,9 @@ const AdminUserProfile = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [identityCardSignedUrl, setIdentityCardSignedUrl] = useState<string | null>(null);
+  const [monthlyPassSignedUrl, setMonthlyPassSignedUrl] = useState<string | null>(null);
+  const [loadingImages, setLoadingImages] = useState(false);
 
   const months = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -143,6 +146,63 @@ const AdminUserProfile = () => {
 
     if (!error && data) {
       setPassInfo(data);
+      await fetchSignedUrls(data);
+    }
+  };
+
+  const extractFilePath = (url: string): string | null => {
+    if (!url) return null;
+    // Check if it's already just a file path (no http)
+    if (!url.startsWith('http')) {
+      return url;
+    }
+    // Extract file path from public URL
+    const match = url.match(/pass-documents\/(.+?)(\?|$)/);
+    return match ? match[1] : null;
+  };
+
+  const getSignedUrl = async (filePath: string): Promise<string | null> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('get-signed-url', {
+        body: { filePath, targetUserId: userId }
+      });
+      
+      if (error) {
+        console.error('Error getting signed URL:', error);
+        return null;
+      }
+      
+      return data?.signedUrl || null;
+    } catch (error) {
+      console.error('Error invoking get-signed-url:', error);
+      return null;
+    }
+  };
+
+  const fetchSignedUrls = async (passData: PassInfo) => {
+    setLoadingImages(true);
+    try {
+      // Fetch signed URL for identity card
+      if (passData.identity_card_url) {
+        const filePath = extractFilePath(passData.identity_card_url);
+        if (filePath) {
+          const signedUrl = await getSignedUrl(filePath);
+          setIdentityCardSignedUrl(signedUrl);
+        }
+      }
+      
+      // Fetch signed URL for monthly pass
+      if (passData.monthly_pass_url) {
+        const filePath = extractFilePath(passData.monthly_pass_url);
+        if (filePath) {
+          const signedUrl = await getSignedUrl(filePath);
+          setMonthlyPassSignedUrl(signedUrl);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching signed URLs:', error);
+    } finally {
+      setLoadingImages(false);
     }
   };
 
@@ -853,20 +913,31 @@ const AdminUserProfile = () => {
                   <div className="space-y-3">
                     <h3 className="font-semibold text-lg">Identity Card</h3>
                     {passInfo?.identity_card_url ? (
-                      <Button
-                        variant="outline"
-                        className="w-full h-24 flex flex-col gap-2"
-                        onClick={() => {
-                          setSelectedImage({
-                            url: getPassImageUrl(passInfo.identity_card_url) || '',
-                            title: 'Identity Card'
-                          });
-                          setShowImageDialog(true);
-                        }}
-                      >
-                        <span className="text-lg">📄</span>
-                        <span>View Identity Card</span>
-                      </Button>
+                      loadingImages && !identityCardSignedUrl ? (
+                        <div className="border rounded-lg p-8 text-center bg-muted/50 flex items-center justify-center gap-2">
+                          <span className="animate-spin">⏳</span>
+                          <span className="text-muted-foreground">Loading...</span>
+                        </div>
+                      ) : identityCardSignedUrl ? (
+                        <Button
+                          variant="outline"
+                          className="w-full h-24 flex flex-col gap-2"
+                          onClick={() => {
+                            setSelectedImage({
+                              url: identityCardSignedUrl,
+                              title: 'Identity Card'
+                            });
+                            setShowImageDialog(true);
+                          }}
+                        >
+                          <span className="text-lg">📄</span>
+                          <span>View Identity Card</span>
+                        </Button>
+                      ) : (
+                        <div className="border rounded-lg p-8 text-center bg-destructive/10 border-destructive/30">
+                          <p className="text-destructive">Failed to load image</p>
+                        </div>
+                      )
                     ) : (
                       <div className="border rounded-lg p-8 text-center bg-muted/50">
                         <p className="text-muted-foreground">No identity card uploaded</p>
@@ -879,20 +950,31 @@ const AdminUserProfile = () => {
                     <h3 className="font-semibold text-lg">Monthly Pass</h3>
                     {passInfo?.monthly_pass_url ? (
                       <div className="space-y-2">
-                        <Button
-                          variant="outline"
-                          className="w-full h-24 flex flex-col gap-2"
-                          onClick={() => {
-                            setSelectedImage({
-                              url: getPassImageUrl(passInfo.monthly_pass_url) || '',
-                              title: 'Monthly Pass'
-                            });
-                            setShowImageDialog(true);
-                          }}
-                        >
-                          <span className="text-lg">🎫</span>
-                          <span>View Monthly Pass</span>
-                        </Button>
+                        {loadingImages && !monthlyPassSignedUrl ? (
+                          <div className="border rounded-lg p-8 text-center bg-muted/50 flex items-center justify-center gap-2">
+                            <span className="animate-spin">⏳</span>
+                            <span className="text-muted-foreground">Loading...</span>
+                          </div>
+                        ) : monthlyPassSignedUrl ? (
+                          <Button
+                            variant="outline"
+                            className="w-full h-24 flex flex-col gap-2"
+                            onClick={() => {
+                              setSelectedImage({
+                                url: monthlyPassSignedUrl,
+                                title: 'Monthly Pass'
+                              });
+                              setShowImageDialog(true);
+                            }}
+                          >
+                            <span className="text-lg">🎫</span>
+                            <span>View Monthly Pass</span>
+                          </Button>
+                        ) : (
+                          <div className="border rounded-lg p-8 text-center bg-destructive/10 border-destructive/30">
+                            <p className="text-destructive">Failed to load image</p>
+                          </div>
+                        )}
                         {passInfo.buss_pass_id && (
                           <p className="text-sm">
                             <span className="text-muted-foreground">Pass ID:</span>{' '}
