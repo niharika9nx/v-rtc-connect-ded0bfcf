@@ -306,7 +306,7 @@ export type Database = {
           pass_expiry_date: string | null
           phone: string | null
           registration_id: string | null
-          role: string | null
+          role: Database["public"]["Enums"]["app_role"] | null
           seat_number: number | null
           section: string | null
           year: string | null
@@ -324,7 +324,7 @@ export type Database = {
           pass_expiry_date?: string | null
           phone?: string | null
           registration_id?: string | null
-          role?: string | null
+          role?: Database["public"]["Enums"]["app_role"] | null
           seat_number?: number | null
           section?: string | null
           year?: string | null
@@ -342,7 +342,7 @@ export type Database = {
           pass_expiry_date?: string | null
           phone?: string | null
           registration_id?: string | null
-          role?: string | null
+          role?: Database["public"]["Enums"]["app_role"] | null
           seat_number?: number | null
           section?: string | null
           year?: string | null
@@ -361,19 +361,19 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
-          role: Database["public"]["Enums"]["app_role"] | null
+          role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Insert: {
           created_at?: string | null
           id?: string
-          role?: Database["public"]["Enums"]["app_role"] | null
+          role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Update: {
           created_at?: string | null
           id?: string
-          role?: Database["public"]["Enums"]["app_role"] | null
+          role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
         Relationships: []
