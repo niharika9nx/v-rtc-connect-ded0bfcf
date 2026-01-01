@@ -7,25 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-
-// College configuration - same as in SignupStudent
-const collegeConfig = {
-  'SVECW': {
-    branches: ['CSE', 'AIDS', 'AIML', 'CSE-CS', 'IT', 'ECE', 'EEE', 'CE', 'ME', 'Freshman Engineering'],
-  },
-  'Smt. B seetha Polytechnic': {
-    branches: ['Computer Engineering', 'ECE', 'EEE', 'Applied Electronics and Instrumentation Engineering'],
-  },
-  'VDC': {
-    branches: ['BDS', 'MDS'],
-  },
-  'Shri vishnu college of pharmacy': {
-    branches: ['B.Pharm', 'M.Pharm', 'Pharm.D', 'Pharm.D(PB)'],
-  },
-  'B V Raju college': {
-    branches: ['B.Sc', 'B.Com', 'BCA', 'M.Sc', 'MCA'],
-  }
-};
+import { getColleges, getFacultyDepartments } from '@/lib/collegeConfig';
 
 const SignupFaculty = () => {
   const [formData, setFormData] = useState({
@@ -41,11 +23,8 @@ const SignupFaculty = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Get available departments (branches) based on selected college
-  const availableDepartments = useMemo(() => {
-    if (!formData.college || !collegeConfig[formData.college as keyof typeof collegeConfig]) return [];
-    return collegeConfig[formData.college as keyof typeof collegeConfig].branches;
-  }, [formData.college]);
+  // Get available departments based on selected college
+  const availableDepartments = useMemo(() => getFacultyDepartments(formData.college), [formData.college]);
 
   // Reset department when college changes
   const handleCollegeChange = (value: string) => {
@@ -181,8 +160,8 @@ const SignupFaculty = () => {
                 <SelectTrigger>
                   <SelectValue placeholder="Select college" />
                 </SelectTrigger>
-                <SelectContent>
-                  {Object.keys(collegeConfig).map((college) => (
+                <SelectContent className="bg-background z-50">
+                  {getColleges().map((college) => (
                     <SelectItem key={college} value={college}>
                       {college}
                     </SelectItem>

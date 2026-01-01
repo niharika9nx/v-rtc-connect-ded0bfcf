@@ -8,49 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Bus } from 'lucide-react';
-
-// College configuration
-const collegeConfig = {
-  'SVECW': {
-    branches: ['CSE', 'AIDS', 'AIML', 'CSE-CS', 'IT', 'ECE', 'EEE', 'CE', 'ME'],
-    years: { default: ['1', '2', '3', '4'] },
-    sections: ['A', 'B', 'C']
-  },
-  'Smt. B seetha Polytechnic': {
-    branches: ['Computer Engineering', 'ECE', 'EEE', 'Applied Electronics and Instrumentation Engineering'],
-    years: { default: ['1', '2', '3'] },
-    sections: ['A', 'B']
-  },
-  'VDC': {
-    branches: ['BDS', 'MDS'],
-    years: { 
-      'BDS': ['1', '2', '3', '4', '5'],
-      'MDS': ['1', '2', '3']
-    },
-    sections: []
-  },
-  'Shri vishnu college of pharmacy': {
-    branches: ['B.Pharm', 'M.Pharm', 'Pharm.D', 'Pharm.D(PB)'],
-    years: {
-      'B.Pharm': ['1', '2', '3', '4'],
-      'Pharm.D': ['1', '2', '3', '4', '5', '6'],
-      'Pharm.D(PB)': ['1', '2', '3'],
-      'M.Pharm': ['1', '2']
-    },
-    sections: []
-  },
-  'B V Raju college': {
-    branches: ['B.Sc', 'B.Com', 'BCA', 'M.Sc', 'MCA'],
-    years: {
-      'B.Sc': ['1', '2', '3'],
-      'B.Com': ['1', '2', '3'],
-      'BCA': ['1', '2', '3'],
-      'M.Sc': ['1', '2'],
-      'MCA': ['1', '2']
-    },
-    sections: []
-  }
-};
+import { getColleges, getBranches, getYears, getSections } from '@/lib/collegeConfig';
 
 const SignupStudent = () => {
   const [formData, setFormData] = useState({
@@ -70,28 +28,13 @@ const SignupStudent = () => {
   const { toast } = useToast();
 
   // Get available branches based on selected college
-  const availableBranches = useMemo(() => {
-    if (!formData.college || !collegeConfig[formData.college as keyof typeof collegeConfig]) return [];
-    return collegeConfig[formData.college as keyof typeof collegeConfig].branches;
-  }, [formData.college]);
+  const availableBranches = useMemo(() => getBranches(formData.college), [formData.college]);
 
   // Get available years based on selected college and branch
-  const availableYears = useMemo(() => {
-    if (!formData.college || !collegeConfig[formData.college as keyof typeof collegeConfig]) return [];
-    const config = collegeConfig[formData.college as keyof typeof collegeConfig];
-    const years = config.years as any;
-    if (years.default) return years.default;
-    if (formData.branch && years[formData.branch]) {
-      return years[formData.branch] as string[];
-    }
-    return [];
-  }, [formData.college, formData.branch]);
+  const availableYears = useMemo(() => getYears(formData.college, formData.branch), [formData.college, formData.branch]);
 
   // Get available sections based on selected college
-  const availableSections = useMemo(() => {
-    if (!formData.college || !collegeConfig[formData.college as keyof typeof collegeConfig]) return [];
-    return collegeConfig[formData.college as keyof typeof collegeConfig].sections;
-  }, [formData.college]);
+  const availableSections = useMemo(() => getSections(formData.college), [formData.college]);
 
   // Reset dependent fields when college changes
   const handleCollegeChange = (value: string) => {
@@ -262,8 +205,8 @@ const SignupStudent = () => {
                   <SelectTrigger className="bg-muted/30 border-border/50">
                     <SelectValue placeholder="Select college" />
                   </SelectTrigger>
-                  <SelectContent>
-                    {Object.keys(collegeConfig).map((college) => (
+                  <SelectContent className="bg-background z-50">
+                    {getColleges().map((college) => (
                       <SelectItem key={college} value={college}>
                         {college}
                       </SelectItem>

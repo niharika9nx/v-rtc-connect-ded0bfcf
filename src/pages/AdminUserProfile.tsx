@@ -31,7 +31,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Edit2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import vishnuLogo from '@/assets/vishnu-logo.png';
@@ -72,6 +72,12 @@ interface PassInfo {
   buss_pass_id: string | null;
 }
 
+interface BusDetail {
+  ID: string;
+  bus_number: string;
+  route: string;
+}
+
 const AdminUserProfile = () => {
   const { userId } = useParams();
   const navigate = useNavigate();
@@ -92,6 +98,13 @@ const AdminUserProfile = () => {
   const [identityCardSignedUrl, setIdentityCardSignedUrl] = useState<string | null>(null);
   const [monthlyPassSignedUrl, setMonthlyPassSignedUrl] = useState<string | null>(null);
   const [loadingImages, setLoadingImages] = useState(false);
+  
+  // Admin editing states
+  const [buses, setBuses] = useState<BusDetail[]>([]);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editBusNumber, setEditBusNumber] = useState('');
+  const [editSeatNumber, setEditSeatNumber] = useState('');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   const months = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -103,8 +116,20 @@ const AdminUserProfile = () => {
       fetchUserProfile();
       fetchFeeHistory();
       fetchPassInfo();
+      fetchBuses();
     }
   }, [userId]);
+
+  const fetchBuses = async () => {
+    const { data, error } = await supabase
+      .from('bus_details')
+      .select('ID, bus_number, route')
+      .order('bus_number');
+    
+    if (!error && data) {
+      setBuses(data as BusDetail[]);
+    }
+  };
 
   const fetchUserProfile = async () => {
     const { data, error } = await supabase
@@ -614,6 +639,52 @@ const AdminUserProfile = () => {
     }
   };
 
+  const handleOpenEditDialog = () => {
+    setEditBusNumber(profile?.bus_number || '');
+    setEditSeatNumber(profile?.seat_number?.toString() || '');
+    setShowEditDialog(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!profile) return;
+    
+    setIsSavingEdit(true);
+    try {
+      const updateData: any = {
+        bus_number: editBusNumber || null,
+        seat_number: editSeatNumber ? parseInt(editSeatNumber) : null,
+      };
+
+      const { error } = await supabase
+        .from('profiles')
+        .update(updateData)
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'User bus assignment updated successfully',
+      });
+
+      setShowEditDialog(false);
+      fetchUserProfile();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update user',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const getRouteForBus = (busNumber: string): string => {
+    const bus = buses.find(b => b.bus_number === busNumber);
+    return bus?.route || 'N/A';
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -655,7 +726,18 @@ const AdminUserProfile = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Profile Details</CardTitle>
+            <div className="flex justify-between items-center">
+              <CardTitle>Profile Details</CardTitle>
+              <Button 
+                onClick={handleOpenEditDialog}
+                variant="outline"
+                size="sm"
+                className="gap-2"
+              >
+                <Edit2 className="h-4 w-4" />
+                Edit Bus Assignment
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -711,14 +793,16 @@ const AdminUserProfile = () => {
               )}
               <div>
                 <p className="text-sm text-muted-foreground">Bus Number</p>
-                <p className="font-semibold">{profile.bus_number}</p>
+                <p className="font-semibold">{profile.bus_number || 'Not Assigned'}</p>
               </div>
-              {profile.seat_number && (
-                <div>
-                  <p className="text-sm text-muted-foreground">Seat Number</p>
-                  <p className="font-semibold text-primary">{profile.seat_number}</p>
-                </div>
-              )}
+              <div>
+                <p className="text-sm text-muted-foreground">Seat Number</p>
+                <p className="font-semibold text-primary">{profile.seat_number || 'Not Assigned'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Route</p>
+                <p className="font-semibold">{profile.bus_number ? getRouteForBus(profile.bus_number) : 'N/A'}</p>
+              </div>
               {profile.buss_pass_id && (
                 <div>
                   <p className="text-sm text-muted-foreground">Bus Pass ID</p>
@@ -1116,6 +1200,67 @@ const AdminUserProfile = () => {
               disabled={deleteConfirmation !== 'DELETE' || isDeleting}
             >
               {isDeleting ? 'Deleting...' : 'Delete User'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Bus Assignment Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-[95vw] sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Bus Assignment</DialogTitle>
+            <DialogDescription>
+              Update the bus number, seat number, and route for {profile?.name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-bus-number">Bus Number</Label>
+              <Select value={editBusNumber} onValueChange={setEditBusNumber}>
+                <SelectTrigger className="bg-background">
+                  <SelectValue placeholder="Select bus" />
+                </SelectTrigger>
+                <SelectContent className="bg-background z-50">
+                  <SelectItem value="">No Bus Assigned</SelectItem>
+                  {buses.map((bus) => (
+                    <SelectItem key={bus.ID} value={bus.bus_number || ''}>
+                      Bus {bus.bus_number} - {bus.route}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-seat-number">Seat Number</Label>
+              <Input
+                id="edit-seat-number"
+                type="number"
+                value={editSeatNumber}
+                onChange={(e) => setEditSeatNumber(e.target.value)}
+                placeholder="Enter seat number"
+              />
+            </div>
+            {editBusNumber && (
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <p className="text-sm text-muted-foreground">Route</p>
+                <p className="font-semibold">{getRouteForBus(editBusNumber)}</p>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0 mt-4">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowEditDialog(false)}
+              disabled={isSavingEdit}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSaveEdit}
+              disabled={isSavingEdit}
+            >
+              {isSavingEdit ? 'Saving...' : 'Save Changes'}
             </Button>
           </DialogFooter>
         </DialogContent>
