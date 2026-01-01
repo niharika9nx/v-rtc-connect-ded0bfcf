@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,6 +13,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { getColleges, getBranches, getFacultyDepartments, getYears, getSections } from '@/lib/collegeConfig';
 
 const profileSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
@@ -51,6 +52,30 @@ const Profile = () => {
       department: '',
     },
   });
+
+  const watchedCollege = form.watch('college');
+  const watchedBranch = form.watch('branch');
+
+  // Dynamic options based on selected college
+  const availableBranches = useMemo(() => getBranches(watchedCollege), [watchedCollege]);
+  const availableDepartments = useMemo(() => getFacultyDepartments(watchedCollege), [watchedCollege]);
+  const availableYears = useMemo(() => getYears(watchedCollege, watchedBranch), [watchedCollege, watchedBranch]);
+  const availableSections = useMemo(() => getSections(watchedCollege), [watchedCollege]);
+
+  // Reset dependent fields when college changes
+  const handleCollegeChange = (value: string) => {
+    form.setValue('college', value);
+    form.setValue('branch', '');
+    form.setValue('year', '');
+    form.setValue('section', '');
+    form.setValue('department', '');
+  };
+
+  // Reset year when branch changes (for colleges with branch-specific years)
+  const handleBranchChange = (value: string) => {
+    form.setValue('branch', value);
+    form.setValue('year', '');
+  };
 
   const fetchProfile = async () => {
     if (user) {
@@ -332,16 +357,18 @@ const Profile = () => {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-foreground">College</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
+                          <Select onValueChange={handleCollegeChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger className="bg-muted/30 border-border/50">
                                 <SelectValue placeholder="Select college" />
                               </SelectTrigger>
                             </FormControl>
-                            <SelectContent>
-                              <SelectItem value="gcet">GCET</SelectItem>
-                              <SelectItem value="gips">GIPS</SelectItem>
-                              <SelectItem value="gperi">GPERI</SelectItem>
+                            <SelectContent className="bg-background z-50">
+                              {getColleges().map((college) => (
+                                <SelectItem key={college} value={college}>
+                                  {college}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -371,18 +398,22 @@ const Profile = () => {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel className="text-foreground">Branch</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value}>
+                              <Select 
+                                onValueChange={handleBranchChange} 
+                                value={field.value}
+                                disabled={!watchedCollege}
+                              >
                                 <FormControl>
                                   <SelectTrigger className="bg-muted/30 border-border/50">
                                     <SelectValue placeholder="Select branch" />
                                   </SelectTrigger>
                                 </FormControl>
-                                <SelectContent>
-                                  <SelectItem value="cse">CSE</SelectItem>
-                                  <SelectItem value="ece">ECE</SelectItem>
-                                  <SelectItem value="eee">EEE</SelectItem>
-                                  <SelectItem value="mech">MECH</SelectItem>
-                                  <SelectItem value="civil">CIVIL</SelectItem>
+                                <SelectContent className="bg-background z-50">
+                                  {availableBranches.map((branch) => (
+                                    <SelectItem key={branch} value={branch}>
+                                      {branch}
+                                    </SelectItem>
+                                  ))}
                                 </SelectContent>
                               </Select>
                               <FormMessage />
@@ -396,17 +427,22 @@ const Profile = () => {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel className="text-foreground">Year</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value}>
+                              <Select 
+                                onValueChange={field.onChange} 
+                                value={field.value}
+                                disabled={!watchedCollege || (availableYears.length === 0 && !watchedBranch)}
+                              >
                                 <FormControl>
                                   <SelectTrigger className="bg-muted/30 border-border/50">
                                     <SelectValue placeholder="Select year" />
                                   </SelectTrigger>
                                 </FormControl>
-                                <SelectContent>
-                                  <SelectItem value="1">1st Year</SelectItem>
-                                  <SelectItem value="2">2nd Year</SelectItem>
-                                  <SelectItem value="3">3rd Year</SelectItem>
-                                  <SelectItem value="4">4th Year</SelectItem>
+                                <SelectContent className="bg-background z-50">
+                                  {availableYears.map((year) => (
+                                    <SelectItem key={year} value={year}>
+                                      Year {year}
+                                    </SelectItem>
+                                  ))}
                                 </SelectContent>
                               </Select>
                               <FormMessage />
@@ -414,53 +450,62 @@ const Profile = () => {
                           )}
                         />
 
-                        <FormField
-                          control={form.control}
-                          name="section"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-foreground">Section</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl>
-                                  <SelectTrigger className="bg-muted/30 border-border/50">
-                                    <SelectValue placeholder="Select section" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  <SelectItem value="A">A</SelectItem>
-                                  <SelectItem value="B">B</SelectItem>
-                                  <SelectItem value="C">C</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                        {availableSections.length > 0 && (
+                          <FormField
+                            control={form.control}
+                            name="section"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-foreground">Section</FormLabel>
+                                <Select 
+                                  onValueChange={field.onChange} 
+                                  value={field.value}
+                                  disabled={!watchedCollege}
+                                >
+                                  <FormControl>
+                                    <SelectTrigger className="bg-muted/30 border-border/50">
+                                      <SelectValue placeholder="Select section" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent className="bg-background z-50">
+                                    {availableSections.map((section) => (
+                                      <SelectItem key={section} value={section}>
+                                        Section {section}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        )}
                       </>
                     )}
 
-                    {profile.role === 'faculty' && (
+                    {(profile.role === 'faculty' || profile.role === 'admin') && (
                       <FormField
                         control={form.control}
                         name="department"
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel className="text-foreground">Department</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
+                            <Select 
+                              onValueChange={field.onChange} 
+                              value={field.value}
+                              disabled={!watchedCollege}
+                            >
                               <FormControl>
                                 <SelectTrigger className="bg-muted/30 border-border/50">
                                   <SelectValue placeholder="Select department" />
                                 </SelectTrigger>
                               </FormControl>
-                              <SelectContent>
-                                <SelectItem value="cse">CSE</SelectItem>
-                                <SelectItem value="ece">ECE</SelectItem>
-                                <SelectItem value="eee">EEE</SelectItem>
-                                <SelectItem value="mech">MECH</SelectItem>
-                                <SelectItem value="civil">CIVIL</SelectItem>
-                                <SelectItem value="mathematics">Mathematics</SelectItem>
-                                <SelectItem value="physics">Physics</SelectItem>
-                                <SelectItem value="chemistry">Chemistry</SelectItem>
+                              <SelectContent className="bg-background z-50">
+                                {availableDepartments.map((dept) => (
+                                  <SelectItem key={dept} value={dept}>
+                                    {dept}
+                                  </SelectItem>
+                                ))}
                               </SelectContent>
                             </Select>
                             <FormMessage />
