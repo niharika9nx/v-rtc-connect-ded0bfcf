@@ -640,7 +640,7 @@ const AdminUserProfile = () => {
   };
 
   const handleOpenEditDialog = () => {
-    setEditBusNumber(profile?.bus_number || '');
+    setEditBusNumber(profile?.bus_number || 'none');
     setEditSeatNumber(profile?.seat_number?.toString() || '');
     setShowEditDialog(true);
   };
@@ -650,14 +650,16 @@ const AdminUserProfile = () => {
     
     setIsSavingEdit(true);
     try {
-      const updateData: any = {
-        bus_number: editBusNumber || null,
-        seat_number: editSeatNumber ? parseInt(editSeatNumber) : null,
-      };
+      // Handle "none" as null for bus number
+      const busNumber = editBusNumber === 'none' || editBusNumber === '' ? null : editBusNumber;
+      const seatNumber = editSeatNumber ? parseInt(editSeatNumber) : null;
 
       const { error } = await supabase
         .from('profiles')
-        .update(updateData)
+        .update({
+          bus_number: busNumber,
+          seat_number: seatNumber,
+        })
         .eq('id', userId);
 
       if (error) throw error;
@@ -681,6 +683,7 @@ const AdminUserProfile = () => {
   };
 
   const getRouteForBus = (busNumber: string): string => {
+    if (!busNumber || busNumber === 'none') return 'N/A';
     const bus = buses.find(b => b.bus_number === busNumber);
     return bus?.route || 'N/A';
   };
@@ -1222,9 +1225,9 @@ const AdminUserProfile = () => {
                   <SelectValue placeholder="Select bus" />
                 </SelectTrigger>
                 <SelectContent className="bg-background z-50">
-                  <SelectItem value="">No Bus Assigned</SelectItem>
+                  <SelectItem value="none">No Bus Assigned</SelectItem>
                   {buses.map((bus) => (
-                    <SelectItem key={bus.ID} value={bus.bus_number || ''}>
+                    <SelectItem key={bus.ID} value={bus.bus_number || `bus-${bus.ID}`}>
                       Bus {bus.bus_number} - {bus.route}
                     </SelectItem>
                   ))}
