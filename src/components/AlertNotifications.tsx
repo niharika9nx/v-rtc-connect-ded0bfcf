@@ -135,9 +135,10 @@ export const AlertNotifications = () => {
 
   const dismissAlert = async (alertId: string) => {
     try {
+      // Soft delete - set deleted_at timestamp instead of hard delete
       const { error } = await supabase
         .from('alerts')
-        .update({ status: 'dismissed' })
+        .update({ status: 'dismissed', deleted_at: new Date().toISOString() })
         .eq('id', alertId);
 
       if (error) throw error;
