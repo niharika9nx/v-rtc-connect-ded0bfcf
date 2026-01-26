@@ -142,9 +142,21 @@ export const AlertNotifications = () => {
         .eq('id', alertId);
 
       if (error) throw error;
-      fetchAlerts();
+      
+      // Immediately remove from local state for instant feedback
+      setAlerts(prev => prev.filter(a => a.id !== alertId));
+      
+      toast({
+        title: 'Alert dismissed',
+        description: 'The notification has been removed.',
+      });
     } catch (error: any) {
       console.error('Error dismissing alert:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to dismiss alert. Please try again.',
+        variant: 'destructive'
+      });
     }
   };
 
@@ -165,34 +177,35 @@ export const AlertNotifications = () => {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2 sm:space-y-3">
       {/* Notification Permission Prompt */}
       {showPermissionPrompt && !localStorage.getItem('vbus-notification-prompt-dismissed') && (
-        <Alert className="glass border-primary/50 bg-primary/10 shadow-lg">
-          <Bell className="h-5 w-5 text-primary" />
+        <Alert className="glass border-primary/50 bg-primary/10 shadow-lg p-3 sm:p-4">
+          <Bell className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
           <AlertDescription>
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1">
-                <p className="font-semibold mb-1">Enable Browser Notifications</p>
-                <p className="text-sm text-muted-foreground mb-3">
-                  Get notified about important alerts and announcements even when you're not on this page.
+            <div className="flex items-start justify-between gap-2 sm:gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold mb-1 text-sm sm:text-base">Enable Browser Notifications</p>
+                <p className="text-xs sm:text-sm text-muted-foreground mb-2 sm:mb-3">
+                  Get notified about important alerts even when you're not on this page.
                 </p>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <Button 
                     size="sm" 
                     onClick={handleEnableNotifications}
-                    className="bg-primary hover:bg-primary/90"
+                    className="bg-primary hover:bg-primary/90 text-xs sm:text-sm"
                   >
-                    <Bell className="h-4 w-4 mr-1" />
-                    Enable Notifications
+                    <Bell className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                    Enable
                   </Button>
                   <Button 
                     size="sm" 
                     variant="outline"
                     onClick={dismissPermissionPrompt}
+                    className="text-xs sm:text-sm"
                   >
-                    <BellOff className="h-4 w-4 mr-1" />
-                    Maybe Later
+                    <BellOff className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                    Later
                   </Button>
                 </div>
               </div>
@@ -200,7 +213,7 @@ export const AlertNotifications = () => {
                 variant="ghost"
                 size="sm"
                 onClick={dismissPermissionPrompt}
-                className="h-6 w-6 p-0"
+                className="h-6 w-6 p-0 shrink-0"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -213,27 +226,27 @@ export const AlertNotifications = () => {
       {alerts.map((alert, index) => (
         <Alert 
           key={alert.id} 
-          className="relative glass border-primary/30 bg-primary/5 animate-slide-up shadow-lg"
+          className="relative glass border-primary/30 bg-primary/5 animate-slide-up shadow-lg p-3 sm:p-4"
           style={{ animationDelay: `${index * 0.1}s` }}
         >
-          <div className="flex items-start gap-3">
+          <div className="flex items-start gap-2 sm:gap-3">
             {alert.type === 'pass_renewal_reminder' ? (
-              <Calendar className="h-5 w-5 text-primary mt-0.5" />
+              <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-primary mt-0.5 shrink-0" />
             ) : (
-              <AlertCircle className="h-5 w-5 text-primary mt-0.5" />
+              <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-primary mt-0.5 shrink-0" />
             )}
             
-            <div className="flex-1">
-              <AlertDescription className="text-foreground font-medium mb-3">
+            <div className="flex-1 min-w-0">
+              <AlertDescription className="text-foreground font-medium mb-2 sm:mb-3 text-sm sm:text-base break-words">
                 {alert.message}
               </AlertDescription>
               
               {alert.type === 'pass_renewal_reminder' && (
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <Button 
                     size="sm" 
                     onClick={() => handleResponse(alert.id, 'yes')}
-                    className="bg-primary hover:bg-primary/90"
+                    className="bg-primary hover:bg-primary/90 text-xs sm:text-sm"
                   >
                     Yes, I got it
                   </Button>
@@ -241,7 +254,7 @@ export const AlertNotifications = () => {
                     size="sm" 
                     variant="outline"
                     onClick={() => handleResponse(alert.id, 'no')}
-                    className="border-primary/30"
+                    className="border-primary/30 text-xs sm:text-sm"
                   >
                     Not yet
                   </Button>
@@ -259,7 +272,7 @@ export const AlertNotifications = () => {
               variant="ghost"
               size="sm"
               onClick={() => dismissAlert(alert.id)}
-              className="h-6 w-6 p-0 hover:bg-primary/10"
+              className="h-6 w-6 p-0 hover:bg-primary/10 shrink-0"
             >
               <X className="h-4 w-4" />
             </Button>

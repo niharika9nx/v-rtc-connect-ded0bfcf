@@ -207,21 +207,22 @@ const AdminDashboard = () => {
 
 
   return (
-    <div className="min-h-screen bg-background bg-mesh p-4">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <div className="relative overflow-hidden rounded-lg glass border-border/50 p-6 shadow-lg">
+    <div className="min-h-screen bg-background bg-mesh p-3 sm:p-4">
+      <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6">
+        <div className="relative overflow-hidden rounded-lg glass border-border/50 p-4 sm:p-6 shadow-lg">
           <div className="absolute inset-0 bg-gradient-primary opacity-10" />
-          <div className="relative flex justify-between items-center">
+          <div className="relative flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div>
-              <h1 className="text-3xl font-bold font-display text-foreground">
+              <h1 className="text-xl sm:text-3xl font-bold font-display text-foreground">
                 Admin Dashboard
               </h1>
-              <p className="text-muted-foreground mt-1">Welcome back, {profile?.name || 'Admin'}!</p>
+              <p className="text-sm sm:text-base text-muted-foreground mt-1">Welcome back, {profile?.name || 'Admin'}!</p>
             </div>
             <Button 
               onClick={signOut} 
               variant="outline"
-              className="border-primary/30 hover:bg-primary/10 hover:shadow-glow"
+              size="sm"
+              className="border-primary/30 hover:bg-primary/10 hover:shadow-glow w-full sm:w-auto"
             >
               Logout
             </Button>
@@ -333,7 +334,7 @@ const AdminDashboard = () => {
                 </CardContent>
               </Card>
             </DialogTrigger>
-            <DialogContent className="max-w-3xl max-h-[80vh] glass border-border/50">
+            <DialogContent className="w-[95vw] max-w-3xl max-h-[85vh] glass border-border/50 p-4 sm:p-6">
               <DialogHeader>
                 <DialogTitle className="text-foreground">Complaints</DialogTitle>
               </DialogHeader>
@@ -343,29 +344,32 @@ const AdminDashboard = () => {
                     <p className="text-muted-foreground text-center py-8">No complaints found</p>
                   ) : (
                     complaints.map((complaint) => (
-                      <Card key={complaint.id} className="glass border-border/50">
-                        <CardContent className="pt-6">
-                          <div className="flex justify-between items-start mb-2">
-                            <div>
-                              <p className="font-medium text-foreground">{complaint.profiles?.name || 'Unknown User'}</p>
-                              <p className="text-sm text-muted-foreground">
+                        <Card key={complaint.id} className="glass border-border/50">
+                        <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6">
+                          <div className="flex flex-col sm:flex-row justify-between items-start gap-2 mb-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-foreground truncate">{complaint.profiles?.name || 'Unknown User'}</p>
+                              <p className="text-xs sm:text-sm text-muted-foreground">
                                 {complaint.profiles?.registration_id || 'N/A'}
                               </p>
                             </div>
-                            <Badge variant={complaint.status === 'resolved' ? 'default' : 'secondary'}>
+                            <Badge variant={complaint.status === 'resolved' ? 'default' : 'secondary'} className="shrink-0">
                               {complaint.status}
                             </Badge>
                           </div>
-                          <p className="text-sm mb-3 text-foreground">{complaint.message}</p>
-                          <div className="flex justify-between items-center">
+                          <p className="text-sm mb-3 text-foreground break-words">{complaint.message}</p>
+                          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                             <p className="text-xs text-muted-foreground">
                               {new Date(complaint.created_at).toLocaleDateString()}
                             </p>
                             {complaint.status === 'pending' && (
                               <Button
                                 size="sm"
-                                onClick={() => handleResolveComplaint(complaint.id)}
-                                className="bg-primary hover:bg-primary/90"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleResolveComplaint(complaint.id);
+                                }}
+                                className="bg-primary hover:bg-primary/90 w-full sm:w-auto"
                               >
                                 Mark as Resolved
                               </Button>
@@ -394,7 +398,7 @@ const AdminDashboard = () => {
                 </CardContent>
               </Card>
             </DialogTrigger>
-            <DialogContent className="max-w-3xl max-h-[80vh] glass border-border/50">
+            <DialogContent className="w-[95vw] max-w-3xl max-h-[85vh] glass border-border/50 p-4 sm:p-6">
               <DialogHeader>
                 <DialogTitle className="text-foreground">Announcements</DialogTitle>
               </DialogHeader>
