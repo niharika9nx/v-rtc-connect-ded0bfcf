@@ -309,7 +309,7 @@ export type Database = {
           pass_expiry_date: string | null
           phone: string | null
           registration_id: string | null
-          role: Database["public"]["Enums"]["app_role"] | null
+          role: string | null
           seat_number: number | null
           section: string | null
           year: string | null
@@ -327,7 +327,7 @@ export type Database = {
           pass_expiry_date?: string | null
           phone?: string | null
           registration_id?: string | null
-          role?: Database["public"]["Enums"]["app_role"] | null
+          role?: string | null
           seat_number?: number | null
           section?: string | null
           year?: string | null
@@ -345,7 +345,7 @@ export type Database = {
           pass_expiry_date?: string | null
           phone?: string | null
           registration_id?: string | null
-          role?: Database["public"]["Enums"]["app_role"] | null
+          role?: string | null
           seat_number?: number | null
           section?: string | null
           year?: string | null
