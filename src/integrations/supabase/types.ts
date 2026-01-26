@@ -62,18 +62,21 @@ export type Database = {
         Row: {
           admin_id: string | null
           created_at: string
+          deleted_at: string | null
           id: string
           message: string | null
         }
         Insert: {
           admin_id?: string | null
           created_at?: string
+          deleted_at?: string | null
           id?: string
           message?: string | null
         }
         Update: {
           admin_id?: string | null
           created_at?: string
+          deleted_at?: string | null
           id?: string
           message?: string | null
         }
@@ -174,6 +177,7 @@ export type Database = {
       complaints: {
         Row: {
           created_at: string
+          deleted_at: string | null
           id: string
           message: string | null
           status: string | null
@@ -181,6 +185,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           id?: string
           message?: string | null
           status?: string | null
@@ -188,6 +193,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           id?: string
           message?: string | null
           status?: string | null

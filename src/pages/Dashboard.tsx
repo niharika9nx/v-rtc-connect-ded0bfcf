@@ -223,44 +223,44 @@ const Dashboard = () => {
       {/* Modern Header with gradient */}
       <div className="border-b border-border/30 glass sticky top-0 z-50 backdrop-blur-xl">
         <div className="absolute inset-0 bg-gradient-primary opacity-10" />
-        <div className="relative max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-display font-bold text-foreground">VBus</h1>
-            <p className="text-sm text-muted-foreground">Welcome back, {profile?.name || 'User'}</p>
+        <div className="relative max-w-7xl mx-auto px-3 sm:px-4 py-3 sm:py-4 flex justify-between items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl sm:text-2xl font-display font-bold text-foreground">VBus</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground truncate">Welcome back, {profile?.name || 'User'}</p>
           </div>
-          <Button onClick={signOut} variant="outline" className="border-primary/30 hover:bg-primary/10 hover:shadow-glow transition-all">
+          <Button onClick={signOut} variant="outline" size="sm" className="border-primary/30 hover:bg-primary/10 hover:shadow-glow transition-all shrink-0">
             Logout
           </Button>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-8 space-y-4 sm:space-y-8">
         {/* Notifications Section */}
         <Card className="glass animate-slide-up shadow-glow">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg font-display">
-              <Bell className="h-5 w-5 text-primary" />
+          <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg font-display">
+              <Bell className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
               Notifications & Alerts
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3 sm:space-y-4 px-3 sm:px-6">
             {/* Custom Alerts from Admin */}
             <AlertNotifications />
             
             {/* Announcements */}
             {announcements.length > 0 && <div className="space-y-2">
-                <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
-                  <Bell className="h-4 w-4" />
+                <h3 className="text-xs sm:text-sm font-semibold text-muted-foreground flex items-center gap-2">
+                  <Bell className="h-3 w-3 sm:h-4 sm:w-4" />
                   Latest Announcements
                 </h3>
-                {announcements.map((announcement, index) => <Alert key={announcement.id} className="bg-background/50 border-primary/20 animate-slide-up" style={{
+                {announcements.map((announcement, index) => <Alert key={announcement.id} className="bg-background/50 border-primary/20 animate-slide-up p-3 sm:p-4" style={{
               animationDelay: `${index * 0.1}s`
             }}>
                     <AlertCircle className="h-4 w-4 text-primary" />
                     <AlertDescription>
-                      <div className="flex justify-between items-start">
-                        <span>{announcement.message}</span>
-                        <span className="text-xs text-muted-foreground ml-2 whitespace-nowrap">
+                      <div className="flex flex-col sm:flex-row justify-between items-start gap-1">
+                        <span className="text-sm break-words">{announcement.message}</span>
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
                           {new Date(announcement.created_at).toLocaleDateString()}
                         </span>
                       </div>
@@ -315,7 +315,7 @@ const Dashboard = () => {
           </Alert>}
 
         {/* Main Navigation Buttons with modern cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-6">
           <Card className="glass hover:shadow-glow transition-all duration-300 cursor-pointer group animate-slide-up hover:scale-105 overflow-hidden relative" onClick={() => navigate('/profile')} style={{
           animationDelay: '0.1s'
         }}>
