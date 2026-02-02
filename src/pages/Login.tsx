@@ -167,7 +167,7 @@ const Login = () => {
               <Bus className="h-8 w-8 text-primary" />
             </div>
           </div>
-          <CardTitle className="text-3xl font-display text-foreground">Login to VBus</CardTitle>
+          <CardTitle className="text-3xl font-display text-foreground">Login to V-RTC Connect</CardTitle>
           <CardDescription className="text-muted-foreground">Enter your credentials to access your account</CardDescription>
         </CardHeader>
         <CardContent>
