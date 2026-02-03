@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { User, Bus, MessageSquare, Megaphone, Trash2, Upload, Send, Users, Bell } from 'lucide-react';
+import { User, Bus, MessageSquare, Megaphone, Trash2, Upload, Send, Users } from 'lucide-react';
 
 interface Complaint {
   id: string;
@@ -24,20 +24,6 @@ interface Complaint {
   };
 }
 
-interface SentAlert {
-  id: string;
-  message: string;
-  status: string;
-  type: string;
-  created_at: string;
-  user_id: string;
-  profiles: {
-    id: string;
-    name: string;
-    role: string;
-  } | null;
-}
-
 const AdminDashboard = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
@@ -45,7 +31,6 @@ const AdminDashboard = () => {
   const [profile, setProfile] = useState<any>(null);
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
-  const [sentAlerts, setSentAlerts] = useState<SentAlert[]>([]);
   const [newAnnouncement, setNewAnnouncement] = useState('');
   const [complaintsOpen, setComplaintsOpen] = useState(false);
   const [announcementsOpen, setAnnouncementsOpen] = useState(false);
@@ -66,7 +51,6 @@ const AdminDashboard = () => {
       fetchAnnouncements();
       fetchRouteImage();
       fetchPendingRequestsCount();
-      fetchSentAlerts();
     }
   }, [user]);
 
@@ -131,38 +115,6 @@ const AdminDashboard = () => {
 
     if (!error && data) {
       setAnnouncements(data);
-    }
-  };
-
-  const fetchSentAlerts = async () => {
-    // Fetch custom alerts sent by admin (type = 'custom')
-    const { data, error } = await supabase
-      .from('alerts')
-      .select('*')
-      .eq('type', 'custom')
-      .order('created_at', { ascending: false })
-      .limit(20);
-
-    if (!error && data) {
-      // Fetch profiles for each alert recipient
-      const userIds = data.map(a => a.user_id).filter(Boolean);
-      if (userIds.length > 0) {
-        const { data: profilesData } = await supabase
-          .from('profiles')
-          .select('id, name, role')
-          .in('id', userIds);
-        
-        const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
-        
-        const alertsWithProfiles = data.map(alert => ({
-          ...alert,
-          profiles: profilesMap.get(alert.user_id) || null
-        }));
-        
-        setSentAlerts(alertsWithProfiles as SentAlert[]);
-      } else {
-        setSentAlerts([]);
-      }
     }
   };
 
@@ -250,27 +202,6 @@ const AdminDashboard = () => {
         description: 'Announcement deleted successfully',
       });
       fetchAnnouncements();
-    }
-  };
-
-  const handleDeleteAlert = async (alertId: string) => {
-    const { error } = await supabase
-      .from('alerts')
-      .delete()
-      .eq('id', alertId);
-
-    if (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to delete alert',
-        variant: 'destructive',
-      });
-    } else {
-      toast({
-        title: 'Success',
-        description: 'Alert deleted successfully',
-      });
-      fetchSentAlerts();
     }
   };
 
@@ -536,78 +467,9 @@ const AdminDashboard = () => {
           </Dialog>
         </div>
 
-        {/* Alerts Sent Section */}
-        <Card className="glass border-border/50 animate-slide-up shadow-lg" style={{ animationDelay: '0.5s' }}>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 font-display text-foreground">
-              <Bell className="h-5 w-5 text-primary" />
-              Alerts Sent
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {sentAlerts.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">No alerts sent yet</p>
-            ) : (
-              <ScrollArea className="max-h-[400px]">
-                <div className="space-y-3 pr-4">
-                  {sentAlerts.map((alert) => (
-                    <Card key={alert.id} className="glass border-border/50">
-                      <CardContent className="pt-4 px-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-xs text-muted-foreground">Sent to:</span>
-                              {alert.profiles ? (
-                                <Link
-                                  to={`/admin/user/${alert.profiles.id}`}
-                                  className="font-medium text-primary hover:underline text-sm"
-                                >
-                                  {alert.profiles.name}
-                                </Link>
-                              ) : (
-                                <span className="font-medium text-foreground text-sm">Unknown User</span>
-                              )}
-                              {alert.profiles?.role && (
-                                <Badge variant="secondary" className="text-xs">
-                                  {alert.profiles.role}
-                                </Badge>
-                              )}
-                            </div>
-                            <p className="text-sm text-foreground break-words mb-2">{alert.message}</p>
-                            <div className="flex items-center gap-2">
-                              <Badge 
-                                variant={alert.status === 'dismissed' || alert.status === 'resolved' ? 'default' : 'secondary'}
-                                className="text-xs"
-                              >
-                                {alert.status}
-                              </Badge>
-                              <span className="text-xs text-muted-foreground">
-                                {new Date(alert.created_at).toLocaleDateString()} at{' '}
-                                {new Date(alert.created_at).toLocaleTimeString()}
-                              </span>
-                            </div>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteAlert(alert.id)}
-                            className="hover:bg-destructive/10 hover:text-destructive shrink-0"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </ScrollArea>
-            )}
-          </CardContent>
-        </Card>
-
         {/* Bus Route Image */}
         {routeImageUrl && (
-          <Card className="glass animate-slide-up shadow-lg" style={{ animationDelay: '0.6s' }}>
+          <Card className="glass animate-slide-up shadow-lg" style={{ animationDelay: '0.5s' }}>
             <CardHeader>
               <CardTitle className="font-display">Bus Route Map</CardTitle>
             </CardHeader>
