@@ -26,6 +26,7 @@ const EPass = () => {
   const [extractedPassId, setExtractedPassId] = useState('');
   const [extractedExpiryDate, setExtractedExpiryDate] = useState('');
   const [ocrProgress, setOcrProgress] = useState(0);
+  const [pendingMonthlyPassPath, setPendingMonthlyPassPath] = useState<string | null>(null);
   const [deletingIdentity, setDeletingIdentity] = useState(false);
   const [deletingMonthly, setDeletingMonthly] = useState(false);
   const [feeStatus, setFeeStatus] = useState<any>(null);
@@ -371,6 +372,21 @@ const EPass = () => {
       const uploadResult = await uploadFile(monthlyPassFile, 'monthly_pass');
       if (!uploadResult) throw new Error('Upload failed');
 
+      // Persist path immediately so upload doesn't "disappear" even if OCR fails
+      setPendingMonthlyPassPath(uploadResult.filePath);
+
+      // Ensure passes row exists & has the file path (RLS-safe: user is writing their own row)
+      if (pass) {
+        await supabase
+          .from('passes')
+          .update({ monthly_pass_url: uploadResult.filePath })
+          .eq('id', pass.id);
+      } else {
+        await supabase
+          .from('passes')
+          .insert({ user_id: user.id, monthly_pass_url: uploadResult.filePath });
+      }
+
       toast({
         title: "Analyzing pass with AI...",
         description: "Extracting expiry date and pass ID"
@@ -392,7 +408,7 @@ const EPass = () => {
         console.error('Edge function error:', ocrError);
         toast({
           title: "OCR processing failed",
-          description: "Please enter pass details manually",
+          description: (ocrError as any)?.message || "Please enter pass details manually",
           variant: "destructive"
         });
         setExtractedExpiryDate('');
@@ -448,6 +464,8 @@ const EPass = () => {
     setUploading(true);
 
     try {
+      const monthlyPath = pendingMonthlyPassPath || pass?.monthly_pass_url || null;
+
       // Extract only numeric characters from pass ID for duplicate checking
       const numericPassId = extractedPassId ? extractedPassId.replace(/\D/g, '').trim() : '';
       console.log('Original Pass ID:', extractedPassId);
@@ -500,7 +518,8 @@ const EPass = () => {
       const updateData: any = {
         verified: !isDuplicate,
         buss_pass_id: extractedPassId || null,
-        expiry_date: extractedExpiryDate || null
+        expiry_date: extractedExpiryDate || null,
+        ...(monthlyPath ? { monthly_pass_url: monthlyPath } : {})
       };
 
       if (pass) {
@@ -570,6 +589,7 @@ const EPass = () => {
 
       setShowVerificationDialog(false);
       setMonthlyPassFile(null);
+      setPendingMonthlyPassPath(null);
       setExtractedPassId('');
       setExtractedExpiryDate('');
       
@@ -666,6 +686,8 @@ const EPass = () => {
         title: "Monthly pass deleted",
         description: "Your monthly pass has been removed successfully"
       });
+
+      setPendingMonthlyPassPath(null);
 
       await fetchPass();
     } catch (error: any) {
