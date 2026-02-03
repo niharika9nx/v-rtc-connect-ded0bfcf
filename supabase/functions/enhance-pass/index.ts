@@ -1,19 +1,25 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { encode as encodeBase64 } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {
+    if (!LOVABLE_API_KEY) {
+      throw new Error('Missing LOVABLE_API_KEY secret');
+    }
+
     const { filePath, userId } = await req.json();
     console.log('Processing pass enhancement for:', filePath);
 
@@ -33,21 +39,14 @@ serve(async (req) => {
 
     console.log('Image downloaded successfully');
 
-    // Convert blob to array buffer and base64 for OCR
+    // Convert blob to base64 for OCR (more reliable than manual btoa chunking)
     const arrayBuffer = await fileData.arrayBuffer();
     const uint8Array = new Uint8Array(arrayBuffer);
-    
     console.log('Original image size:', uint8Array.length, 'bytes');
-    
-    // Convert to base64 for OCR
-    let binary = '';
-    const chunkSize = 8192;
-    for (let i = 0; i < uint8Array.length; i += chunkSize) {
-      const chunk = uint8Array.subarray(i, Math.min(i + chunkSize, uint8Array.length));
-      binary += String.fromCharCode.apply(null, Array.from(chunk));
-    }
-    const base64Image = btoa(binary);
-    const dataUrl = `data:image/jpeg;base64,${base64Image}`;
+
+    const mimeType = (fileData as any)?.type || 'image/jpeg';
+    const base64Image = encodeBase64(arrayBuffer);
+    const dataUrl = `data:${mimeType};base64,${base64Image}`;
 
     console.log('Starting OCR processing with Lovable AI...');
     
@@ -106,16 +105,9 @@ serve(async (req) => {
     const isExpired = expiryDate ? new Date(expiryDate) < new Date() : false;
     console.log('Pass expired:', isExpired);
 
-    // Get public URL of the original uploaded file
-    const { data: { publicUrl } } = supabase.storage
-      .from('pass-documents')
-      .getPublicUrl(filePath);
-    
-    console.log('Using original image URL:', publicUrl);
-
-    // Update passes table
+    // Update passes table (store filePath; bucket is private)
     const updateData: any = {
-      monthly_pass_url: publicUrl,
+      monthly_pass_url: filePath,
     };
 
     if (expiryDate) {
@@ -220,7 +212,7 @@ serve(async (req) => {
         expiryDate,
         passId,
         isExpired,
-        imageUrl: publicUrl 
+        imageUrl: filePath 
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
