@@ -241,36 +241,64 @@ const EPass = () => {
         return;
       }
 
-      img.onload = () => {
-        // Use original dimensions or scale up slightly for better quality
-        const scaleFactor = 1.5;
-        canvas.width = img.width * scaleFactor;
-        canvas.height = img.height * scaleFactor;
+      // Create object URL for the file
+      let objectUrl: string | null = null;
 
-        // Enable image smoothing for better quality
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-
-        // Draw image with high quality
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-        // Convert to high-quality PNG (lossless)
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              console.log('Enhanced image quality - size:', blob.size);
-              resolve(blob);
-            } else {
-              reject(new Error('Failed to create blob'));
-            }
-          },
-          'image/png',
-          1.0  // Maximum quality
-        );
+      const cleanup = () => {
+        if (objectUrl) {
+          URL.revokeObjectURL(objectUrl);
+          objectUrl = null;
+        }
       };
 
-      img.onerror = () => reject(new Error('Failed to load image'));
-      img.src = URL.createObjectURL(file);
+      img.onload = () => {
+        try {
+          // Use original dimensions or scale up slightly for better quality
+          const scaleFactor = 1.5;
+          canvas.width = img.width * scaleFactor;
+          canvas.height = img.height * scaleFactor;
+
+          // Enable image smoothing for better quality
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+
+          // Draw image with high quality
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+          // Convert to high-quality PNG (lossless)
+          canvas.toBlob(
+            (blob) => {
+              cleanup();
+              if (blob) {
+                console.log('Enhanced image quality - size:', blob.size);
+                resolve(blob);
+              } else {
+                reject(new Error('Failed to create blob'));
+              }
+            },
+            'image/png',
+            1.0  // Maximum quality
+          );
+        } catch (error) {
+          cleanup();
+          reject(error);
+        }
+      };
+
+      img.onerror = (e) => {
+        cleanup();
+        console.error('Image load error in enhanceImageQuality:', e);
+        reject(new Error('Failed to load image for enhancement'));
+      };
+
+      // Create blob URL from file
+      try {
+        objectUrl = URL.createObjectURL(file);
+        img.src = objectUrl;
+      } catch (error) {
+        console.error('Error creating object URL:', error);
+        reject(new Error('Failed to create image URL'));
+      }
     });
   };
 
@@ -358,186 +386,215 @@ const EPass = () => {
         return;
       }
 
-      img.onload = () => {
-        // Adaptive scale factor based on image size (target 300 DPI minimum)
-        const minDimension = Math.min(img.width, img.height);
-        const scaleFactor = minDimension < 1000 ? 3 : minDimension < 1500 ? 2.5 : 2;
-        
-        canvas.width = img.width * scaleFactor;
-        canvas.height = img.height * scaleFactor;
+      // Create object URL for the file
+      let objectUrl: string | null = null;
 
-        // Enable high-quality image smoothing
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        
-        // Draw image with high quality
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-        // Get image data for processing
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const data = imageData.data;
-
-        // 1. Grayscale conversion with improved weights
-        for (let i = 0; i < data.length; i += 4) {
-          const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-          data[i] = gray;
-          data[i + 1] = gray;
-          data[i + 2] = gray;
+      const cleanup = () => {
+        if (objectUrl) {
+          URL.revokeObjectURL(objectUrl);
+          objectUrl = null;
         }
-
-        // 2. Adaptive histogram equalization for better contrast
-        const histEq = new Uint8ClampedArray(data);
-        const histogram = new Array(256).fill(0);
-        
-        // Build histogram
-        for (let i = 0; i < data.length; i += 4) {
-          histogram[data[i]]++;
-        }
-        
-        // Calculate CDF
-        const cdf = new Array(256).fill(0);
-        cdf[0] = histogram[0];
-        for (let i = 1; i < 256; i++) {
-          cdf[i] = cdf[i - 1] + histogram[i];
-        }
-        
-        // Normalize CDF
-        const cdfMin = cdf.find(v => v > 0) || 0;
-        const totalPixels = canvas.width * canvas.height;
-        
-        for (let i = 0; i < data.length; i += 4) {
-          const newValue = Math.round(((cdf[data[i]] - cdfMin) / (totalPixels - cdfMin)) * 255);
-          histEq[i] = newValue;
-          histEq[i + 1] = newValue;
-          histEq[i + 2] = newValue;
-        }
-
-        // 3. Sharpening filter (unsharp mask)
-        const sharpened = new Uint8ClampedArray(histEq);
-        const sharpenKernel = [
-          0, -1, 0,
-          -1, 5, -1,
-          0, -1, 0
-        ];
-        
-        for (let y = 1; y < canvas.height - 1; y++) {
-          for (let x = 1; x < canvas.width - 1; x++) {
-            let sum = 0;
-            for (let ky = -1; ky <= 1; ky++) {
-              for (let kx = -1; kx <= 1; kx++) {
-                const idx = ((y + ky) * canvas.width + (x + kx)) * 4;
-                const kernelIdx = (ky + 1) * 3 + (kx + 1);
-                sum += histEq[idx] * sharpenKernel[kernelIdx];
-              }
-            }
-            const idx = (y * canvas.width + x) * 4;
-            sharpened[idx] = Math.min(255, Math.max(0, sum));
-            sharpened[idx + 1] = sharpened[idx];
-            sharpened[idx + 2] = sharpened[idx];
-          }
-        }
-
-        // 4. Otsu's binarization (improved implementation)
-        let threshold = 128;
-        const binHistogram = new Array(256).fill(0);
-        
-        for (let i = 0; i < sharpened.length; i += 4) {
-          binHistogram[sharpened[i]]++;
-        }
-        
-        let sum = 0;
-        for (let i = 0; i < 256; i++) sum += i * binHistogram[i];
-        
-        let sumB = 0;
-        let wB = 0;
-        let wF = 0;
-        let varMax = 0;
-        
-        for (let t = 0; t < 256; t++) {
-          wB += binHistogram[t];
-          if (wB === 0) continue;
-          
-          wF = totalPixels - wB;
-          if (wF === 0) break;
-          
-          sumB += t * binHistogram[t];
-          const mB = sumB / wB;
-          const mF = (sum - sumB) / wF;
-          const varBetween = wB * wF * (mB - mF) * (mB - mF);
-          
-          if (varBetween > varMax) {
-            varMax = varBetween;
-            threshold = t;
-          }
-        }
-
-        // Apply adaptive threshold (slightly adjust based on local variance)
-        threshold = Math.max(100, Math.min(180, threshold));
-        
-        for (let i = 0; i < sharpened.length; i += 4) {
-          const value = sharpened[i] > threshold ? 255 : 0;
-          sharpened[i] = value;
-          sharpened[i + 1] = value;
-          sharpened[i + 2] = value;
-        }
-
-        // 5. Morphological operations: dilation to connect broken characters
-        const dilated = new Uint8ClampedArray(sharpened);
-        const structElement = 1; // 3x3 structuring element
-        
-        for (let y = structElement; y < canvas.height - structElement; y++) {
-          for (let x = structElement; x < canvas.width - structElement; x++) {
-            let maxVal = 0;
-            for (let dy = -structElement; dy <= structElement; dy++) {
-              for (let dx = -structElement; dx <= structElement; dx++) {
-                const idx = ((y + dy) * canvas.width + (x + dx)) * 4;
-                maxVal = Math.max(maxVal, sharpened[idx]);
-              }
-            }
-            const idx = (y * canvas.width + x) * 4;
-            dilated[idx] = maxVal;
-            dilated[idx + 1] = maxVal;
-            dilated[idx + 2] = maxVal;
-          }
-        }
-
-        // 6. Advanced noise removal (5x5 median filter for better results)
-        const filtered = new Uint8ClampedArray(dilated);
-        const filterSize = 2; // 5x5 window
-        
-        for (let y = filterSize; y < canvas.height - filterSize; y++) {
-          for (let x = filterSize; x < canvas.width - filterSize; x++) {
-            const neighbors = [];
-            for (let dy = -filterSize; dy <= filterSize; dy++) {
-              for (let dx = -filterSize; dx <= filterSize; dx++) {
-                const idx = ((y + dy) * canvas.width + (x + dx)) * 4;
-                neighbors.push(dilated[idx]);
-              }
-            }
-            neighbors.sort((a, b) => a - b);
-            const median = neighbors[Math.floor(neighbors.length / 2)];
-            const idx = (y * canvas.width + x) * 4;
-            filtered[idx] = median;
-            filtered[idx + 1] = median;
-            filtered[idx + 2] = median;
-          }
-        }
-
-        // Put final processed image back
-        ctx.putImageData(new ImageData(filtered, canvas.width, canvas.height), 0, 0);
-
-        // Convert to high-quality PNG blob
-        canvas.toBlob((blob) => {
-          if (blob) {
-            resolve(blob);
-          } else {
-            reject(new Error('Failed to create blob'));
-          }
-        }, 'image/png', 1.0);
       };
 
-      img.onerror = () => reject(new Error('Failed to load image'));
-      img.src = URL.createObjectURL(file);
+      img.onload = () => {
+        try {
+          // Adaptive scale factor based on image size (target 300 DPI minimum)
+          const minDimension = Math.min(img.width, img.height);
+          const scaleFactor = minDimension < 1000 ? 3 : minDimension < 1500 ? 2.5 : 2;
+          
+          canvas.width = img.width * scaleFactor;
+          canvas.height = img.height * scaleFactor;
+
+          // Enable high-quality image smoothing
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          
+          // Draw image with high quality
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+          // Get image data for processing
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const data = imageData.data;
+          const totalPixels = canvas.width * canvas.height;
+
+          // 1. Grayscale conversion with improved weights
+          for (let i = 0; i < data.length; i += 4) {
+            const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+            data[i] = gray;
+            data[i + 1] = gray;
+            data[i + 2] = gray;
+          }
+
+          // 2. Adaptive histogram equalization for better contrast
+          const histEq = new Uint8ClampedArray(data);
+          const histogram = new Array(256).fill(0);
+          
+          // Build histogram
+          for (let i = 0; i < data.length; i += 4) {
+            histogram[data[i]]++;
+          }
+          
+          // Calculate CDF
+          const cdf = new Array(256).fill(0);
+          cdf[0] = histogram[0];
+          for (let i = 1; i < 256; i++) {
+            cdf[i] = cdf[i - 1] + histogram[i];
+          }
+          
+          // Normalize CDF
+          const cdfMin = cdf.find(v => v > 0) || 0;
+          
+          for (let i = 0; i < data.length; i += 4) {
+            const newValue = Math.round(((cdf[data[i]] - cdfMin) / (totalPixels - cdfMin)) * 255);
+            histEq[i] = newValue;
+            histEq[i + 1] = newValue;
+            histEq[i + 2] = newValue;
+          }
+
+          // 3. Sharpening filter (unsharp mask)
+          const sharpened = new Uint8ClampedArray(histEq);
+          const sharpenKernel = [
+            0, -1, 0,
+            -1, 5, -1,
+            0, -1, 0
+          ];
+          
+          for (let y = 1; y < canvas.height - 1; y++) {
+            for (let x = 1; x < canvas.width - 1; x++) {
+              let sum = 0;
+              for (let ky = -1; ky <= 1; ky++) {
+                for (let kx = -1; kx <= 1; kx++) {
+                  const idx = ((y + ky) * canvas.width + (x + kx)) * 4;
+                  const kernelIdx = (ky + 1) * 3 + (kx + 1);
+                  sum += histEq[idx] * sharpenKernel[kernelIdx];
+                }
+              }
+              const idx = (y * canvas.width + x) * 4;
+              sharpened[idx] = Math.min(255, Math.max(0, sum));
+              sharpened[idx + 1] = sharpened[idx];
+              sharpened[idx + 2] = sharpened[idx];
+            }
+          }
+
+          // 4. Otsu's binarization
+          let threshold = 128;
+          const binHistogram = new Array(256).fill(0);
+          
+          for (let i = 0; i < sharpened.length; i += 4) {
+            binHistogram[sharpened[i]]++;
+          }
+          
+          let sum = 0;
+          for (let i = 0; i < 256; i++) sum += i * binHistogram[i];
+          
+          let sumB = 0;
+          let wB = 0;
+          let wF = 0;
+          let varMax = 0;
+          
+          for (let t = 0; t < 256; t++) {
+            wB += binHistogram[t];
+            if (wB === 0) continue;
+            
+            wF = totalPixels - wB;
+            if (wF === 0) break;
+            
+            sumB += t * binHistogram[t];
+            const mB = sumB / wB;
+            const mF = (sum - sumB) / wF;
+            const varBetween = wB * wF * (mB - mF) * (mB - mF);
+            
+            if (varBetween > varMax) {
+              varMax = varBetween;
+              threshold = t;
+            }
+          }
+
+          // Apply adaptive threshold
+          threshold = Math.max(100, Math.min(180, threshold));
+          
+          for (let i = 0; i < sharpened.length; i += 4) {
+            const value = sharpened[i] > threshold ? 255 : 0;
+            sharpened[i] = value;
+            sharpened[i + 1] = value;
+            sharpened[i + 2] = value;
+          }
+
+          // 5. Morphological operations: dilation
+          const dilated = new Uint8ClampedArray(sharpened);
+          const structElement = 1;
+          
+          for (let y = structElement; y < canvas.height - structElement; y++) {
+            for (let x = structElement; x < canvas.width - structElement; x++) {
+              let maxVal = 0;
+              for (let dy = -structElement; dy <= structElement; dy++) {
+                for (let dx = -structElement; dx <= structElement; dx++) {
+                  const idx = ((y + dy) * canvas.width + (x + dx)) * 4;
+                  maxVal = Math.max(maxVal, sharpened[idx]);
+                }
+              }
+              const idx = (y * canvas.width + x) * 4;
+              dilated[idx] = maxVal;
+              dilated[idx + 1] = maxVal;
+              dilated[idx + 2] = maxVal;
+            }
+          }
+
+          // 6. Advanced noise removal (5x5 median filter)
+          const filtered = new Uint8ClampedArray(dilated);
+          const filterSize = 2;
+          
+          for (let y = filterSize; y < canvas.height - filterSize; y++) {
+            for (let x = filterSize; x < canvas.width - filterSize; x++) {
+              const neighbors: number[] = [];
+              for (let dy = -filterSize; dy <= filterSize; dy++) {
+                for (let dx = -filterSize; dx <= filterSize; dx++) {
+                  const idx = ((y + dy) * canvas.width + (x + dx)) * 4;
+                  neighbors.push(dilated[idx]);
+                }
+              }
+              neighbors.sort((a, b) => a - b);
+              const median = neighbors[Math.floor(neighbors.length / 2)];
+              const idx = (y * canvas.width + x) * 4;
+              filtered[idx] = median;
+              filtered[idx + 1] = median;
+              filtered[idx + 2] = median;
+            }
+          }
+
+          // Put final processed image back
+          ctx.putImageData(new ImageData(filtered, canvas.width, canvas.height), 0, 0);
+
+          // Convert to high-quality PNG blob
+          canvas.toBlob((blob) => {
+            cleanup();
+            if (blob) {
+              resolve(blob);
+            } else {
+              reject(new Error('Failed to create blob'));
+            }
+          }, 'image/png', 1.0);
+        } catch (error) {
+          cleanup();
+          console.error('Error processing image:', error);
+          reject(error);
+        }
+      };
+
+      img.onerror = (e) => {
+        cleanup();
+        console.error('Image load error in preprocessImage:', e);
+        reject(new Error('Failed to load image for OCR preprocessing'));
+      };
+
+      // Create blob URL from file
+      try {
+        objectUrl = URL.createObjectURL(file);
+        img.src = objectUrl;
+      } catch (error) {
+        console.error('Error creating object URL:', error);
+        reject(new Error('Failed to create image URL'));
+      }
     });
   };
 
