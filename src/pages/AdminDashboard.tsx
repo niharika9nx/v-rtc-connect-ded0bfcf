@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { User, Bus, MessageSquare, Megaphone, Trash2, Upload, Send, Users } from 'lucide-react';
+import { User, Bus, MessageSquare, Megaphone, Trash2, Upload, Send, Users, Bell } from 'lucide-react';
 
 interface Complaint {
   id: string;
@@ -24,6 +24,21 @@ interface Complaint {
   };
 }
 
+interface SentAlert {
+  id: string;
+  user_id: string | null;
+  message: string | null;
+  status: string | null;
+  created_at: string;
+  deleted_at: string | null;
+  send_at: string | null;
+  profiles?: {
+    name: string | null;
+    role: string | null;
+    registration_id: string | null;
+  };
+}
+
 const AdminDashboard = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
@@ -34,6 +49,8 @@ const AdminDashboard = () => {
   const [newAnnouncement, setNewAnnouncement] = useState('');
   const [complaintsOpen, setComplaintsOpen] = useState(false);
   const [announcementsOpen, setAnnouncementsOpen] = useState(false);
+  const [alertsOpen, setAlertsOpen] = useState(false);
+  const [alertsSent, setAlertsSent] = useState<SentAlert[]>([]);
   const [loading, setLoading] = useState(false);
   const [routeImageUrl, setRouteImageUrl] = useState<string | null>(null);
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
@@ -49,6 +66,7 @@ const AdminDashboard = () => {
       
       fetchComplaints();
       fetchAnnouncements();
+      fetchAlertsSent();
       fetchRouteImage();
       fetchPendingRequestsCount();
     }
@@ -115,6 +133,32 @@ const AdminDashboard = () => {
 
     if (!error && data) {
       setAnnouncements(data);
+    }
+  };
+
+  const fetchAlertsSent = async () => {
+    const { data, error } = await supabase
+      .from('alerts')
+      .select(`
+        id,
+        user_id,
+        message,
+        status,
+        created_at,
+        deleted_at,
+        send_at,
+        profiles:user_id (
+          name,
+          role,
+          registration_id
+        )
+      `)
+      .eq('type', 'custom')
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (!error && data) {
+      setAlertsSent(data as SentAlert[]);
     }
   };
 
@@ -314,6 +358,78 @@ const AdminDashboard = () => {
               <p className="text-muted-foreground">View all students and faculty</p>
             </CardContent>
           </Card>
+
+          <Dialog open={alertsOpen} onOpenChange={setAlertsOpen}>
+            <DialogTrigger asChild>
+              <Card
+                className="glass border-border/50 hover:shadow-glow transition-all cursor-pointer animate-slide-up group"
+                style={{ animationDelay: '0.38s' }}
+              >
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-foreground group-hover:text-primary transition-colors">
+                    <Bell className="h-5 w-5" />
+                    Alerts Sent
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">View alerts sent to students / faculty</p>
+                  {alertsSent.length > 0 && (
+                    <Badge className="mt-2" variant="secondary">
+                      {alertsSent.length} total
+                    </Badge>
+                  )}
+                </CardContent>
+              </Card>
+            </DialogTrigger>
+
+            <DialogContent className="w-[95vw] max-w-3xl max-h-[85vh] glass border-border/50 p-4 sm:p-6">
+              <DialogHeader>
+                <DialogTitle className="text-foreground">Alerts Sent</DialogTitle>
+              </DialogHeader>
+
+              <ScrollArea className="h-[60vh]">
+                <div className="space-y-4 pr-4">
+                  {alertsSent.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-8">No admin alerts sent yet</p>
+                  ) : (
+                    alertsSent.map((alert) => {
+                      const recipientName = alert.profiles?.name || 'Unknown User';
+                      const recipientRole = alert.profiles?.role || 'user';
+                      const status = alert.status || 'unknown';
+                      const isDismissed = status === 'dismissed' || !!alert.deleted_at;
+
+                      return (
+                        <Card key={alert.id} className="glass border-border/50">
+                          <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6">
+                            <div className="flex flex-col sm:flex-row justify-between items-start gap-2 mb-2">
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-foreground truncate">{recipientName}</p>
+                                <p className="text-xs sm:text-sm text-muted-foreground capitalize">
+                                  {recipientRole}
+                                  {alert.profiles?.registration_id ? ` • ${alert.profiles.registration_id}` : ''}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <Badge variant={isDismissed ? 'secondary' : status === 'unread' ? 'destructive' : 'default'}>
+                                  {status}
+                                </Badge>
+                              </div>
+                            </div>
+
+                            <p className="text-sm mb-3 text-foreground break-words">{alert.message || '—'}</p>
+
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(alert.created_at).toLocaleDateString()} at {new Date(alert.created_at).toLocaleTimeString()}
+                            </p>
+                          </CardContent>
+                        </Card>
+                      );
+                    })
+                  )}
+                </div>
+              </ScrollArea>
+            </DialogContent>
+          </Dialog>
 
           <Dialog open={complaintsOpen} onOpenChange={setComplaintsOpen}>
             <DialogTrigger asChild>
