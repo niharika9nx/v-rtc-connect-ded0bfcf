@@ -134,18 +134,26 @@ export const AlertNotifications = () => {
   };
 
   const dismissAlert = async (alertId: string) => {
+    if (!user) return;
+
     try {
       // Soft delete - set deleted_at timestamp instead of hard delete
-      const { error } = await supabase
+      // Add user_id filter to guarantee we only ever attempt to dismiss the current user's alerts.
+      const { data, error } = await supabase
         .from('alerts')
         .update({ status: 'dismissed', deleted_at: new Date().toISOString() })
-        .eq('id', alertId);
+        .eq('id', alertId)
+        .eq('user_id', user.id)
+        .select('id');
 
       if (error) throw error;
-      
+      if (!data || data.length === 0) {
+        throw new Error('Unable to dismiss this alert (not found or not permitted).');
+      }
+
       // Immediately remove from local state for instant feedback
       setAlerts(prev => prev.filter(a => a.id !== alertId));
-      
+
       toast({
         title: 'Alert dismissed',
         description: 'The notification has been removed.',
@@ -154,7 +162,7 @@ export const AlertNotifications = () => {
       console.error('Error dismissing alert:', error);
       toast({
         title: 'Error',
-        description: 'Failed to dismiss alert. Please try again.',
+        description: error?.message || 'Failed to dismiss alert. Please try again.',
         variant: 'destructive'
       });
     }
