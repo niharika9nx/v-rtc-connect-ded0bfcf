@@ -10,6 +10,43 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ArrowLeft, CreditCard, Upload, RefreshCw, ZoomIn, ZoomOut, Maximize2, X, Check, Trash2, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Tesseract from 'tesseract.js';
+import heic2any from 'heic2any';
+
+// Helper function to check if file is HEIC format
+const isHeicFile = (file: File): boolean => {
+  const extension = file.name.toLowerCase().split('.').pop();
+  return extension === 'heic' || extension === 'heif' || file.type === 'image/heic' || file.type === 'image/heif';
+};
+
+// Convert HEIC file to JPEG
+const convertHeicToJpeg = async (file: File): Promise<File> => {
+  if (!isHeicFile(file)) {
+    return file;
+  }
+  
+  console.log('Converting HEIC file to JPEG:', file.name);
+  
+  try {
+    const convertedBlob = await heic2any({
+      blob: file,
+      toType: 'image/jpeg',
+      quality: 0.95
+    });
+    
+    // heic2any can return a single blob or array of blobs
+    const blob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
+    
+    // Create a new file with .jpg extension
+    const newFileName = file.name.replace(/\.(heic|heif)$/i, '.jpg');
+    const convertedFile = new File([blob], newFileName, { type: 'image/jpeg' });
+    
+    console.log('HEIC conversion successful, new size:', convertedFile.size);
+    return convertedFile;
+  } catch (error) {
+    console.error('HEIC conversion error:', error);
+    throw new Error('Failed to convert HEIC image. Please try uploading a JPEG or PNG image instead.');
+  }
+};
 
 const EPass = () => {
   const { user } = useAuth();
@@ -231,6 +268,9 @@ const EPass = () => {
   };
 
   const enhanceImageQuality = async (file: File): Promise<Blob> => {
+    // Convert HEIC to JPEG first if needed
+    const processableFile = await convertHeicToJpeg(file);
+    
     return new Promise((resolve, reject) => {
       const img = new Image();
       const canvas = document.createElement('canvas');
@@ -291,9 +331,9 @@ const EPass = () => {
         reject(new Error('Failed to load image for enhancement'));
       };
 
-      // Create blob URL from file
+      // Create blob URL from the processable file (converted if HEIC)
       try {
-        objectUrl = URL.createObjectURL(file);
+        objectUrl = URL.createObjectURL(processableFile);
         img.src = objectUrl;
       } catch (error) {
         console.error('Error creating object URL:', error);
@@ -376,6 +416,9 @@ const EPass = () => {
   };
 
   const preprocessImage = async (file: File): Promise<Blob> => {
+    // Convert HEIC to JPEG first if needed
+    const processableFile = await convertHeicToJpeg(file);
+    
     return new Promise((resolve, reject) => {
       const img = new Image();
       const canvas = document.createElement('canvas');
@@ -587,9 +630,9 @@ const EPass = () => {
         reject(new Error('Failed to load image for OCR preprocessing'));
       };
 
-      // Create blob URL from file
+      // Create blob URL from the processable file (converted if HEIC)
       try {
-        objectUrl = URL.createObjectURL(file);
+        objectUrl = URL.createObjectURL(processableFile);
         img.src = objectUrl;
       } catch (error) {
         console.error('Error creating object URL:', error);
@@ -1229,7 +1272,7 @@ const EPass = () => {
                     <Input
                       id="identity-card"
                       type="file"
-                      accept="image/*"
+                      accept="image/*,.heic,.heif"
                       onChange={(e) => setIdentityCardFile(e.target.files?.[0] || null)}
                       disabled={uploading}
                       className="bg-muted/30 border-border/50 text-foreground flex-1"
@@ -1310,7 +1353,7 @@ const EPass = () => {
                     <Input
                       id="monthly-pass"
                       type="file"
-                      accept="image/*"
+                      accept="image/*,.heic,.heif"
                       onChange={(e) => setMonthlyPassFile(e.target.files?.[0] || null)}
                       disabled={uploading || (pass?.monthly_pass_url && pass?.expiry_date && 
                         new Date(pass.expiry_date) >= new Date() && 
