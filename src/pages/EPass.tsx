@@ -906,51 +906,62 @@ const EPass = () => {
         description: "Extracting expiry date and pass ID"
       });
 
+      // Check if HEIC and show conversion message
+      if (isHeicFile(monthlyPassFile)) {
+        toast({
+          title: "Converting HEIC image...",
+          description: "This may take a few seconds"
+        });
+      }
+
+      // Small delay to let UI update before heavy processing
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       // Run OCR on the file (don't upload yet, wait for verification)
-      setTimeout(async () => {
-        try {
-          const ocrText = await runOCR(monthlyPassFile);
-          console.log('OCR Text:', ocrText);
+      let ocrText = '';
+      try {
+        ocrText = await runOCR(monthlyPassFile);
+        console.log('OCR Text:', ocrText);
+      } catch (ocrError: any) {
+        console.error('OCR error:', ocrError);
+        toast({
+          title: "OCR failed",
+          description: ocrError.message || "Please enter pass details manually",
+          variant: "destructive"
+        });
+        // Continue to show dialog for manual entry
+      }
 
-          // Extract expiry date and pass ID
-          const expiryDate = extractDateFromText(ocrText);
-          const passId = extractPassIdFromText(ocrText);
+      // Extract expiry date and pass ID
+      const expiryDate = ocrText ? extractDateFromText(ocrText) : null;
+      const passId = ocrText ? extractPassIdFromText(ocrText) : null;
 
-          console.log('Extracted - Expiry:', expiryDate, 'Pass ID:', passId);
+      console.log('Extracted - Expiry:', expiryDate, 'Pass ID:', passId);
 
-          // Set extracted values for user verification
-          setExtractedExpiryDate(expiryDate || '');
-          setExtractedPassId(passId || '');
+      // Set extracted values for user verification
+      setExtractedExpiryDate(expiryDate || '');
+      setExtractedPassId(passId || '');
 
-          // Show verification dialog and enable button
-          setShowVerificationDialog(true);
-          setUploading(false);
+      // Show verification dialog and enable button
+      setShowVerificationDialog(true);
+      setUploading(false);
 
-          toast({
-            title: "OCR Complete",
-            description: "Please verify the extracted information",
-          });
-        } catch (ocrError: any) {
-          console.error('OCR error:', ocrError);
-          toast({
-            title: "OCR failed",
-            description: "Please enter pass details manually",
-            variant: "destructive"
-          });
-          setExtractedExpiryDate('');
-          setExtractedPassId('');
-          setShowVerificationDialog(true);
-          setUploading(false);
-        }
-      }, 100);
+      toast({
+        title: ocrText ? "OCR Complete" : "Manual Entry Required",
+        description: ocrText ? "Please verify the extracted information" : "Please enter pass details manually",
+      });
 
     } catch (error: any) {
+      console.error('Monthly pass upload error:', error);
       toast({
         title: "Processing failed",
-        description: error.message,
+        description: error.message || "An unexpected error occurred. Please try again.",
         variant: "destructive"
       });
       setUploading(false);
+      // Reset state on error
+      setExtractedExpiryDate('');
+      setExtractedPassId('');
     }
   };
 
