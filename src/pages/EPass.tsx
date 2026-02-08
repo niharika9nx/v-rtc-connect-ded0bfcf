@@ -64,7 +64,6 @@ const EPass = () => {
   const [extractedPassId, setExtractedPassId] = useState('');
   const [extractedExpiryDate, setExtractedExpiryDate] = useState('');
   const [ocrProgress, setOcrProgress] = useState(0);
-  const [processingStage, setProcessingStage] = useState<'idle' | 'converting' | 'preprocessing' | 'ocr' | 'uploading' | 'saving' | 'complete'>('idle');
   const [deletingIdentity, setDeletingIdentity] = useState(false);
   const [deletingMonthly, setDeletingMonthly] = useState(false);
   const [feeStatus, setFeeStatus] = useState<any>(null);
@@ -844,7 +843,6 @@ const EPass = () => {
 
   const runOCR = async (file: File) => {
     setOcrProgress(0);
-    setProcessingStage('preprocessing');
     
     toast({
       title: "Preprocessing image...",
@@ -858,7 +856,6 @@ const EPass = () => {
     // Give UI time to breathe
     await new Promise(resolve => setTimeout(resolve, 50));
     
-    setProcessingStage('ocr');
     toast({
       title: "Running OCR...",
       description: "Extracting text from pass"
@@ -872,6 +869,15 @@ const EPass = () => {
           if (m.status === 'recognizing text') {
             const progress = Math.round(m.progress * 100);
             setOcrProgress(progress);
+            
+            // Update progress every 25%
+            if (progress % 25 === 0) {
+              toast({
+                title: `OCR Progress: ${progress}%`,
+                description: "Please wait...",
+                duration: 2000
+              });
+            }
           }
         }
       }
@@ -893,7 +899,6 @@ const EPass = () => {
 
     setUploading(true);
     setOcrProgress(0);
-    setProcessingStage('converting');
 
     try {
       toast({
@@ -919,7 +924,6 @@ const EPass = () => {
 
           // Show verification dialog and enable button
           setShowVerificationDialog(true);
-          setProcessingStage('idle');
           setUploading(false);
 
           toast({
@@ -930,13 +934,12 @@ const EPass = () => {
           console.error('OCR error:', ocrError);
           toast({
             title: "OCR failed",
-            description: ocrError.message || "Please enter pass details manually",
+            description: "Please enter pass details manually",
             variant: "destructive"
           });
           setExtractedExpiryDate('');
           setExtractedPassId('');
           setShowVerificationDialog(true);
-          setProcessingStage('idle');
           setUploading(false);
         }
       }, 100);
@@ -947,7 +950,6 @@ const EPass = () => {
         description: error.message,
         variant: "destructive"
       });
-      setProcessingStage('idle');
       setUploading(false);
     }
   };
@@ -956,14 +958,10 @@ const EPass = () => {
     if (!user || !monthlyPassFile) return;
 
     setUploading(true);
-    setProcessingStage('uploading');
-    setOcrProgress(0);
 
     try {
       // Now upload the file after user verification
-      setOcrProgress(20);
       const uploadResult = await uploadFile(monthlyPassFile, 'monthly_pass');
-      setOcrProgress(50);
       if (!uploadResult) throw new Error('Upload failed');
 
       // Extract only numeric characters from pass ID for duplicate checking
@@ -1013,9 +1011,6 @@ const EPass = () => {
           });
         }
       }
-
-      setProcessingStage('saving');
-      setOcrProgress(60);
 
       // Save pass to database with correct verification status (store file path, not public URL)
       const passData: any = {
@@ -1086,8 +1081,6 @@ const EPass = () => {
         }
       }
 
-      setOcrProgress(90);
-      
       toast({
         title: "Success",
         description: isDuplicate 
@@ -1095,19 +1088,13 @@ const EPass = () => {
           : "Monthly pass saved successfully"
       });
 
-      setOcrProgress(100);
-      setProcessingStage('complete');
-      
-      // Small delay to show completion
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
       setShowVerificationDialog(false);
       setMonthlyPassFile(null);
       setExtractedPassId('');
       setExtractedExpiryDate('');
       
       // Force refresh pass data
-      await new Promise(resolve => setTimeout(resolve, 300)); // Small delay to ensure DB is updated
+      await new Promise(resolve => setTimeout(resolve, 500)); // Small delay to ensure DB is updated
       await fetchPass();
       
     } catch (error: any) {
@@ -1119,8 +1106,6 @@ const EPass = () => {
       });
     } finally {
       setUploading(false);
-      setProcessingStage('idle');
-      setOcrProgress(0);
     }
   };
 
@@ -1364,59 +1349,29 @@ const EPass = () => {
                     </div>
                   )}
                   
-                  {/* Processing overlay when OCR is running */}
-                  {processingStage !== 'idle' && !showVerificationDialog && (
-                    <div className="p-4 bg-muted/50 rounded-lg border border-primary/30 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <RefreshCw className="h-4 w-4 animate-spin text-primary" />
-                          <span className="text-sm font-medium text-foreground">
-                            {processingStage === 'converting' && 'Converting HEIC image...'}
-                            {processingStage === 'preprocessing' && 'Preprocessing image for OCR...'}
-                            {processingStage === 'ocr' && 'Extracting text from pass...'}
-                          </span>
-                        </div>
-                        <span className="text-sm font-bold text-primary">{ocrProgress}%</span>
-                      </div>
-                      <div className="w-full h-3 bg-muted rounded-full overflow-hidden shadow-inner">
-                        <div 
-                          className="h-full bg-primary transition-all duration-300"
-                          style={{ width: `${ocrProgress}%` }}
-                        />
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {processingStage === 'ocr' 
-                          ? 'This may take 10-15 seconds depending on image quality...' 
-                          : 'Please wait...'}
-                      </p>
-                    </div>
-                  )}
-                  
-                  {processingStage === 'idle' && (
-                    <div className="flex gap-2">
-                      <Input
-                        id="monthly-pass"
-                        type="file"
-                        accept="image/*,.heic,.heif"
-                        onChange={(e) => setMonthlyPassFile(e.target.files?.[0] || null)}
-                        disabled={uploading || (pass?.monthly_pass_url && pass?.expiry_date && 
+                  <div className="flex gap-2">
+                    <Input
+                      id="monthly-pass"
+                      type="file"
+                      accept="image/*,.heic,.heif"
+                      onChange={(e) => setMonthlyPassFile(e.target.files?.[0] || null)}
+                      disabled={uploading || (pass?.monthly_pass_url && pass?.expiry_date && 
+                        new Date(pass.expiry_date) >= new Date() && 
+                        pass.verified !== false)}
+                      className="bg-muted/30 border-border/50 text-foreground flex-1"
+                    />
+                    <Button 
+                      onClick={handleMonthlyPassUpload} 
+                      disabled={uploading || !monthlyPassFile || 
+                        (pass?.monthly_pass_url && pass?.expiry_date && 
                           new Date(pass.expiry_date) >= new Date() && 
                           pass.verified !== false)}
-                        className="bg-muted/30 border-border/50 text-foreground flex-1"
-                      />
-                      <Button 
-                        onClick={handleMonthlyPassUpload} 
-                        disabled={uploading || !monthlyPassFile || 
-                          (pass?.monthly_pass_url && pass?.expiry_date && 
-                            new Date(pass.expiry_date) >= new Date() && 
-                            pass.verified !== false)}
-                        className="bg-primary hover:bg-primary/90"
-                      >
-                        <Upload className="h-4 w-4 mr-2" />
-                        Upload
-                      </Button>
-                    </div>
-                  )}
+                      className="bg-primary hover:bg-primary/90"
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      Upload
+                    </Button>
+                  </div>
                   {pass?.monthly_pass_url && monthlyPassSignedUrl && (
                     <div className="mt-2 space-y-3">
                       <div 
@@ -1566,32 +1521,15 @@ const EPass = () => {
               )}
             </div>
 
-            {(processingStage !== 'idle' || (ocrProgress > 0 && ocrProgress < 100)) && (
-              <div className="space-y-3 p-4 bg-muted/50 rounded-lg border border-border">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <RefreshCw className={`h-4 w-4 ${processingStage !== 'complete' ? 'animate-spin' : ''} text-primary`} />
-                    <span className="text-sm font-medium text-foreground">
-                      {processingStage === 'converting' && 'Converting image format...'}
-                      {processingStage === 'preprocessing' && 'Preprocessing image...'}
-                      {processingStage === 'ocr' && 'Extracting text (OCR)...'}
-                      {processingStage === 'uploading' && 'Uploading pass...'}
-                      {processingStage === 'saving' && 'Saving to database...'}
-                      {processingStage === 'complete' && '✓ Complete!'}
-                      {processingStage === 'idle' && ocrProgress > 0 && 'Processing...'}
-                    </span>
-                  </div>
-                  <span className="text-sm font-bold text-primary">{ocrProgress}%</span>
-                </div>
-                <div className="w-full h-3 bg-muted rounded-full overflow-hidden shadow-inner">
+            {ocrProgress > 0 && ocrProgress < 100 && (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">Processing: {ocrProgress}%</p>
+                <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
                   <div 
-                    className={`h-full transition-all duration-300 ${processingStage === 'complete' ? 'bg-green-500' : 'bg-primary'}`}
+                    className="h-full bg-primary transition-all duration-300"
                     style={{ width: `${ocrProgress}%` }}
                   />
                 </div>
-                {processingStage === 'ocr' && (
-                  <p className="text-xs text-muted-foreground">This may take 10-15 seconds depending on image quality</p>
-                )}
               </div>
             )}
 
@@ -1601,8 +1539,6 @@ const EPass = () => {
                 onClick={() => {
                   setShowVerificationDialog(false);
                   setUploading(false);
-                  setProcessingStage('idle');
-                  setOcrProgress(0);
                   setMonthlyPassFile(null);
                   setExtractedPassId('');
                   setExtractedExpiryDate('');
