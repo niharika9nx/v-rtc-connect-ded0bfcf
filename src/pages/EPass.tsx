@@ -9,7 +9,6 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ArrowLeft, CreditCard, Upload, RefreshCw, ZoomIn, ZoomOut, Maximize2, X, Check, Trash2, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import Tesseract from 'tesseract.js';
 import heic2any from 'heic2any';
 
 // Helper function to check if file is HEIC format
@@ -83,13 +82,13 @@ const EPass = () => {
   const [showVerificationDialog, setShowVerificationDialog] = useState(false);
   const [extractedPassId, setExtractedPassId] = useState('');
   const [extractedExpiryDate, setExtractedExpiryDate] = useState('');
-  const [ocrProgress, setOcrProgress] = useState(0);
   const [conversionStatus, setConversionStatus] = useState<string | null>(null);
   const [deletingIdentity, setDeletingIdentity] = useState(false);
   const [deletingMonthly, setDeletingMonthly] = useState(false);
   const [feeStatus, setFeeStatus] = useState<any>(null);
   const [identityCardSignedUrl, setIdentityCardSignedUrl] = useState<string | null>(null);
   const [monthlyPassSignedUrl, setMonthlyPassSignedUrl] = useState<string | null>(null);
+  const [processingStep, setProcessingStep] = useState<string | null>(null);
 
   useEffect(() => {
     fetchPass();
@@ -451,491 +450,22 @@ const EPass = () => {
     }
   };
 
-  const preprocessImage = async (file: File): Promise<Blob> => {
-    // Show conversion status for HEIC files
+  // Simple image preparation (just handles HEIC conversion, no heavy preprocessing)
+  const prepareImageForUpload = async (file: File): Promise<File> => {
     const isHeic = isHeicFile(file);
     if (isHeic) {
-      setConversionStatus('Converting HEIC image for OCR...');
+      setConversionStatus('Converting HEIC image...');
+      const converted = await convertHeicToJpeg(file, (status) => {
+        setConversionStatus(status);
+      });
+      setConversionStatus(null);
+      return converted;
     }
-    
-    // Convert HEIC to JPEG first if needed with progress callback
-    const processableFile = await convertHeicToJpeg(file, (status) => {
-      setConversionStatus(status);
-    });
-    
-    // Clear conversion status and show preprocessing status
-    if (isHeic) {
-      setConversionStatus('Preprocessing for OCR...');
-      await yieldToUI();
-    }
-    
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      
-      if (!ctx) {
-        reject(new Error('Canvas not supported'));
-        return;
-      }
-
-      // Create object URL for the file
-      let objectUrl: string | null = null;
-
-      const cleanup = () => {
-        if (objectUrl) {
-          URL.revokeObjectURL(objectUrl);
-          objectUrl = null;
-        }
-      };
-
-      img.onload = () => {
-        try {
-          // Adaptive scale factor based on image size (target 300 DPI minimum)
-          const minDimension = Math.min(img.width, img.height);
-          const scaleFactor = minDimension < 1000 ? 3 : minDimension < 1500 ? 2.5 : 2;
-          
-          canvas.width = img.width * scaleFactor;
-          canvas.height = img.height * scaleFactor;
-
-          // Enable high-quality image smoothing
-          ctx.imageSmoothingEnabled = true;
-          ctx.imageSmoothingQuality = 'high';
-          
-          // Draw image with high quality
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-          // Get image data for processing
-          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          const data = imageData.data;
-          const totalPixels = canvas.width * canvas.height;
-
-          // 1. Grayscale conversion with improved weights
-          for (let i = 0; i < data.length; i += 4) {
-            const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-            data[i] = gray;
-            data[i + 1] = gray;
-            data[i + 2] = gray;
-          }
-
-          // 2. Adaptive histogram equalization for better contrast
-          const histEq = new Uint8ClampedArray(data);
-          const histogram = new Array(256).fill(0);
-          
-          // Build histogram
-          for (let i = 0; i < data.length; i += 4) {
-            histogram[data[i]]++;
-          }
-          
-          // Calculate CDF
-          const cdf = new Array(256).fill(0);
-          cdf[0] = histogram[0];
-          for (let i = 1; i < 256; i++) {
-            cdf[i] = cdf[i - 1] + histogram[i];
-          }
-          
-          // Normalize CDF
-          const cdfMin = cdf.find(v => v > 0) || 0;
-          
-          for (let i = 0; i < data.length; i += 4) {
-            const newValue = Math.round(((cdf[data[i]] - cdfMin) / (totalPixels - cdfMin)) * 255);
-            histEq[i] = newValue;
-            histEq[i + 1] = newValue;
-            histEq[i + 2] = newValue;
-          }
-
-          // 3. Sharpening filter (unsharp mask)
-          const sharpened = new Uint8ClampedArray(histEq);
-          const sharpenKernel = [
-            0, -1, 0,
-            -1, 5, -1,
-            0, -1, 0
-          ];
-          
-          for (let y = 1; y < canvas.height - 1; y++) {
-            for (let x = 1; x < canvas.width - 1; x++) {
-              let sum = 0;
-              for (let ky = -1; ky <= 1; ky++) {
-                for (let kx = -1; kx <= 1; kx++) {
-                  const idx = ((y + ky) * canvas.width + (x + kx)) * 4;
-                  const kernelIdx = (ky + 1) * 3 + (kx + 1);
-                  sum += histEq[idx] * sharpenKernel[kernelIdx];
-                }
-              }
-              const idx = (y * canvas.width + x) * 4;
-              sharpened[idx] = Math.min(255, Math.max(0, sum));
-              sharpened[idx + 1] = sharpened[idx];
-              sharpened[idx + 2] = sharpened[idx];
-            }
-          }
-
-          // 4. Otsu's binarization
-          let threshold = 128;
-          const binHistogram = new Array(256).fill(0);
-          
-          for (let i = 0; i < sharpened.length; i += 4) {
-            binHistogram[sharpened[i]]++;
-          }
-          
-          let sum = 0;
-          for (let i = 0; i < 256; i++) sum += i * binHistogram[i];
-          
-          let sumB = 0;
-          let wB = 0;
-          let wF = 0;
-          let varMax = 0;
-          
-          for (let t = 0; t < 256; t++) {
-            wB += binHistogram[t];
-            if (wB === 0) continue;
-            
-            wF = totalPixels - wB;
-            if (wF === 0) break;
-            
-            sumB += t * binHistogram[t];
-            const mB = sumB / wB;
-            const mF = (sum - sumB) / wF;
-            const varBetween = wB * wF * (mB - mF) * (mB - mF);
-            
-            if (varBetween > varMax) {
-              varMax = varBetween;
-              threshold = t;
-            }
-          }
-
-          // Apply adaptive threshold
-          threshold = Math.max(100, Math.min(180, threshold));
-          
-          for (let i = 0; i < sharpened.length; i += 4) {
-            const value = sharpened[i] > threshold ? 255 : 0;
-            sharpened[i] = value;
-            sharpened[i + 1] = value;
-            sharpened[i + 2] = value;
-          }
-
-          // 5. Morphological operations: dilation
-          const dilated = new Uint8ClampedArray(sharpened);
-          const structElement = 1;
-          
-          for (let y = structElement; y < canvas.height - structElement; y++) {
-            for (let x = structElement; x < canvas.width - structElement; x++) {
-              let maxVal = 0;
-              for (let dy = -structElement; dy <= structElement; dy++) {
-                for (let dx = -structElement; dx <= structElement; dx++) {
-                  const idx = ((y + dy) * canvas.width + (x + dx)) * 4;
-                  maxVal = Math.max(maxVal, sharpened[idx]);
-                }
-              }
-              const idx = (y * canvas.width + x) * 4;
-              dilated[idx] = maxVal;
-              dilated[idx + 1] = maxVal;
-              dilated[idx + 2] = maxVal;
-            }
-          }
-
-          // 6. Advanced noise removal (5x5 median filter)
-          const filtered = new Uint8ClampedArray(dilated);
-          const filterSize = 2;
-          
-          for (let y = filterSize; y < canvas.height - filterSize; y++) {
-            for (let x = filterSize; x < canvas.width - filterSize; x++) {
-              const neighbors: number[] = [];
-              for (let dy = -filterSize; dy <= filterSize; dy++) {
-                for (let dx = -filterSize; dx <= filterSize; dx++) {
-                  const idx = ((y + dy) * canvas.width + (x + dx)) * 4;
-                  neighbors.push(dilated[idx]);
-                }
-              }
-              neighbors.sort((a, b) => a - b);
-              const median = neighbors[Math.floor(neighbors.length / 2)];
-              const idx = (y * canvas.width + x) * 4;
-              filtered[idx] = median;
-              filtered[idx + 1] = median;
-              filtered[idx + 2] = median;
-            }
-          }
-
-          // Put final processed image back
-          ctx.putImageData(new ImageData(filtered, canvas.width, canvas.height), 0, 0);
-
-          // Convert to high-quality PNG blob
-          canvas.toBlob((blob) => {
-            cleanup();
-            if (blob) {
-              resolve(blob);
-            } else {
-              reject(new Error('Failed to create blob'));
-            }
-          }, 'image/png', 1.0);
-        } catch (error) {
-          cleanup();
-          console.error('Error processing image:', error);
-          reject(error);
-        }
-      };
-
-      img.onerror = (e) => {
-        cleanup();
-        console.error('Image load error in preprocessImage:', e);
-        reject(new Error('Failed to load image for OCR preprocessing'));
-      };
-
-      // Create blob URL from the processable file (converted if HEIC)
-      try {
-        objectUrl = URL.createObjectURL(processableFile);
-        img.src = objectUrl;
-      } catch (error) {
-        console.error('Error creating object URL:', error);
-        reject(new Error('Failed to create image URL'));
-      }
-    });
+    return file;
   };
 
-  const extractDateFromText = (text: string): string | null => {
-    console.log('Extracting date from:', text);
-    
-    // Normalize text: fix common OCR errors and make case-insensitive
-    let normalizedText = text
-      .toLowerCase()
-      .replace(/[|!]/g, 'i')  // Pipe and exclamation to i
-      .replace(/[o]/g, '0')   // o to 0 for numbers
-      .replace(/\s+/g, ' ')   // Normalize whitespace
-      .trim();
-    
-    console.log('Normalized text:', normalizedText);
-    
-    // Enhanced month mapping with common OCR errors
-    const monthMap: Record<string, string> = {
-      'jan': '01', 'january': '01', 'jen': '01', 'jap': '01',
-      'feb': '02', 'february': '02', 'fep': '02', 'feh': '02',
-      'mar': '03', 'march': '03', 'mer': '03',
-      'apr': '04', 'april': '04', 'epr': '04',
-      'may': '05',
-      'jun': '06', 'june': '06', 'jup': '06', 'jue': '06',
-      'jul': '07', 'july': '07', 'jui': '07',
-      'aug': '08', 'august': '08', 'eug': '08',
-      'sep': '09', 'september': '09', 'sap': '09',
-      'oct': '10', 'october': '10', 'oot': '10', 'ost': '10',
-      'nov': '11', 'november': '11', 'nop': '11',
-      'dec': '12', 'december': '12', 'des': '12', 'deo': '12', 'dea': '12'
-    };
-    
-    // PRIORITY 1: Find "validity" section and extract date after "to"
-    // This targets the specific format: "VALIDITY 01-jan-2025 to 05-dec-2025"
-    const validityToPatterns = [
-      // Match "validity ... to DD-MMM-YYYY" with various separators
-      /validity[:\s]+.*?to[:\s]+(\d{1,2})[-\/.\s]([a-z]{3,9})[-\/.\s](\d{2,4})/i,
-      // Match "to DD-MMM-YYYY" after any "from" or start date
-      /(?:from|validity)[:\s]+\d{1,2}[-\/.\s][a-z]{3,9}[-\/.\s]\d{2,4}[:\s]+to[:\s]+(\d{1,2})[-\/.\s]([a-z]{3,9})[-\/.\s](\d{2,4})/i,
-      // Simpler: just look for "to DD-MMM-YYYY" pattern
-      /\bto[:\s]+(\d{1,2})[-\/.\s]([a-z]{3,9})[-\/.\s](\d{2,4})/i,
-    ];
-    
-    for (const pattern of validityToPatterns) {
-      const match = normalizedText.match(pattern);
-      if (match) {
-        const day = match[1].padStart(2, '0');
-        const monthStr = match[2].toLowerCase().substring(0, 3);
-        let year = match[3];
-        
-        // Handle 2-digit years
-        if (year.length === 2) {
-          year = '20' + year;
-        }
-        
-        const month = monthMap[monthStr];
-        if (month) {
-          console.log(`✅ Found date after "to" in validity section: ${day}-${monthStr}-${year} -> ${year}-${month}-${day}`);
-          return `${year}-${month}-${day}`;
-        }
-      }
-    }
-    
-    // PRIORITY 2: Look for "valid to" or "valid till" patterns
-    const validToPatterns = [
-      /valid\s*(?:to|till|until)[:\s]+(\d{1,2})[-\/.\s]([a-z]{3,9})[-\/.\s](\d{2,4})/i,
-    ];
-    
-    for (const pattern of validToPatterns) {
-      const match = normalizedText.match(pattern);
-      if (match) {
-        const day = match[1].padStart(2, '0');
-        const monthStr = match[2].toLowerCase().substring(0, 3);
-        let year = match[3];
-        
-        if (year.length === 2) {
-          year = '20' + year;
-        }
-        
-        const month = monthMap[monthStr];
-        if (month) {
-          console.log(`✅ Found in valid to/till section: ${day}-${monthStr}-${year} -> ${year}-${month}-${day}`);
-          return `${year}-${month}-${day}`;
-        }
-      }
-    }
-    
-    // PRIORITY 3: Look for expiry/expire keywords
-    const expiryPatterns = [
-      /expir(?:y|es?|ing)[:\s]+(\d{1,2})[-\/.\s]([a-z]{3,9})[-\/.\s](\d{2,4})/i,
-      /exp[:\s]+(\d{1,2})[-\/.\s]([a-z]{3,9})[-\/.\s](\d{2,4})/i,
-    ];
-    
-    for (const pattern of expiryPatterns) {
-      const match = normalizedText.match(pattern);
-      if (match) {
-        const day = match[1].padStart(2, '0');
-        const monthStr = match[2].toLowerCase().substring(0, 3);
-        let year = match[3];
-        
-        if (year.length === 2) {
-          year = '20' + year;
-        }
-        
-        const month = monthMap[monthStr];
-        if (month) {
-          console.log(`Found in expiry section: ${day}-${monthStr}-${year} -> ${year}-${month}-${day}`);
-          return `${year}-${month}-${day}`;
-        }
-      }
-    }
-    
-    // PRIORITY 4: Fallback - find all dates and return the last one (likely expiry)
-    const datePatterns = [
-      /(\d{1,2})[-\/]([a-z]{3,9})[-\/](\d{2,4})/gi,
-      /(\d{1,2})[.]([a-z]{3,9})[.](\d{2,4})/gi,
-      /(\d{1,2})\s+([a-z]{3,9})\s+(\d{2,4})/gi,
-    ];
-    
-    const allMatches: Array<{day: string, month: string, year: string}> = [];
-    
-    for (const pattern of datePatterns) {
-      let match;
-      while ((match = pattern.exec(normalizedText)) !== null) {
-        const day = match[1].padStart(2, '0');
-        const monthStr = match[2].toLowerCase().substring(0, 3);
-        let year = match[3];
-        
-        if (year.length === 2) {
-          year = '20' + year;
-        }
-        
-        const month = monthMap[monthStr];
-        if (month) {
-          allMatches.push({ day, month, year });
-        }
-      }
-    }
-    
-    // Return the last valid date found (typically expiry is last)
-    if (allMatches.length > 0) {
-      const lastMatch = allMatches[allMatches.length - 1];
-      console.log(`⚠️ Fallback found date: ${lastMatch.year}-${lastMatch.month}-${lastMatch.day}`);
-      return `${lastMatch.year}-${lastMatch.month}-${lastMatch.day}`;
-    }
-    
-    console.log('❌ No date found in text');
-    return null;
-  };
-
-  const extractPassIdFromText = (text: string): string | null => {
-    console.log('Extracting Pass ID from:', text);
-    
-    // Normalize text for better matching
-    let normalizedText = text
-      .replace(/[|!]/g, 'i')
-      .replace(/[o]/gi, '0')
-      .replace(/\s+/g, ' ')
-      .trim();
-    
-    console.log('Normalized text for ID:', normalizedText);
-    
-    // Enhanced patterns with multiple variations
-    const idPatterns = [
-      // Explicit ID labels
-      /(?:pass\s*id|passid|p\.?\s*id|pid|bus\s*pass\s*id)[\s:=]*([A-Z0-9]{4,15})/i,
-      /(?:id\s*no|id\s*number|identification)[\s:=]*([A-Z0-9]{4,15})/i,
-      /(?:^|\s)id[\s:=]*([A-Z0-9]{4,15})/i,
-      
-      // State-prefix patterns (e.g., AP123456, TS987654)
-      /\b([A-Z]{2}\d{6,10})\b/,
-      /\b([A-Z]{2}[-\s]?\d{6,10})\b/,
-      
-      // Mixed alphanumeric (e.g., ABC12345, X1Y2Z3)
-      /\b([A-Z]{2,4}\d{4,8})\b/,
-      /\b([A-Z]\d[A-Z]\d{4,7})\b/,
-      
-      // Pure numeric IDs (6-12 digits)
-      /\b(\d{8,12})\b/,
-      /\b(\d{6,7})\b/,
-      
-      // Hyphenated or spaced formats
-      /\b([A-Z0-9]{2,4}[-\s][A-Z0-9]{4,8})\b/,
-    ];
-
-    for (const pattern of idPatterns) {
-      const match = normalizedText.match(pattern);
-      if (match && match[1]) {
-        const passId = match[1].trim().replace(/[-\s]/g, '').toUpperCase();
-        
-        // Validate: must be at least 4 characters
-        if (passId.length >= 4) {
-          const numericPortion = passId.replace(/\D/g, '');
-          console.log(`✅ Found Pass ID: ${passId} (numeric portion: ${numericPortion})`);
-          return passId;
-        }
-      }
-    }
-    
-    console.log('❌ No Pass ID found in text');
-    return null;
-  };
-
-  const runOCR = async (file: File) => {
-    setOcrProgress(0);
-    
-    toast({
-      title: "Preprocessing image...",
-      description: "This may take 10-15 seconds"
-    });
-
-    // Preprocess image (give UI time to update)
-    await new Promise(resolve => setTimeout(resolve, 50));
-    const preprocessedBlob = await preprocessImage(file);
-    
-    // Give UI time to breathe
-    await new Promise(resolve => setTimeout(resolve, 50));
-    
-    toast({
-      title: "Running OCR...",
-      description: "Extracting text from pass"
-    });
-
-    const { data: { text } } = await Tesseract.recognize(
-      preprocessedBlob,
-      'eng',
-      {
-        logger: (m) => {
-          if (m.status === 'recognizing text') {
-            const progress = Math.round(m.progress * 100);
-            setOcrProgress(progress);
-            
-            // Update progress every 25%
-            if (progress % 25 === 0) {
-              toast({
-                title: `OCR Progress: ${progress}%`,
-                description: "Please wait...",
-                duration: 2000
-              });
-            }
-          }
-        }
-      }
-    );
-    
-    console.log('OCR extracted text:', text);
-    return text;
-  };
+  // Note: Date and Pass ID extraction is now handled server-side by the enhance-pass edge function
+  // using Gemini AI for faster and more accurate OCR
 
   const handleMonthlyPassUpload = async () => {
     if (!user || !monthlyPassFile) {
@@ -948,59 +478,77 @@ const EPass = () => {
     }
 
     setUploading(true);
-    setOcrProgress(0);
+    setProcessingStep('Preparing image...');
 
     try {
-      toast({
-        title: "Analyzing pass...",
-        description: "Extracting expiry date and pass ID"
+      // Step 1: Prepare image (HEIC conversion only if needed)
+      const preparedFile = await prepareImageForUpload(monthlyPassFile);
+      
+      setProcessingStep('Uploading to server...');
+      
+      // Step 2: Upload file to storage first
+      const uploadResult = await uploadFile(preparedFile, 'monthly_pass');
+      if (!uploadResult) throw new Error('Upload failed');
+
+      // Step 3: Save file path to DB immediately (so it's not lost)
+      const initialPassData: any = {
+        user_id: user.id,
+        monthly_pass_url: uploadResult.filePath,
+      };
+
+      if (pass) {
+        await supabase
+          .from('passes')
+          .update({ monthly_pass_url: uploadResult.filePath })
+          .eq('id', pass.id);
+      } else {
+        await supabase
+          .from('passes')
+          .insert(initialPassData);
+      }
+
+      setProcessingStep('Extracting pass details with AI...');
+      
+      // Step 4: Call server-side OCR via edge function (uses Gemini AI - much faster)
+      const { data: enhanceResult, error: enhanceError } = await supabase.functions.invoke('enhance-pass', {
+        body: { filePath: uploadResult.filePath, userId: user.id }
       });
 
-      // Run OCR on the file (don't upload yet, wait for verification)
-      setTimeout(async () => {
-        try {
-          const ocrText = await runOCR(monthlyPassFile);
-          console.log('OCR Text:', ocrText);
-
-          // Extract expiry date and pass ID
-          const expiryDate = extractDateFromText(ocrText);
-          const passId = extractPassIdFromText(ocrText);
-
-          console.log('Extracted - Expiry:', expiryDate, 'Pass ID:', passId);
-
-          // Set extracted values for user verification
-          setExtractedExpiryDate(expiryDate || '');
-          setExtractedPassId(passId || '');
-
-          // Show verification dialog and enable button
-          setShowVerificationDialog(true);
-          setUploading(false);
-
-          toast({
-            title: "OCR Complete",
-            description: "Please verify the extracted information",
-          });
-        } catch (ocrError: any) {
-          console.error('OCR error:', ocrError);
-          toast({
-            title: "OCR failed",
-            description: "Please enter pass details manually",
-            variant: "destructive"
-          });
-          setExtractedExpiryDate('');
-          setExtractedPassId('');
-          setShowVerificationDialog(true);
-          setUploading(false);
-        }
-      }, 100);
-
+      if (enhanceError) {
+        console.error('Enhance pass error:', enhanceError);
+        // Still show verification dialog even if OCR fails
+        setExtractedPassId('');
+        setExtractedExpiryDate('');
+        setShowVerificationDialog(true);
+        toast({
+          title: "OCR extraction failed",
+          description: "Please enter pass details manually",
+          variant: "destructive"
+        });
+      } else {
+        console.log('Server OCR result:', enhanceResult);
+        // Set extracted values from server response
+        setExtractedPassId(enhanceResult?.passId || '');
+        setExtractedExpiryDate(enhanceResult?.expiryDate || '');
+        setShowVerificationDialog(true);
+        
+        toast({
+          title: "Pass analyzed",
+          description: "Please verify the extracted information",
+        });
+      }
+      
     } catch (error: any) {
+      console.error('Upload error:', error);
       toast({
         title: "Processing failed",
         description: error.message,
         variant: "destructive"
       });
+    } finally {
       setUploading(false);
+      setProcessingStep(null);
+      setConversionStatus(null);
     }
   };
 
@@ -1440,19 +988,11 @@ const EPass = () => {
                     </div>
                   )}
                   
-                  {/* OCR Progress indicator */}
-                  {ocrProgress > 0 && ocrProgress < 100 && (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Extracting text from image...</span>
-                        <span className="text-foreground font-medium">{Math.round(ocrProgress)}%</span>
-                      </div>
-                      <div className="w-full bg-muted/50 rounded-full h-2">
-                        <div 
-                          className="bg-primary h-2 rounded-full transition-all duration-300" 
-                          style={{ width: `${ocrProgress}%` }} 
-                        />
-                      </div>
+                  {/* Processing step indicator */}
+                  {processingStep && (
+                    <div className="flex items-center gap-2 p-3 bg-primary/10 border border-primary/30 rounded-lg">
+                      <RefreshCw className="h-4 w-4 animate-spin text-primary" />
+                      <span className="text-sm text-foreground font-medium">{processingStep}</span>
                     </div>
                   )}
                   {pass?.monthly_pass_url && monthlyPassSignedUrl && (
@@ -1604,15 +1144,10 @@ const EPass = () => {
               )}
             </div>
 
-            {ocrProgress > 0 && ocrProgress < 100 && (
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">Processing: {ocrProgress}%</p>
-                <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-primary transition-all duration-300"
-                    style={{ width: `${ocrProgress}%` }}
-                  />
-                </div>
+            {processingStep && (
+              <div className="flex items-center gap-2 p-2 bg-primary/10 rounded-md">
+                <RefreshCw className="h-3 w-3 animate-spin text-primary" />
+                <p className="text-xs text-muted-foreground">{processingStep}</p>
               </div>
             )}
 
