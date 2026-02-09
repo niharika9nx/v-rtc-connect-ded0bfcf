@@ -18,20 +18,38 @@ const isHeicFile = (file: File): boolean => {
   return extension === 'heic' || extension === 'heif' || file.type === 'image/heic' || file.type === 'image/heif';
 };
 
-// Convert HEIC file to JPEG
-const convertHeicToJpeg = async (file: File): Promise<File> => {
+// Yield to UI thread to prevent page freezing
+const yieldToUI = (): Promise<void> => {
+  return new Promise(resolve => setTimeout(resolve, 0));
+};
+
+// Convert HEIC file to JPEG with progress feedback (non-blocking)
+const convertHeicToJpeg = async (
+  file: File, 
+  onProgress?: (status: string) => void
+): Promise<File> => {
   if (!isHeicFile(file)) {
     return file;
   }
   
   console.log('Converting HEIC file to JPEG:', file.name);
+  onProgress?.('Preparing HEIC conversion...');
+  
+  // Yield to let UI update before heavy operation
+  await yieldToUI();
   
   try {
+    onProgress?.('Converting HEIC to JPEG...');
+    
+    // Use lower quality for faster conversion while maintaining readability
     const convertedBlob = await heic2any({
       blob: file,
       toType: 'image/jpeg',
-      quality: 0.95
+      quality: 0.85 // Slightly lower quality for faster conversion
     });
+    
+    // Yield after heavy conversion
+    await yieldToUI();
     
     // heic2any can return a single blob or array of blobs
     const blob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
@@ -40,7 +58,9 @@ const convertHeicToJpeg = async (file: File): Promise<File> => {
     const newFileName = file.name.replace(/\.(heic|heif)$/i, '.jpg');
     const convertedFile = new File([blob], newFileName, { type: 'image/jpeg' });
     
+    onProgress?.('HEIC conversion complete!');
     console.log('HEIC conversion successful, new size:', convertedFile.size);
+    
     return convertedFile;
   } catch (error) {
     console.error('HEIC conversion error:', error);
@@ -64,6 +84,7 @@ const EPass = () => {
   const [extractedPassId, setExtractedPassId] = useState('');
   const [extractedExpiryDate, setExtractedExpiryDate] = useState('');
   const [ocrProgress, setOcrProgress] = useState(0);
+  const [conversionStatus, setConversionStatus] = useState<string | null>(null);
   const [deletingIdentity, setDeletingIdentity] = useState(false);
   const [deletingMonthly, setDeletingMonthly] = useState(false);
   const [feeStatus, setFeeStatus] = useState<any>(null);
@@ -268,8 +289,22 @@ const EPass = () => {
   };
 
   const enhanceImageQuality = async (file: File): Promise<Blob> => {
-    // Convert HEIC to JPEG first if needed
-    const processableFile = await convertHeicToJpeg(file);
+    // Show conversion status for HEIC files
+    const isHeic = isHeicFile(file);
+    if (isHeic) {
+      setConversionStatus('Converting HEIC image...');
+    }
+    
+    // Convert HEIC to JPEG first if needed with progress callback
+    const processableFile = await convertHeicToJpeg(file, (status) => {
+      setConversionStatus(status);
+    });
+    
+    // Clear conversion status once done
+    if (isHeic) {
+      setConversionStatus('Processing image...');
+      await yieldToUI();
+    }
     
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -412,12 +447,27 @@ const EPass = () => {
       });
     } finally {
       setUploading(false);
+      setConversionStatus(null);
     }
   };
 
   const preprocessImage = async (file: File): Promise<Blob> => {
-    // Convert HEIC to JPEG first if needed
-    const processableFile = await convertHeicToJpeg(file);
+    // Show conversion status for HEIC files
+    const isHeic = isHeicFile(file);
+    if (isHeic) {
+      setConversionStatus('Converting HEIC image for OCR...');
+    }
+    
+    // Convert HEIC to JPEG first if needed with progress callback
+    const processableFile = await convertHeicToJpeg(file, (status) => {
+      setConversionStatus(status);
+    });
+    
+    // Clear conversion status and show preprocessing status
+    if (isHeic) {
+      setConversionStatus('Preprocessing for OCR...');
+      await yieldToUI();
+    }
     
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -1106,6 +1156,7 @@ const EPass = () => {
       });
     } finally {
       setUploading(false);
+      setConversionStatus(null);
     }
   };
 
@@ -1286,6 +1337,14 @@ const EPass = () => {
                       Upload
                     </Button>
                   </div>
+                  
+                  {/* Conversion status indicator for identity card */}
+                  {conversionStatus && identityCardFile && (
+                    <div className="flex items-center gap-2 p-3 bg-primary/10 border border-primary/30 rounded-lg animate-pulse">
+                      <RefreshCw className="h-4 w-4 animate-spin text-primary" />
+                      <span className="text-sm text-foreground font-medium">{conversionStatus}</span>
+                    </div>
+                  )}
                   {pass?.identity_card_url && identityCardSignedUrl && (
                     <div className="mt-2 space-y-2">
                       <div 
@@ -1372,6 +1431,30 @@ const EPass = () => {
                       Upload
                     </Button>
                   </div>
+                  
+                  {/* Conversion status indicator for monthly pass */}
+                  {conversionStatus && monthlyPassFile && (
+                    <div className="flex items-center gap-2 p-3 bg-primary/10 border border-primary/30 rounded-lg animate-pulse">
+                      <RefreshCw className="h-4 w-4 animate-spin text-primary" />
+                      <span className="text-sm text-foreground font-medium">{conversionStatus}</span>
+                    </div>
+                  )}
+                  
+                  {/* OCR Progress indicator */}
+                  {ocrProgress > 0 && ocrProgress < 100 && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Extracting text from image...</span>
+                        <span className="text-foreground font-medium">{Math.round(ocrProgress)}%</span>
+                      </div>
+                      <div className="w-full bg-muted/50 rounded-full h-2">
+                        <div 
+                          className="bg-primary h-2 rounded-full transition-all duration-300" 
+                          style={{ width: `${ocrProgress}%` }} 
+                        />
+                      </div>
+                    </div>
+                  )}
                   {pass?.monthly_pass_url && monthlyPassSignedUrl && (
                     <div className="mt-2 space-y-3">
                       <div 
