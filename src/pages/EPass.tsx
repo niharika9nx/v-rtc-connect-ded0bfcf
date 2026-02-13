@@ -40,11 +40,11 @@ const convertHeicToJpeg = async (
   try {
     onProgress?.('Converting HEIC to JPEG...');
     
-    // Use lower quality for faster conversion while maintaining readability
+    // Use lower quality for much faster conversion - server AI handles OCR fine
     const convertedBlob = await heic2any({
       blob: file,
       toType: 'image/jpeg',
-      quality: 0.85 // Slightly lower quality for faster conversion
+      quality: 0.7
     });
     
     // Yield after heavy conversion
@@ -287,93 +287,17 @@ const EPass = () => {
     }
   };
 
-  const enhanceImageQuality = async (file: File): Promise<Blob> => {
-    // Show conversion status for HEIC files
-    const isHeic = isHeicFile(file);
-    if (isHeic) {
+  // Lightweight image prep: only converts HEIC, no scaling/reprocessing
+  const prepareFileForUpload = async (file: File): Promise<File> => {
+    if (isHeicFile(file)) {
       setConversionStatus('Converting HEIC image...');
+      const converted = await convertHeicToJpeg(file, (status) => {
+        setConversionStatus(status);
+      });
+      setConversionStatus(null);
+      return converted;
     }
-    
-    // Convert HEIC to JPEG first if needed with progress callback
-    const processableFile = await convertHeicToJpeg(file, (status) => {
-      setConversionStatus(status);
-    });
-    
-    // Clear conversion status once done
-    if (isHeic) {
-      setConversionStatus('Processing image...');
-      await yieldToUI();
-    }
-    
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d', { willReadFrequently: true });
-      
-      if (!ctx) {
-        reject(new Error('Canvas not supported'));
-        return;
-      }
-
-      // Create object URL for the file
-      let objectUrl: string | null = null;
-
-      const cleanup = () => {
-        if (objectUrl) {
-          URL.revokeObjectURL(objectUrl);
-          objectUrl = null;
-        }
-      };
-
-      img.onload = () => {
-        try {
-          // Use original dimensions or scale up slightly for better quality
-          const scaleFactor = 1.5;
-          canvas.width = img.width * scaleFactor;
-          canvas.height = img.height * scaleFactor;
-
-          // Enable image smoothing for better quality
-          ctx.imageSmoothingEnabled = true;
-          ctx.imageSmoothingQuality = 'high';
-
-          // Draw image with high quality
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-          // Convert to high-quality PNG (lossless)
-          canvas.toBlob(
-            (blob) => {
-              cleanup();
-              if (blob) {
-                console.log('Enhanced image quality - size:', blob.size);
-                resolve(blob);
-              } else {
-                reject(new Error('Failed to create blob'));
-              }
-            },
-            'image/png',
-            1.0  // Maximum quality
-          );
-        } catch (error) {
-          cleanup();
-          reject(error);
-        }
-      };
-
-      img.onerror = (e) => {
-        cleanup();
-        console.error('Image load error in enhanceImageQuality:', e);
-        reject(new Error('Failed to load image for enhancement'));
-      };
-
-      // Create blob URL from the processable file (converted if HEIC)
-      try {
-        objectUrl = URL.createObjectURL(processableFile);
-        img.src = objectUrl;
-      } catch (error) {
-        console.error('Error creating object URL:', error);
-        reject(new Error('Failed to create image URL'));
-      }
-    });
+    return file;
   };
 
   const uploadFile = async (file: File, type: 'identity_card' | 'monthly_pass') => {
@@ -382,19 +306,19 @@ const EPass = () => {
     // Clean up old files before uploading new one
     await cleanupOldFiles(type);
 
-    // Enhance image quality before upload
-    const enhancedBlob = await enhanceImageQuality(file);
-    const enhancedFile = new File([enhancedBlob], `${type}.png`, { type: 'image/png' });
+    // Prepare file (HEIC conversion only, no heavy processing)
+    const readyFile = await prepareFileForUpload(file);
+    const ext = readyFile.type === 'image/png' ? 'png' : 'jpg';
+    const uploadable = new File([readyFile], `${type}.${ext}`, { type: readyFile.type });
 
-    const filePath = `${user.id}/${type}.png`;
+    const filePath = `${user.id}/${type}.${ext}`;
 
     const { error: uploadError } = await supabase.storage
       .from('pass-documents')
-      .upload(filePath, enhancedFile, { upsert: true });
+      .upload(filePath, uploadable, { upsert: true });
 
     if (uploadError) throw uploadError;
 
-    // Return the file path instead of public URL (bucket is now private)
     return { filePath };
   };
 
@@ -450,19 +374,7 @@ const EPass = () => {
     }
   };
 
-  // Simple image preparation (just handles HEIC conversion, no heavy preprocessing)
-  const prepareImageForUpload = async (file: File): Promise<File> => {
-    const isHeic = isHeicFile(file);
-    if (isHeic) {
-      setConversionStatus('Converting HEIC image...');
-      const converted = await convertHeicToJpeg(file, (status) => {
-        setConversionStatus(status);
-      });
-      setConversionStatus(null);
-      return converted;
-    }
-    return file;
-  };
+  // Note: Date and Pass ID extraction handled server-side by enhance-pass edge function
 
   // Note: Date and Pass ID extraction is now handled server-side by the enhance-pass edge function
   // using Gemini AI for faster and more accurate OCR
@@ -481,13 +393,10 @@ const EPass = () => {
     setProcessingStep('Preparing image...');
 
     try {
-      // Step 1: Prepare image (HEIC conversion only if needed)
-      const preparedFile = await prepareImageForUpload(monthlyPassFile);
+      setProcessingStep('Uploading...');
       
-      setProcessingStep('Uploading to server...');
-      
-      // Step 2: Upload file to storage first
-      const uploadResult = await uploadFile(preparedFile, 'monthly_pass');
+      // Step 1: Upload directly (uploadFile handles HEIC conversion internally)
+      const uploadResult = await uploadFile(monthlyPassFile, 'monthly_pass');
       if (!uploadResult) throw new Error('Upload failed');
 
       // Step 3: Save file path to DB immediately (so it's not lost)
