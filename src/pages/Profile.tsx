@@ -321,7 +321,7 @@ const Profile = () => {
                         <FormItem>
                           <FormLabel className="text-foreground">Phone</FormLabel>
                           <FormControl>
-                            <Input {...field} className="bg-muted/30 border-border/50" />
+                            <Input {...field} inputMode="numeric" pattern="[0-9]*" onChange={(e) => field.onChange(e.target.value.replace(/\D/g, ''))} className="bg-muted/30 border-border/50" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
