@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { User, Bus, MessageSquare, Megaphone, Trash2, Upload, Send, Users, Bell } from 'lucide-react';
+import LogoutConfirmDialog from '@/components/LogoutConfirmDialog';
 
 interface Complaint {
   id: string;
