@@ -228,9 +228,7 @@ const Dashboard = () => {
             <h1 className="text-xl sm:text-2xl font-display font-bold text-foreground">VBus</h1>
             <p className="text-xs sm:text-sm text-muted-foreground truncate">Welcome back, {profile?.name || 'User'}</p>
           </div>
-          <Button onClick={signOut} variant="outline" size="sm" className="border-primary/30 hover:bg-primary/10 hover:shadow-glow transition-all shrink-0">
-            Logout
-          </Button>
+          <LogoutConfirmDialog onConfirm={signOut} triggerClassName="border-primary/30 hover:bg-primary/10 hover:shadow-glow transition-all shrink-0" />
         </div>
       </div>
 
