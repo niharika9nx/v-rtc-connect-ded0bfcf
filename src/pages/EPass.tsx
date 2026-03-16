@@ -97,7 +97,7 @@ const EPass = () => {
   const [identityCardSignedUrl, setIdentityCardSignedUrl] = useState<string | null>(null);
   const [monthlyPassSignedUrl, setMonthlyPassSignedUrl] = useState<string | null>(null);
   const [processingStep, setProcessingStep] = useState<string | null>(null);
-
+  const [pendingFileHash, setPendingFileHash] = useState<string | null>(null);
   useEffect(() => {
     fetchPass();
     checkFeeStatus();
