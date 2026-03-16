@@ -32,7 +32,7 @@ interface BusRequest {
   profiles?: {
     name: string | null;
     email: string | null;
-    phone: string | null;
+    phone: string | number | null;
     role: string | null;
     registration_id: string | null;
     college: string | null;

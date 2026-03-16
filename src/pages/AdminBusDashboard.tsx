@@ -87,7 +87,7 @@ interface Profile {
   college: string;
   branch?: string;
   year?: string;
-  phone: string;
+  phone: string | number;
   feeStatus?: 'paid' | 'due';
   buss_pass_id?: string;
   seat_number?: number;

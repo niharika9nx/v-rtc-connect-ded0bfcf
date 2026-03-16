@@ -89,7 +89,7 @@ const Profile = () => {
         setProfile(data);
         form.reset({
           name: data.name || '',
-          phone: data.phone || '',
+          phone: String(data.phone || ''),
           gender: data.gender || '',
           college: data.college || '',
           registration_id: data.registration_id || '',
