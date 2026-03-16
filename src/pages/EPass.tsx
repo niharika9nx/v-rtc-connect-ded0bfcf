@@ -631,6 +631,7 @@ const EPass = () => {
       setMonthlyPassFile(null);
       setExtractedPassId('');
       setExtractedExpiryDate('');
+      setPendingFileHash(null);
       
       // Force refresh pass data
       await new Promise(resolve => setTimeout(resolve, 500)); // Small delay to ensure DB is updated
