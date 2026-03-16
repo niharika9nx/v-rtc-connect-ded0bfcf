@@ -67,6 +67,14 @@ const convertHeicToJpeg = async (
   }
 };
 
+// Compute SHA-256 hash of a file for caching
+const computeFileHash = async (file: File): Promise<string> => {
+  const buffer = await file.arrayBuffer();
+  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+};
+
 const EPass = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -89,7 +97,7 @@ const EPass = () => {
   const [identityCardSignedUrl, setIdentityCardSignedUrl] = useState<string | null>(null);
   const [monthlyPassSignedUrl, setMonthlyPassSignedUrl] = useState<string | null>(null);
   const [processingStep, setProcessingStep] = useState<string | null>(null);
-
+  const [pendingFileHash, setPendingFileHash] = useState<string | null>(null);
   useEffect(() => {
     fetchPass();
     checkFeeStatus();
@@ -393,9 +401,34 @@ const EPass = () => {
     setProcessingStep('Preparing image...');
 
     try {
+      // Step 0: Prepare file (HEIC conversion if needed) and compute hash
+      const readyFile = isHeicFile(monthlyPassFile) 
+        ? await convertHeicToJpeg(monthlyPassFile, setConversionStatus)
+        : monthlyPassFile;
+      
+      setProcessingStep('Checking cache...');
+      const fileHash = await computeFileHash(readyFile);
+      setPendingFileHash(fileHash);
+
+      // Step 1: Check if hash matches existing pass (cache hit)
+      if (pass?.file_hash && pass.file_hash === fileHash && pass.buss_pass_id) {
+        console.log('Cache hit! Reusing existing OCR data.');
+        setExtractedPassId(pass.buss_pass_id || '');
+        setExtractedExpiryDate(pass.expiry_date || '');
+        setShowVerificationDialog(true);
+        toast({
+          title: "Using cached data",
+          description: "Same image detected — reusing previously extracted pass details",
+        });
+        setUploading(false);
+        setProcessingStep(null);
+        setConversionStatus(null);
+        return;
+      }
+
       setProcessingStep('Uploading...');
       
-      // Step 1: Upload directly (uploadFile handles HEIC conversion internally)
+      // Step 2: Upload directly
       const uploadResult = await uploadFile(monthlyPassFile, 'monthly_pass');
       if (!uploadResult) throw new Error('Upload failed');
 
@@ -418,14 +451,13 @@ const EPass = () => {
 
       setProcessingStep('Extracting pass details with AI...');
       
-      // Step 4: Call server-side OCR via edge function (uses Gemini AI - much faster)
+      // Step 4: Call server-side OCR via edge function (uses Gemini AI)
       const { data: enhanceResult, error: enhanceError } = await supabase.functions.invoke('enhance-pass', {
         body: { filePath: uploadResult.filePath, userId: user.id }
       });
 
       if (enhanceError) {
         console.error('Enhance pass error:', enhanceError);
-        // Still show verification dialog even if OCR fails
         setExtractedPassId('');
         setExtractedExpiryDate('');
         setShowVerificationDialog(true);
@@ -436,7 +468,6 @@ const EPass = () => {
         });
       } else {
         console.log('Server OCR result:', enhanceResult);
-        // Set extracted values from server response
         setExtractedPassId(enhanceResult?.passId || '');
         setExtractedExpiryDate(enhanceResult?.expiryDate || '');
         setShowVerificationDialog(true);
@@ -525,7 +556,8 @@ const EPass = () => {
         monthly_pass_url: uploadResult.filePath,
         verified: !isDuplicate, // Mark as false if duplicate found
         buss_pass_id: extractedPassId || null,
-        expiry_date: extractedExpiryDate || null
+        expiry_date: extractedExpiryDate || null,
+        file_hash: pendingFileHash || null
       };
 
       let currentPassId: string;
@@ -599,6 +631,7 @@ const EPass = () => {
       setMonthlyPassFile(null);
       setExtractedPassId('');
       setExtractedExpiryDate('');
+      setPendingFileHash(null);
       
       // Force refresh pass data
       await new Promise(resolve => setTimeout(resolve, 500)); // Small delay to ensure DB is updated

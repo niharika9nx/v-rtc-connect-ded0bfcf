@@ -27,7 +27,7 @@ interface UserProfile {
   branch?: string;
   year?: string;
   department?: string;
-  phone: string;
+  phone: string | number;
   bus_number?: string;
   seat_number?: number;
   feeStatus?: 'paid' | 'due' | 'none';

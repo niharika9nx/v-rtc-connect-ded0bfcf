@@ -1,0 +1,1 @@
+ALTER TABLE public.passes ADD COLUMN file_hash text;

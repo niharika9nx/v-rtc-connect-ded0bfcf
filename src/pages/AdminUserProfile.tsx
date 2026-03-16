@@ -45,7 +45,7 @@ interface UserProfile {
   year?: string;
   section?: string;
   department?: string;
-  phone: string;
+  phone: string | number;
   gender: string;
   registration_id?: string;
   bus_number: string;

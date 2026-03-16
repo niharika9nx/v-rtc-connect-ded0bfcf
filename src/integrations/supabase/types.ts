@@ -262,6 +262,7 @@ export type Database = {
           buss_pass_id: string | null
           created_at: string
           expiry_date: string | null
+          file_hash: string | null
           id: string
           identity_card_url: string | null
           monthly_pass_url: string | null
@@ -273,6 +274,7 @@ export type Database = {
           buss_pass_id?: string | null
           created_at?: string
           expiry_date?: string | null
+          file_hash?: string | null
           id?: string
           identity_card_url?: string | null
           monthly_pass_url?: string | null
@@ -284,6 +286,7 @@ export type Database = {
           buss_pass_id?: string | null
           created_at?: string
           expiry_date?: string | null
+          file_hash?: string | null
           id?: string
           identity_card_url?: string | null
           monthly_pass_url?: string | null
@@ -313,7 +316,7 @@ export type Database = {
           id: string
           name: string | null
           pass_expiry_date: string | null
-          phone: string | null
+          phone: number | null
           registration_id: string | null
           role: string | null
           seat_number: number | null
@@ -331,7 +334,7 @@ export type Database = {
           id: string
           name?: string | null
           pass_expiry_date?: string | null
-          phone?: string | null
+          phone?: number | null
           registration_id?: string | null
           role?: string | null
           seat_number?: number | null
@@ -349,7 +352,7 @@ export type Database = {
           id?: string
           name?: string | null
           pass_expiry_date?: string | null
-          phone?: string | null
+          phone?: number | null
           registration_id?: string | null
           role?: string | null
           seat_number?: number | null
