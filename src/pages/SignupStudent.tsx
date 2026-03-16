@@ -56,8 +56,18 @@ const SignupStudent = () => {
     });
   };
 
+  const isFormComplete = formData.name && formData.email && formData.password && formData.phone && formData.gender && formData.registrationId && formData.college && formData.branch && formData.year && (availableSections.length === 0 || formData.section);
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isFormComplete) {
+      toast({
+        title: 'Incomplete Form',
+        description: 'Please fill in all required fields before submitting.',
+        variant: 'destructive',
+      });
+      return;
+    }
     setLoading(true);
 
     const { data, error } = await supabase.auth.signUp({
@@ -170,8 +180,13 @@ const SignupStudent = () => {
                 <Input
                   id="phone"
                   type="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '');
+                    setFormData({ ...formData, phone: value });
+                  }}
                   required
                   className="bg-muted/30 border-border/50 text-foreground"
                 />
@@ -277,7 +292,7 @@ const SignupStudent = () => {
             <Button 
               type="submit" 
               className="w-full bg-primary hover:bg-primary/90 hover:shadow-glow" 
-              disabled={loading}
+              disabled={loading || !isFormComplete}
             >
               {loading ? 'Creating Account...' : 'Sign Up'}
             </Button>

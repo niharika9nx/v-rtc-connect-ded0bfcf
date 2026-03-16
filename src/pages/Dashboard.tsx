@@ -13,6 +13,7 @@ import { AlertNotifications } from '@/components/AlertNotifications';
 import { useNotifications } from '@/hooks/useNotifications';
 import { z } from 'zod';
 import { Bell, User, Bus, CreditCard, AlertCircle, AlertTriangle, Trash2 } from 'lucide-react';
+import LogoutConfirmDialog from '@/components/LogoutConfirmDialog';
 import { differenceInDays, parseISO } from 'date-fns';
 const complaintSchema = z.object({
   message: z.string().trim().min(10, {
@@ -228,9 +229,7 @@ const Dashboard = () => {
             <h1 className="text-xl sm:text-2xl font-display font-bold text-foreground">VBus</h1>
             <p className="text-xs sm:text-sm text-muted-foreground truncate">Welcome back, {profile?.name || 'User'}</p>
           </div>
-          <Button onClick={signOut} variant="outline" size="sm" className="border-primary/30 hover:bg-primary/10 hover:shadow-glow transition-all shrink-0">
-            Logout
-          </Button>
+          <LogoutConfirmDialog onConfirm={signOut} triggerClassName="border-primary/30 hover:bg-primary/10 hover:shadow-glow transition-all shrink-0" />
         </div>
       </div>
 

@@ -17,7 +17,7 @@ import { getColleges, getBranches, getFacultyDepartments, getYears, getSections 
 
 const profileSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
-  phone: z.string().min(10, 'Phone must be at least 10 digits').max(15),
+  phone: z.string().min(10, 'Phone must be at least 10 digits').max(15).regex(/^\d+$/, 'Phone must contain only numbers'),
   gender: z.string().min(1, 'Gender is required'),
   college: z.string().min(1, 'College is required'),
   registration_id: z.string().optional(),
@@ -321,7 +321,7 @@ const Profile = () => {
                         <FormItem>
                           <FormLabel className="text-foreground">Phone</FormLabel>
                           <FormControl>
-                            <Input {...field} className="bg-muted/30 border-border/50" />
+                            <Input {...field} inputMode="numeric" pattern="[0-9]*" onChange={(e) => field.onChange(e.target.value.replace(/\D/g, ''))} className="bg-muted/30 border-border/50" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
