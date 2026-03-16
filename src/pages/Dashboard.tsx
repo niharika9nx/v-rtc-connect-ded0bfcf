@@ -13,6 +13,7 @@ import { AlertNotifications } from '@/components/AlertNotifications';
 import { useNotifications } from '@/hooks/useNotifications';
 import { z } from 'zod';
 import { Bell, User, Bus, CreditCard, AlertCircle, AlertTriangle, Trash2 } from 'lucide-react';
+import LogoutConfirmDialog from '@/components/LogoutConfirmDialog';
 import { differenceInDays, parseISO } from 'date-fns';
 const complaintSchema = z.object({
   message: z.string().trim().min(10, {

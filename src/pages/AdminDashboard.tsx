@@ -263,14 +263,7 @@ const AdminDashboard = () => {
               </h1>
               <p className="text-sm sm:text-base text-muted-foreground mt-1">Welcome back, {profile?.name || 'Admin'}!</p>
             </div>
-            <Button 
-              onClick={signOut} 
-              variant="outline"
-              size="sm"
-              className="border-primary/30 hover:bg-primary/10 hover:shadow-glow w-full sm:w-auto"
-            >
-              Logout
-            </Button>
+            <LogoutConfirmDialog onConfirm={signOut} triggerClassName="border-primary/30 hover:bg-primary/10 hover:shadow-glow w-full sm:w-auto" />
           </div>
         </div>
 

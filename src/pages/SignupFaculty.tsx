@@ -203,7 +203,7 @@ const SignupFaculty = () => {
                 </SelectContent>
               </Select>
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full" disabled={loading || !isFormComplete}>
               {loading ? 'Creating Account...' : 'Sign Up'}
             </Button>
           </form>

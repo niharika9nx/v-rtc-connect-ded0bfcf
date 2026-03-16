@@ -292,7 +292,7 @@ const SignupStudent = () => {
             <Button 
               type="submit" 
               className="w-full bg-primary hover:bg-primary/90 hover:shadow-glow" 
-              disabled={loading}
+              disabled={loading || !isFormComplete}
             >
               {loading ? 'Creating Account...' : 'Sign Up'}
             </Button>
