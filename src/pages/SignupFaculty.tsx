@@ -136,8 +136,13 @@ const SignupFaculty = () => {
               <Input
                 id="phone"
                 type="tel"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, '');
+                  setFormData({ ...formData, phone: value });
+                }}
                 required
               />
             </div>
