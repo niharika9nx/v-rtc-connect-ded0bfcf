@@ -556,7 +556,8 @@ const EPass = () => {
         monthly_pass_url: uploadResult.filePath,
         verified: !isDuplicate, // Mark as false if duplicate found
         buss_pass_id: extractedPassId || null,
-        expiry_date: extractedExpiryDate || null
+        expiry_date: extractedExpiryDate || null,
+        file_hash: pendingFileHash || null
       };
 
       let currentPassId: string;
