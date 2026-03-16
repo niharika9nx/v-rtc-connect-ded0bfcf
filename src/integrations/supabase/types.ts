@@ -313,7 +313,7 @@ export type Database = {
           id: string
           name: string | null
           pass_expiry_date: string | null
-          phone: string | null
+          phone: number | null
           registration_id: string | null
           role: string | null
           seat_number: number | null
@@ -331,7 +331,7 @@ export type Database = {
           id: string
           name?: string | null
           pass_expiry_date?: string | null
-          phone?: string | null
+          phone?: number | null
           registration_id?: string | null
           role?: string | null
           seat_number?: number | null
@@ -349,7 +349,7 @@ export type Database = {
           id?: string
           name?: string | null
           pass_expiry_date?: string | null
-          phone?: string | null
+          phone?: number | null
           registration_id?: string | null
           role?: string | null
           seat_number?: number | null
