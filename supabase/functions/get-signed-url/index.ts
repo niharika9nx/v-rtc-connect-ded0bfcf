@@ -46,17 +46,14 @@ serve(async (req) => {
     console.log('Authenticated user:', user.id);
 
     // Parse request body
-    const { filePath, targetUserId } = await req.json();
-    
-    if (!filePath) {
+    const { filePath } = await req.json();
+
+    if (!filePath || typeof filePath !== 'string') {
       return new Response(
         JSON.stringify({ error: 'File path is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    console.log('Requested file path:', filePath);
-    console.log('Target user ID:', targetUserId);
 
     // Create admin client for role checking and signed URL generation
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
@@ -76,9 +73,8 @@ serve(async (req) => {
     const pathParts = filePath.split('/');
     const fileUserId = pathParts[0];
     
-    // Authorization check: user can only access their own files OR admins can access any file
-    if (!isAdmin && fileUserId !== user.id && targetUserId !== user.id) {
-      console.error('Access denied - user trying to access another users file');
+    // Authorization check: non-admins can only access files in their own folder
+    if (!isAdmin && fileUserId !== user.id) {
       return new Response(
         JSON.stringify({ error: 'Access denied - you can only access your own files' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
