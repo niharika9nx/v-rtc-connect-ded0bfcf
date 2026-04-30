@@ -14,12 +14,77 @@ serve(async (req) => {
   }
 
   try {
-    const { filePath, userId } = await req.json();
-    console.log('Processing pass enhancement for:', filePath);
+    // --- Authentication: require a valid JWT ---
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+      );
+    }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims?.sub) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+      );
+    }
+    const authUserId = claimsData.claims.sub as string;
+
+    // --- Input validation ---
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== 'object') {
+      return new Response(
+        JSON.stringify({ error: 'Invalid request body' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+    const { filePath, userId } = body as { filePath?: unknown; userId?: unknown };
+
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (typeof userId !== 'string' || !uuidRegex.test(userId)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid userId' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+    if (
+      typeof filePath !== 'string' ||
+      filePath.includes('..') ||
+      !/^[0-9a-f-]+\/[^/]+\.(jpg|jpeg|png)$/i.test(filePath)
+    ) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid filePath' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+
+    // Ownership: userId in body must match the JWT's user, and filePath must be under that user's folder
+    if (userId !== authUserId) {
+      return new Response(
+        JSON.stringify({ error: 'Forbidden' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
+      );
+    }
+    if (!filePath.startsWith(`${authUserId}/`)) {
+      return new Response(
+        JSON.stringify({ error: 'Forbidden' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
+      );
+    }
+
+    // Service-role client used only after auth + ownership checks
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Download the original image
     const { data: fileData, error: downloadError } = await supabase.storage
@@ -31,14 +96,10 @@ serve(async (req) => {
       throw new Error('Failed to download image');
     }
 
-    console.log('Image downloaded successfully');
-
     // Convert blob to array buffer and base64 for OCR
     const arrayBuffer = await fileData.arrayBuffer();
     const uint8Array = new Uint8Array(arrayBuffer);
-    
-    console.log('Original image size:', uint8Array.length, 'bytes');
-    
+
     // Convert to base64 for OCR
     let binary = '';
     const chunkSize = 8192;
@@ -49,8 +110,6 @@ serve(async (req) => {
     const base64Image = btoa(binary);
     const dataUrl = `data:image/jpeg;base64,${base64Image}`;
 
-    console.log('Starting OCR processing with Lovable AI...');
-    
     // Use Lovable AI vision model to extract text
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -93,25 +152,18 @@ serve(async (req) => {
 
     const aiData = await aiResponse.json();
     const text = aiData.choices?.[0]?.message?.content || '';
-    
-    console.log('OCR text extracted:', text);
 
     // Extract expiry date and pass ID using regex patterns
     const expiryDate = extractExpiryDate(text);
     const passId = extractPassId(text);
-    console.log('Extracted expiry date:', expiryDate);
-    console.log('Extracted pass ID:', passId);
 
     // Check if pass is expired
     const isExpired = expiryDate ? new Date(expiryDate) < new Date() : false;
-    console.log('Pass expired:', isExpired);
 
     // Get public URL of the original uploaded file
     const { data: { publicUrl } } = supabase.storage
       .from('pass-documents')
       .getPublicUrl(filePath);
-    
-    console.log('Using original image URL:', publicUrl);
 
     // Update passes table
     const updateData: any = {
@@ -152,8 +204,6 @@ serve(async (req) => {
         }
 
         if (duplicates.length > 0) {
-          console.log('Duplicate numeric pass ID detected:', numericPassId);
-          
           // Mark current pass as unverified
           updateData.verified = false;
           
@@ -184,8 +234,6 @@ serve(async (req) => {
             );
             await Promise.all(alertPromises);
           }
-
-          console.log('Admins notified about duplicate numeric pass ID');
         }
       }
     }
@@ -211,8 +259,6 @@ serve(async (req) => {
         console.error('Profile update error:', profileUpdateError);
       }
     }
-
-    console.log('Pass data updated successfully');
 
     return new Response(
       JSON.stringify({ 
