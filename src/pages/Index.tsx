@@ -69,7 +69,8 @@ const Index = () => {
   }, []);
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-background overflow-hidden">
+    <div className="relative flex flex-col min-h-screen bg-background overflow-x-hidden">
+      <div className="relative flex flex-1 items-center justify-center overflow-hidden">
       {/* Animated background orbs */}
       {floatingOrbs.map((orb) => (
         <div
@@ -172,7 +173,7 @@ const Index = () => {
         </div>
       </div>
 
-      <div className="relative z-10 text-center space-y-6 md:space-y-8 px-4 max-w-4xl mx-auto pb-32 md:pb-24">
+      <div className="relative z-10 text-center space-y-6 md:space-y-8 px-4 max-w-4xl mx-auto py-12">
         {/* Logo/Icon with enhanced glow */}
         <div className="mb-4 md:mb-6 flex justify-center animate-float">
           <div className="relative group">
@@ -229,9 +230,10 @@ const Index = () => {
           </Link>
         </div>
       </div>
+      </div>
 
       {/* Footer */}
-      <footer className="absolute bottom-0 left-0 right-0 z-10 border-t border-primary/15 bg-background/40 backdrop-blur-md">
+      <footer className="relative z-10 border-t border-primary/15 bg-background/60 backdrop-blur-md">
         <div className="max-w-6xl mx-auto px-4 py-4 md:py-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 text-xs md:text-sm">
             {/* Developer */}
