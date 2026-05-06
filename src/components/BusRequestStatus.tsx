@@ -2,6 +2,17 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -114,14 +125,34 @@ export const BusRequestStatus = () => {
                 <Clock className="h-3 w-3 mr-1" />
                 Pending
               </Badge>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleDelete(request.id)}
-                className="hover:bg-destructive/10 hover:text-destructive h-8 w-8 p-0"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="hover:bg-destructive/10 hover:text-destructive h-8 w-8 p-0"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Request</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure to delete the request?
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>NO</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => handleDelete(request.id)}
+                      className="bg-destructive hover:bg-destructive/90"
+                    >
+                      YES
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
             <p className="text-sm text-foreground">
               {request.request_type === 'existing' 
