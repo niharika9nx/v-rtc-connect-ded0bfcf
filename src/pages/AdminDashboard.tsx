@@ -538,6 +538,50 @@ const AdminDashboard = () => {
             </DialogContent>
           </Dialog>
 
+          <Dialog open={notificationsOpen} onOpenChange={setNotificationsOpen}>
+            <DialogTrigger asChild>
+              <Card className="glass border-border/50 hover:shadow-glow transition-all cursor-pointer animate-slide-up group" style={{ animationDelay: '0.39s' }}>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-foreground group-hover:text-primary transition-colors">
+                    <UserPlus className="h-5 w-5" />
+                    Notifications
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">New student / faculty account creations</p>
+                  {notifications.length > 0 && (
+                    <Badge className="mt-2" variant="secondary">
+                      {notifications.length} total
+                    </Badge>
+                  )}
+                </CardContent>
+              </Card>
+            </DialogTrigger>
+            <DialogContent className="w-[95vw] max-w-3xl max-h-[85vh] glass border-border/50 p-4 sm:p-6">
+              <DialogHeader>
+                <DialogTitle className="text-foreground">Notifications</DialogTitle>
+              </DialogHeader>
+              <ScrollArea className="h-[60vh]">
+                <div className="space-y-3 pr-4">
+                  {notifications.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-8">No notifications yet</p>
+                  ) : (
+                    notifications.map((n) => (
+                      <Card key={n.id} className="glass border-border/50">
+                        <CardContent className="pt-4 px-3 sm:px-6">
+                          <p className="text-sm text-foreground break-words">{n.message}</p>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            {new Date(n.created_at).toLocaleString()}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
+            </DialogContent>
+          </Dialog>
+
           <Dialog open={announcementsOpen} onOpenChange={setAnnouncementsOpen}>
             <DialogTrigger asChild>
               <Card className="glass border-border/50 hover:shadow-glow transition-all cursor-pointer animate-slide-up group" style={{ animationDelay: '0.4s' }}>
