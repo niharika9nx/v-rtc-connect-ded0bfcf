@@ -70,7 +70,7 @@ const Index = () => {
 
   return (
     <div className="relative flex flex-col min-h-screen bg-background overflow-x-hidden">
-      <div className="relative flex flex-1 items-center justify-center overflow-hidden">
+      <div className="relative flex min-h-screen items-center justify-center overflow-hidden">
       {/* Animated background orbs */}
       {floatingOrbs.map((orb) => (
         <div
