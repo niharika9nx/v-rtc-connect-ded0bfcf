@@ -10,8 +10,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { User, Bus, MessageSquare, Megaphone, Trash2, Upload, Send, Users, Bell } from 'lucide-react';
+import { User, Bus, MessageSquare, Megaphone, Trash2, Upload, Send, Users, Bell, UserPlus } from 'lucide-react';
 import LogoutConfirmDialog from '@/components/LogoutConfirmDialog';
+import { useNotifications } from '@/hooks/useNotifications';
 
 interface Complaint {
   id: string;
@@ -44,6 +45,7 @@ const AdminDashboard = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { requestPermission, sendNotification } = useNotifications();
   const [profile, setProfile] = useState<any>(null);
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
@@ -55,6 +57,8 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(false);
   const [routeImageUrl, setRouteImageUrl] = useState<string | null>(null);
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
 
   useEffect(() => {
     if (user) {
@@ -70,8 +74,48 @@ const AdminDashboard = () => {
       fetchAlertsSent();
       fetchRouteImage();
       fetchPendingRequestsCount();
+      fetchNotifications();
+      requestPermission();
+
+      // Realtime subscription for new_account notifications
+      const channel = supabase
+        .channel('admin-new-account-alerts')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'alerts',
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload: any) => {
+            const row = payload.new;
+            if (row?.type === 'new_account') {
+              setNotifications((prev) => [row, ...prev]);
+              sendNotification('🆕 New Account Created', { body: row.message });
+              toast({ title: 'New Account', description: row.message });
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [user]);
+
+  const fetchNotifications = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('alerts')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('type', 'new_account')
+      .order('created_at', { ascending: false })
+      .limit(100);
+    if (data) setNotifications(data);
+  };
 
   const fetchPendingRequestsCount = async () => {
     const { count } = await supabase
