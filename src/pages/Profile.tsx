@@ -115,6 +115,35 @@ const Profile = () => {
 
   const onSubmit = async (data: ProfileFormData) => {
     try {
+      // Ensure no field is empty based on role
+      const requiredCommon: Array<[string, string]> = [
+        [data.name, 'Name'],
+        [data.phone, 'Phone'],
+        [data.gender, 'Gender'],
+        [data.college, 'College'],
+      ];
+      const roleRequired: Array<[string, string]> =
+        profile.role === 'student'
+          ? [
+              [data.registration_id || '', 'Registration ID'],
+              [data.branch || '', 'Branch'],
+              [data.year || '', 'Year'],
+              ...(availableSections.length > 0 ? [[data.section || '', 'Section'] as [string, string]] : []),
+            ]
+          : profile.role === 'faculty' || profile.role === 'admin'
+          ? [[data.department || '', 'Department']]
+          : [];
+
+      const missing = [...requiredCommon, ...roleRequired].find(([v]) => !v || !String(v).trim());
+      if (missing) {
+        toast({
+          title: 'Missing field',
+          description: `${missing[1]} cannot be empty`,
+          variant: 'destructive',
+        });
+        return;
+      }
+
       const updateData: any = {
         name: data.name,
         phone: data.phone,

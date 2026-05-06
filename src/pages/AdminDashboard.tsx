@@ -10,8 +10,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { User, Bus, MessageSquare, Megaphone, Trash2, Upload, Send, Users, Bell } from 'lucide-react';
+import { User, Bus, MessageSquare, Megaphone, Trash2, Upload, Send, Users, Bell, UserPlus } from 'lucide-react';
 import LogoutConfirmDialog from '@/components/LogoutConfirmDialog';
+import { useNotifications } from '@/hooks/useNotifications';
 
 interface Complaint {
   id: string;
@@ -44,6 +45,7 @@ const AdminDashboard = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { requestPermission, sendNotification } = useNotifications();
   const [profile, setProfile] = useState<any>(null);
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
@@ -55,6 +57,8 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(false);
   const [routeImageUrl, setRouteImageUrl] = useState<string | null>(null);
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
 
   useEffect(() => {
     if (user) {
@@ -70,8 +74,48 @@ const AdminDashboard = () => {
       fetchAlertsSent();
       fetchRouteImage();
       fetchPendingRequestsCount();
+      fetchNotifications();
+      requestPermission();
+
+      // Realtime subscription for new_account notifications
+      const channel = supabase
+        .channel('admin-new-account-alerts')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'alerts',
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload: any) => {
+            const row = payload.new;
+            if (row?.type === 'new_account') {
+              setNotifications((prev) => [row, ...prev]);
+              sendNotification('🆕 New Account Created', { body: row.message });
+              toast({ title: 'New Account', description: row.message });
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [user]);
+
+  const fetchNotifications = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('alerts')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('type', 'new_account')
+      .order('created_at', { ascending: false })
+      .limit(100);
+    if (data) setNotifications(data);
+  };
 
   const fetchPendingRequestsCount = async () => {
     const { count } = await supabase
@@ -485,6 +529,50 @@ const AdminDashboard = () => {
                               </Button>
                             )}
                           </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={notificationsOpen} onOpenChange={setNotificationsOpen}>
+            <DialogTrigger asChild>
+              <Card className="glass border-border/50 hover:shadow-glow transition-all cursor-pointer animate-slide-up group" style={{ animationDelay: '0.39s' }}>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-foreground group-hover:text-primary transition-colors">
+                    <UserPlus className="h-5 w-5" />
+                    Notifications
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">New student / faculty account creations</p>
+                  {notifications.length > 0 && (
+                    <Badge className="mt-2" variant="secondary">
+                      {notifications.length} total
+                    </Badge>
+                  )}
+                </CardContent>
+              </Card>
+            </DialogTrigger>
+            <DialogContent className="w-[95vw] max-w-3xl max-h-[85vh] glass border-border/50 p-4 sm:p-6">
+              <DialogHeader>
+                <DialogTitle className="text-foreground">Notifications</DialogTitle>
+              </DialogHeader>
+              <ScrollArea className="h-[60vh]">
+                <div className="space-y-3 pr-4">
+                  {notifications.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-8">No notifications yet</p>
+                  ) : (
+                    notifications.map((n) => (
+                      <Card key={n.id} className="glass border-border/50">
+                        <CardContent className="pt-4 px-3 sm:px-6">
+                          <p className="text-sm text-foreground break-words">{n.message}</p>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            {new Date(n.created_at).toLocaleString()}
+                          </p>
                         </CardContent>
                       </Card>
                     ))
