@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Bus, Sparkles } from "lucide-react";
+import { Bus, Sparkles, Mail, Phone, GraduationCap, Building2, User } from "lucide-react";
 import { useState, useEffect } from "react";
 import vishnuLogo from '@/assets/vishnu-logo.png';
 
@@ -230,13 +230,54 @@ const Index = () => {
         </div>
       </div>
 
-      {/* Copyright section */}
-      <div className="absolute bottom-4 left-0 right-0 z-10">
-        <div className="text-center text-xs md:text-sm text-muted-foreground/70 px-4 space-y-1">
-          <p>© 2025 Shri Vishnu Engineering College For Women (SVECW). All rights reserved.</p>
-          <p>Contact: <a href="mailto:vesbusrtc@gmail.com" className="hover:text-primary transition-colors">vesbusrtc@gmail.com</a></p>
+      {/* Footer */}
+      <footer className="absolute bottom-0 left-0 right-0 z-10 border-t border-primary/15 bg-background/40 backdrop-blur-md">
+        <div className="max-w-6xl mx-auto px-4 py-4 md:py-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 text-xs md:text-sm">
+            {/* Developer */}
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2 text-primary font-semibold uppercase tracking-wider text-[11px] md:text-xs">
+                <User className="h-3.5 w-3.5" />
+                Developer
+              </div>
+              <p className="text-foreground font-medium">Niharika Chinimilli</p>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-muted-foreground">
+                <a href="tel:+917093529749" className="flex items-center gap-1.5 hover:text-primary transition-colors">
+                  <Phone className="h-3 w-3" /> +91 70935 29749
+                </a>
+                <a href="mailto:niharikachinimilli9@gmail.com" className="flex items-center gap-1.5 hover:text-primary transition-colors">
+                  <Mail className="h-3 w-3" /> niharikachinimilli9@gmail.com
+                </a>
+                <span className="flex items-center gap-1.5">
+                  <GraduationCap className="h-3 w-3" /> SVECW — CSE
+                </span>
+              </div>
+            </div>
+
+            {/* Mentor */}
+            <div className="space-y-1.5 md:text-right">
+              <div className="flex items-center gap-2 text-accent font-semibold uppercase tracking-wider text-[11px] md:text-xs md:justify-end">
+                <GraduationCap className="h-3.5 w-3.5" />
+                Mentor
+              </div>
+              <p className="text-foreground font-medium">Dr. P. Ravi Kumar</p>
+              <div className="flex flex-wrap md:justify-end items-center gap-x-4 gap-y-1 text-muted-foreground">
+                <span className="flex items-center gap-1.5">
+                  <Building2 className="h-3 w-3" /> Department of ECE, SVECW
+                </span>
+                <a href="mailto:ravikumar_tnk@svecw.edu.in" className="flex items-center gap-1.5 hover:text-primary transition-colors">
+                  <Mail className="h-3 w-3" /> ravikumar_tnk@svecw.edu.in
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-3 pt-3 border-t border-primary/10 text-center text-[11px] md:text-xs text-muted-foreground/70 space-y-0.5">
+            <p>© 2025 Shri Vishnu Engineering College For Women (SVECW). All rights reserved.</p>
+            <p>Contact: <a href="mailto:vesbusrtc@gmail.com" className="hover:text-primary transition-colors">vesbusrtc@gmail.com</a></p>
+          </div>
         </div>
-      </div>
+      </footer>
     </div>
   );
 };
