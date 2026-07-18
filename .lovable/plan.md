@@ -1,50 +1,27 @@
+# Rotate the Supabase anon key
 
+Since `.env` was previously pushed to GitHub, the anon key that was committed is exposed in git history forever. Rewriting history is disruptive (force-push, everyone re-clones), so the practical fix is to rotate the key — the old value in history becomes useless.
 
-# Caching Mechanism for Pass Image OCR
+## Important context
 
-## Problem
-Every time a user uploads a monthly pass image, the system calls the `enhance-pass` edge function (Gemini AI) for OCR extraction -- even if the user re-uploads the exact same image. This wastes AI credits and makes the user wait unnecessarily.
+Your `.env` only contained the Supabase URL + **publishable (anon) key**. This key is *designed* to be public and ships in every browser bundle — RLS is what actually protects your data. So this rotation is defense-in-depth, not an emergency.
 
-## Solution
-Add a file fingerprint (hash) based caching system. Before calling the AI, compare the new file's hash with the previously processed file's hash. If they match, reuse the already-extracted pass ID and expiry date from the database.
+The `service_role` key was never in `.env` (it lives only in Supabase Edge Function secrets), so nothing sensitive was ever exposed.
 
-## How It Works
+## Steps (you do these in Supabase — I can't rotate keys from here)
 
-1. When a user selects a monthly pass image, compute a SHA-256 hash of the file contents on the client side.
-2. Store the hash in the `passes` table (new column: `file_hash`).
-3. Before invoking the `enhance-pass` edge function, check if the existing pass record has a matching `file_hash`.
-4. If the hash matches, skip the AI call entirely and show the previously extracted data.
-5. If the hash differs (new/different image), proceed with upload and AI extraction as normal.
+1. Open **Supabase Dashboard → Project Settings → API Keys**:
+   https://supabase.com/dashboard/project/riqqyhaguckeijcownor/settings/api-keys
+2. Find the **anon / publishable key** and click **Rotate** (or "Roll key").
+3. Copy the new anon key.
+4. Back in Lovable, Supabase auto-syncs the new key into `.env` as `VITE_SUPABASE_PUBLISHABLE_KEY` on the next build. If it doesn't, disconnect and reconnect the Supabase integration from the Lovable **+ menu → Supabase** to force a resync.
+5. Verify the app still loads after the rotation (login should work — if it fails, the `.env` didn't refresh; reconnect Supabase).
 
-## Technical Details
+## What I will do in the codebase
 
-### 1. Database Migration
-Add a `file_hash` column to the `passes` table:
-```sql
-ALTER TABLE public.passes ADD COLUMN file_hash text;
-```
+Nothing — no code changes are needed. The client reads the key from `import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY`, so once `.env` updates, the app picks up the new key automatically on the next build.
 
-### 2. Client-Side Changes (src/pages/EPass.tsx)
+## Also worth checking (optional)
 
-**New helper function** -- `computeFileHash`:
-- Reads the file as an ArrayBuffer
-- Uses the browser's `crypto.subtle.digest('SHA-256', ...)` API to compute a hash
-- Returns the hash as a hex string
-
-**Modified `handleMonthlyPassUpload` flow**:
-1. Compute hash of the selected file (after HEIC conversion if applicable)
-2. Compare against `pass?.file_hash`
-3. If match: skip upload and AI call, populate verification dialog with existing `pass.buss_pass_id` and `pass.expiry_date`, show toast "Using cached data"
-4. If no match: proceed with normal upload + AI extraction flow
-5. After successful extraction, save the hash to the `passes` table alongside other data
-
-**Modified `handleVerificationConfirm`**:
-- Include the computed `file_hash` in the pass data saved to the database
-
-### 3. Edge Function (No Changes Needed)
-The `enhance-pass` function remains unchanged -- the caching is handled entirely on the client side before the function is ever called.
-
-## User Experience
-- If uploading the same image again: instant result (under 1 second), no AI credits used
-- If uploading a different image: normal flow with AI extraction
-- A toast message will indicate when cached data is being used vs. fresh extraction
+- **`service_role` key**: never rotate casually — if you do, all edge function secrets referencing it must be updated too. Only rotate if you have reason to believe it leaked (it wasn't in `.env`, so almost certainly fine).
+- **GitHub repo visibility**: if the repo is public, consider making it private in GitHub settings as extra hygiene, even though the exposed key was public-safe.
