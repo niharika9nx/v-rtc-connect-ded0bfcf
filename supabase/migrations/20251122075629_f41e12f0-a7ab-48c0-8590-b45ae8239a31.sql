@@ -1,0 +1,3 @@
+﻿-- No-op placeholder: this migration version exists in the remote database history
+-- but was never present in the local migrations directory (applied outside this repo).
+-- It is intentionally empty so that local history matches the remote history.

@@ -1,46 +1,44 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { handleCors, corsHeaders } from '../_shared/cors.ts';
+import { extractBearerToken } from '../_shared/auth.ts';
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const preflight = handleCors(req);
+  if (preflight) return preflight;
+  const cors = corsHeaders(req.headers.get('origin'));
+
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { ...cors, 'Content-Type': 'application/json' },
+    });
 
   try {
-    // Verify authorization - require service role key in Authorization header
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      console.error('Missing Authorization header');
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized: Missing authorization header' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
-      );
+    const token = extractBearerToken(req);
+    if (!token) {
+      return json({ error: 'Unauthorized: Missing or malformed authorization header' }, 401);
     }
 
-    // Extract Bearer token and validate it matches the service role key
-    const token = authHeader.replace('Bearer ', '');
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    
-    // For cron jobs, they should use the service role key
-    if (token !== serviceRoleKey) {
-      console.error('Invalid authorization token');
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized: Invalid token' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
-      );
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    // Validate the cron token as a proper service-role JWT instead of
+    // comparing it against the raw key value.
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
+
+    const { data: { user: cronUser }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !cronUser) {
+      console.error('Invalid cron token:', authError);
+      return json({ error: 'Unauthorized: Invalid token' }, 401);
     }
 
     console.log('Authorization verified, checking for expiring passes...');
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    console.log('Checking for expiring passes...');
 
     const today = new Date().toISOString().split('T')[0];
     const todayDate = new Date(today);
@@ -76,8 +74,8 @@ serve(async (req) => {
       if (!existingTodayAlert || existingTodayAlert.length === 0) {
         const expiryDate = new Date(profile.pass_expiry_date);
         const daysRemaining = Math.ceil((expiryDate.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24));
-        
-        const message = daysRemaining === 1 
+
+        const message = daysRemaining === 1
           ? `⚠️ Your bus pass expires TOMORROW (${new Date(profile.pass_expiry_date).toLocaleDateString()})! Please upload a new pass urgently.`
           : `⏰ Your bus pass will expire in ${daysRemaining} days (${new Date(profile.pass_expiry_date).toLocaleDateString()}). Please upload a new pass soon.`;
 
@@ -121,7 +119,7 @@ serve(async (req) => {
       // Only create a new reminder if there isn't one already today
       if (!existingAlerts || existingAlerts.length === 0) {
         const daysSinceExpiry = Math.floor((todayDate.getTime() - new Date(profile.pass_expiry_date).getTime()) / (1000 * 60 * 60 * 24));
-        
+
         const message = daysSinceExpiry === 0
           ? '🚨 Your bus pass expired TODAY! Did you receive your new bus pass?'
           : `🚨 Your bus pass expired ${daysSinceExpiry} day${daysSinceExpiry > 1 ? 's' : ''} ago! Did you receive your new bus pass?`;
@@ -142,20 +140,14 @@ serve(async (req) => {
       }
     }
 
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        expiringCount: expiringProfiles?.length || 0,
-        expiredCount: expiredProfiles?.length || 0
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return json({
+      success: true,
+      expiringCount: expiringProfiles?.length || 0,
+      expiredCount: expiredProfiles?.length || 0
+    });
 
   } catch (error: any) {
     console.error('Error in check-expiring-passes function:', error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-    );
+    return json({ error: error.message }, 500);
   }
 });

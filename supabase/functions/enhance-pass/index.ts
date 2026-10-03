@@ -1,26 +1,29 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { handleCors, corsHeaders } from '../_shared/cors.ts';
+import { extractBearerToken } from '../_shared/auth.ts';
 
 const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
+const RATE_LIMIT_MAX_CALLS = 10;
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const preflight = handleCors(req);
+  if (preflight) return preflight;
+  const cors = corsHeaders(req.headers.get('origin'));
+
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { ...cors, 'Content-Type': 'application/json' },
+    });
 
   try {
     // --- Authentication: require a valid JWT ---
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
-      );
+    const token = extractBearerToken(req);
+    if (!token) {
+      return json({ error: 'Unauthorized' }, 401);
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -28,63 +31,82 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
     const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
+      global: { headers: { Authorization: `Bearer ${token}` } },
     });
 
-    const token = authHeader.replace('Bearer ', '');
     const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
     if (claimsError || !claimsData?.claims?.sub) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
-      );
+      return json({ error: 'Unauthorized' }, 401);
     }
     const authUserId = claimsData.claims.sub as string;
 
     // --- Input validation ---
     const body = await req.json().catch(() => null);
     if (!body || typeof body !== 'object') {
-      return new Response(
-        JSON.stringify({ error: 'Invalid request body' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      );
+      return json({ error: 'Invalid request body' }, 400);
     }
     const { filePath, userId } = body as { filePath?: unknown; userId?: unknown };
 
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (typeof userId !== 'string' || !uuidRegex.test(userId)) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid userId' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      );
+      return json({ error: 'Invalid userId' }, 400);
     }
     if (
       typeof filePath !== 'string' ||
       filePath.includes('..') ||
       !/^[0-9a-f-]+\/[^/]+\.(jpg|jpeg|png)$/i.test(filePath)
     ) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid filePath' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      );
+      return json({ error: 'Invalid filePath' }, 400);
     }
 
     // Ownership: userId in body must match the JWT's user, and filePath must be under that user's folder
     if (userId !== authUserId) {
-      return new Response(
-        JSON.stringify({ error: 'Forbidden' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
-      );
+      return json({ error: 'Forbidden' }, 403);
     }
     if (!filePath.startsWith(`${authUserId}/`)) {
-      return new Response(
-        JSON.stringify({ error: 'Forbidden' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
-      );
+      return json({ error: 'Forbidden' }, 403);
+    }
+
+    if (!LOVABLE_API_KEY) {
+      console.error('LOVABLE_API_KEY is not configured');
+      return json({ error: 'Server configuration error' }, 500);
     }
 
     // Service-role client used only after auth + ownership checks
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // --- Rate limiting: max RATE_LIMIT_MAX_CALLS enhance calls per user per hour ---
+    const { data: rateRow, error: rateError } = await supabase
+      .from('function_rate_limits')
+      .select('calls, window_start')
+      .eq('user_id', userId)
+      .eq('function_name', 'enhance-pass')
+      .maybeSingle();
+
+    if (rateError) {
+      console.error('Rate limit check failed:', rateError);
+    } else {
+      const now = Date.now();
+      const windowStartMs = rateRow?.window_start ? new Date(rateRow.window_start).getTime() : 0;
+      const windowActive = rateRow != null && (now - windowStartMs) < RATE_LIMIT_WINDOW_MS;
+      const calls = windowActive ? (rateRow?.calls ?? 0) : 0;
+
+      if (calls >= RATE_LIMIT_MAX_CALLS) {
+        return json(
+          { error: `Rate limit exceeded. Maximum ${RATE_LIMIT_MAX_CALLS} pass enhancements per hour.` },
+          429,
+        );
+      }
+
+      await supabase
+        .from('function_rate_limits')
+        .upsert({
+          user_id: userId,
+          function_name: 'enhance-pass',
+          calls: calls + 1,
+          window_start: new Date(windowActive ? windowStartMs : now).toISOString(),
+        });
+    }
 
     // Download the original image
     const { data: fileData, error: downloadError } = await supabase.storage
@@ -166,7 +188,7 @@ serve(async (req) => {
       .getPublicUrl(filePath);
 
     // Update passes table
-    const updateData: any = {
+    const updateData: Record<string, unknown> = {
       monthly_pass_url: publicUrl,
     };
 
@@ -193,7 +215,7 @@ serve(async (req) => {
         }
 
         // Find duplicates by comparing numeric portions
-        const duplicates: any[] = [];
+        const duplicates: { id: string }[] = [];
         if (allPasses) {
           for (const existingPass of allPasses) {
             const existingNumeric = (existingPass.buss_pass_id || '').replace(/\D/g, '');
@@ -260,23 +282,17 @@ serve(async (req) => {
       }
     }
 
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        expiryDate,
-        passId,
-        isExpired,
-        imageUrl: publicUrl 
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return json({
+      success: true,
+      expiryDate,
+      passId,
+      isExpired,
+      imageUrl: publicUrl
+    });
 
   } catch (error: any) {
     console.error('Error in enhance-pass function:', error);
-    return new Response(
-      JSON.stringify({ error: error.message || 'An unexpected error occurred' }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-    );
+    return json({ error: error.message || 'An unexpected error occurred' }, 500);
   }
 });
 

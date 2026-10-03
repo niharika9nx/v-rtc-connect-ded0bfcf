@@ -1,50 +1,61 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { handleCors, corsHeaders } from '../_shared/cors.ts';
+import { extractBearerToken } from '../_shared/auth.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const preflight = handleCors(req);
+  if (preflight) return preflight;
+  const cors = corsHeaders(req.headers.get('origin'));
+
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { ...cors, 'Content-Type': 'application/json' },
+    });
 
   try {
+    const token = extractBearerToken(req);
+    if (!token) {
+      return json({ error: 'Unauthorized' }, 401);
+    }
+
     const { alertId, response } = await req.json();
-    
-    const authHeader = req.headers.get('Authorization')!;
-    const token = authHeader.replace('Bearer ', '');
+
+    if (typeof alertId !== 'string' || !UUID_REGEX.test(alertId)) {
+      return json({ error: 'Invalid alertId' }, 400);
+    }
+
+    if (response !== 'yes' && response !== 'no') {
+      return json({ error: 'Invalid response' }, 400);
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey, {
-      global: { headers: { Authorization: authHeader } }
+      global: { headers: { Authorization: `Bearer ${token}` } }
     });
 
-    // Verify user
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
     if (userError || !user) {
-      throw new Error('Unauthorized');
+      return json({ error: 'Unauthorized' }, 401);
     }
 
-    console.log('Responding to alert:', alertId, 'with response:', response);
-
-    // Update alert status and user_response based on response
     const newStatus = response === 'yes' ? 'resolved' : 'pending';
-    
+
     const { error: updateError } = await supabase
       .from('alerts')
-      .update({ 
+      .update({
         status: newStatus,
-        user_response: response 
+        user_response: response
       })
       .eq('id', alertId)
       .eq('user_id', user.id);
 
     if (updateError) throw updateError;
 
-    // If user says yes (they got a new pass), mark all pending renewal reminders as resolved
     if (response === 'yes') {
       const { error: resolveError } = await supabase
         .from('alerts')
@@ -58,16 +69,10 @@ serve(async (req) => {
       }
     }
 
-    return new Response(
-      JSON.stringify({ success: true }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return json({ success: true });
 
   } catch (error: any) {
     console.error('Error in respond-to-alert function:', error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-    );
+    return json({ error: error.message }, 500);
   }
 });
