@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 import { handleCors, corsHeaders } from '../_shared/cors.ts';
 import { extractBearerToken } from '../_shared/auth.ts';
+import { isUuid, isValidPassFilePath } from '../_shared/validation.ts';
 
 const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
@@ -47,15 +48,10 @@ serve(async (req) => {
     }
     const { filePath, userId } = body as { filePath?: unknown; userId?: unknown };
 
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (typeof userId !== 'string' || !uuidRegex.test(userId)) {
+    if (!isUuid(userId)) {
       return json({ error: 'Invalid userId' }, 400);
     }
-    if (
-      typeof filePath !== 'string' ||
-      filePath.includes('..') ||
-      !/^[0-9a-f-]+\/[^/]+\.(jpg|jpeg|png)$/i.test(filePath)
-    ) {
+    if (!isValidPassFilePath(filePath)) {
       return json({ error: 'Invalid filePath' }, 400);
     }
 

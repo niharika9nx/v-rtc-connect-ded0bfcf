@@ -2,8 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 import { handleCors, corsHeaders } from '../_shared/cors.ts';
 import { extractBearerToken } from '../_shared/auth.ts';
-
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { isUuid } from '../_shared/validation.ts';
 
 serve(async (req) => {
   const preflight = handleCors(req);
@@ -60,7 +59,7 @@ serve(async (req) => {
 
     const { userId, type, message } = await req.json();
 
-    if (typeof userId !== 'string' || !UUID_REGEX.test(userId)) {
+    if (!isUuid(userId)) {
       return json({ error: 'Invalid or missing userId' }, 400);
     }
 

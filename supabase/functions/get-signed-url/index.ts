@@ -2,9 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { handleCors, corsHeaders } from '../_shared/cors.ts';
 import { extractBearerToken } from '../_shared/auth.ts';
-
-// {userId}/{filename}.{jpg|jpeg|png} — same pattern enforced by enhance-pass
-const FILE_PATH_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/[^/]+\.(jpg|jpeg|png)$/i;
+import { isValidPassFilePath } from '../_shared/validation.ts';
 
 serve(async (req) => {
   const preflight = handleCors(req);
@@ -44,7 +42,7 @@ serve(async (req) => {
     // Parse request body
     const { filePath } = await req.json();
 
-    if (typeof filePath !== 'string' || !FILE_PATH_REGEX.test(filePath)) {
+    if (!isValidPassFilePath(filePath)) {
       return json({ error: 'Invalid file path' }, 400);
     }
 
