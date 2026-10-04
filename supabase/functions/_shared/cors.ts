@@ -1,7 +1,27 @@
-const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGIN') ?? '')
+// Comma-separated list of production origins, e.g.
+// ALLOWED_ORIGIN="https://app.example.com,https://www.app.example.com"
+const CONFIGURED_ORIGINS = (Deno.env.get('ALLOWED_ORIGIN') ?? '')
   .split(',')
   .map((o) => o.trim().replace(/\/$/, ''))
   .filter(Boolean);
+
+// Local development servers are always allowed so the app works without extra
+// configuration. Vite is configured to run on port 8080 (see vite.config.ts).
+const DEV_ORIGINS = [
+  'http://localhost:8080',
+  'http://127.0.0.1:8080',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+];
+
+const ALLOWED_ORIGINS = [...new Set([...CONFIGURED_ORIGINS, ...DEV_ORIGINS])];
+
+if (CONFIGURED_ORIGINS.length === 0) {
+  console.warn(
+    'ALLOWED_ORIGIN is not set. Only local development origins are accepted. ' +
+      'Set ALLOWED_ORIGIN to a comma-separated list of production origins.',
+  );
+}
 
 export function isAllowedOrigin(origin: string | null): boolean {
   if (!origin) return false;
