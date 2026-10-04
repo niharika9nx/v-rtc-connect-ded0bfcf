@@ -15,6 +15,8 @@ import { z } from 'zod';
 import { Bell, User, Bus, CreditCard, AlertCircle, AlertTriangle, Trash2 } from 'lucide-react';
 import LogoutConfirmDialog from '@/components/LogoutConfirmDialog';
 import { differenceInDays, parseISO } from 'date-fns';
+import type { RealtimePostgresInsertPayload } from '@supabase/supabase-js';
+import type * as DB from '@/lib/db-types';
 const complaintSchema = z.object({
   message: z.string().trim().min(10, {
     message: "Complaint must be at least 10 characters"
@@ -34,8 +36,8 @@ const Dashboard = () => {
   const {
     sendAlertNotification
   } = useNotifications();
-  const [profile, setProfile] = useState<any>(null);
-  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [profile, setProfile] = useState<DB.Profile | null>(null);
+  const [announcements, setAnnouncements] = useState<DB.PublicAnnouncement[]>([]);
   const [complaint, setComplaint] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -46,8 +48,8 @@ const Dashboard = () => {
   } | null>(null);
   const [routeImageUrl, setRouteImageUrl] = useState<string | null>(null);
   const [showPassButton, setShowPassButton] = useState(false);
-  const [passData, setPassData] = useState<any>(null);
-  const [userComplaints, setUserComplaints] = useState<any[]>([]);
+  const [passData, setPassData] = useState<DB.Pass | null>(null);
+  const [userComplaints, setUserComplaints] = useState<DB.Complaint[]>([]);
   useEffect(() => {
     if (user) {
       // Fetch profile
@@ -142,7 +144,7 @@ const Dashboard = () => {
         event: 'INSERT',
         schema: 'public',
         table: 'announcements'
-      }, payload => {
+      }, (payload: RealtimePostgresInsertPayload<DB.PublicAnnouncement>) => {
         setAnnouncements(prev => [payload.new, ...prev].slice(0, 3));
 
         // Send browser notification for new announcement

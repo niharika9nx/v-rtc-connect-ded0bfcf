@@ -30,7 +30,14 @@ import autoTable from 'jspdf-autotable';
 import vishnuLogo from '@/assets/vishnu-logo.png';
 
 // College configuration - same as in SignupStudent
-const collegeConfig = {
+type CollegeYears = { default?: string[] } & Record<string, string[] | undefined>;
+interface CollegeConfigEntry {
+  branches: string[];
+  years: CollegeYears;
+  sections: string[];
+}
+
+const collegeConfig: Record<string, CollegeConfigEntry> = {
   'SVECW': {
     branches: ['CSE', 'AIDS', 'AIML', 'CSE-CS', 'IT', 'ECE', 'EEE', 'CE', 'ME', 'Freshman Engineering'],
     years: { default: ['1', '2', '3', '4'] },
@@ -134,10 +141,11 @@ const AdminBusDashboard = () => {
     if (selectedCollege === 'all') return [];
     const config = collegeConfig[selectedCollege as keyof typeof collegeConfig];
     if (!config) return [];
-    const years = config.years as any;
+    const years = config.years;
     if (years.default) return years.default;
-    if (selectedBranch !== 'all' && years[selectedBranch]) {
-      return years[selectedBranch] as string[];
+    if (selectedBranch !== 'all') {
+      const branchYears = years[selectedBranch];
+      if (branchYears) return branchYears;
     }
     return [];
   }, [selectedCollege, selectedBranch]);
@@ -253,7 +261,7 @@ const AdminBusDashboard = () => {
     // Reset year if the new branch has different year options
     const config = selectedCollege !== 'all' && collegeConfig[selectedCollege as keyof typeof collegeConfig];
     if (config) {
-      const years = (config as any).years;
+      const years = config.years;
       if (!years.default) {
         setSelectedYear('all');
       }
@@ -709,7 +717,7 @@ const AdminBusDashboard = () => {
       setSelectedUsers(new Set());
       setShowUserList(false);
       fetchStats();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error deleting users:', error);
       toast({
         title: 'Error',
@@ -834,7 +842,7 @@ const AdminBusDashboard = () => {
     });
     
     // Add legend
-    const finalY = (doc as any).lastAutoTable.finalY || 72;
+    const finalY = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 72;
     doc.setFontSize(10);
     doc.text('Legend: P = Paid, D = Due, - = No Record', 14, finalY + 10);
     

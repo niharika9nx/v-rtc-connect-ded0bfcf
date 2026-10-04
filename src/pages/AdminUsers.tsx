@@ -185,7 +185,7 @@ const AdminUsers = () => {
 
       setSelectedUsers(new Set());
       fetchUsers();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error deleting users:', error);
       toast({
         title: 'Error',

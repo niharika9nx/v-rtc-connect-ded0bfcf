@@ -23,4 +23,12 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": "off",
     },
   },
+  {
+    // Generated shadcn/ui primitives and the auth provider intentionally
+    // co-locate non-component exports (variants, hooks); HMR warnings are not useful here.
+    files: ["src/components/ui/**/*.{ts,tsx}", "src/hooks/useAuth.tsx"],
+    rules: {
+      "react-refresh/only-export-components": "off",
+    },
+  },
 );

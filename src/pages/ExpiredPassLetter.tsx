@@ -7,11 +7,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft } from 'lucide-react';
 import { format } from 'date-fns';
+import type * as DB from '@/lib/db-types';
 
 const ExpiredPassLetter = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<DB.Profile | null>(null);
 
   useEffect(() => {
     if (user) {

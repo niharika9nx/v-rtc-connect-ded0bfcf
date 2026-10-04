@@ -124,7 +124,7 @@ export const AlertNotifications = () => {
 
       // Refresh alerts
       fetchAlerts();
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: 'Error',
         description: error.message,
@@ -158,7 +158,7 @@ export const AlertNotifications = () => {
         title: 'Alert dismissed',
         description: 'The notification has been removed.',
       });
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error dismissing alert:', error);
       toast({
         title: 'Error',

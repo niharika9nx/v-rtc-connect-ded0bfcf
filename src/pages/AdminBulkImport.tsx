@@ -15,8 +15,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 
 type ImportType = 'profiles' | 'bus_details' | 'fee_history';
 
+type RowData = Record<string, string>;
+
 interface ParsedRow {
-  data: any;
+  data: RowData;
   isValid: boolean;
   errors: string[];
 }
@@ -60,7 +62,7 @@ const AdminBulkImport = () => {
     window.URL.revokeObjectURL(url);
   };
 
-  const validateProfileRow = (row: any): { isValid: boolean; errors: string[] } => {
+  const validateProfileRow = (row: RowData): { isValid: boolean; errors: string[] } => {
     const errors: string[] = [];
     
     if (!row.name || row.name.trim() === '') errors.push('Name is required');
@@ -72,7 +74,7 @@ const AdminBulkImport = () => {
     return { isValid: errors.length === 0, errors };
   };
 
-  const validateBusDetailsRow = (row: any): { isValid: boolean; errors: string[] } => {
+  const validateBusDetailsRow = (row: RowData): { isValid: boolean; errors: string[] } => {
     const errors: string[] = [];
     
     if (!row.bus_number) errors.push('Bus number is required');
@@ -82,7 +84,7 @@ const AdminBulkImport = () => {
     return { isValid: errors.length === 0, errors };
   };
 
-  const validateFeeHistoryRow = (row: any): { isValid: boolean; errors: string[] } => {
+  const validateFeeHistoryRow = (row: RowData): { isValid: boolean; errors: string[] } => {
     const errors: string[] = [];
     
     if (!row.user_email || !row.user_email.includes('@')) errors.push('Valid user email is required');
@@ -121,7 +123,7 @@ const AdminBulkImport = () => {
           const worksheet = workbook.Sheets[sheetName];
           const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-          const validated = jsonData.map((row: any) => {
+          const validated = jsonData.map((row: RowData) => {
             let validation;
             switch (importType) {
               case 'profiles':
@@ -158,7 +160,7 @@ const AdminBulkImport = () => {
         header: true,
         skipEmptyLines: true,
         complete: (results) => {
-          const validated = results.data.map((row: any) => {
+          const validated = results.data.map((row: RowData) => {
             let validation;
             switch (importType) {
               case 'profiles':
@@ -236,7 +238,7 @@ const AdminBulkImport = () => {
               .from('profiles')
               .update({
                 name: row.data.name,
-                phone: row.data.phone,
+                phone: Number(row.data.phone),
                 gender: row.data.gender?.toLowerCase(),
                 college: row.data.college,
                 registration_id: row.data.registration_id,
@@ -591,7 +593,7 @@ const AdminBulkImport = () => {
                             </div>
                           )}
                         </TableCell>
-                        {Object.values(row.data).map((value: any, i) => (
+                        {Object.values(row.data).map((value, i) => (
                           <TableCell key={i}>{value}</TableCell>
                         ))}
                       </TableRow>

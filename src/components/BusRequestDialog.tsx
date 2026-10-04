@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Bus, UserPlus, Users } from 'lucide-react';
+import type * as DB from '@/lib/db-types';
 
 interface BusRequestDialogProps {
   open: boolean;
@@ -55,7 +56,7 @@ export const BusRequestDialog = ({ open, onOpenChange, onSuccess }: BusRequestDi
   const { toast } = useToast();
   const [step, setStep] = useState<'select' | 'existing' | 'new'>('select');
   const [submitting, setSubmitting] = useState(false);
-  const [buses, setBuses] = useState<any[]>([]);
+  const [buses, setBuses] = useState<DB.BusOption[]>([]);
   const [userRole, setUserRole] = useState<string | null>(null);
 
   // Existing user form

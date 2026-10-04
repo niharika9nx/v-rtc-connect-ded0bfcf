@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { formatTo12Hour } from '@/lib/utils';
 import { Plus, Trash2 } from 'lucide-react';
+import type * as DB from '@/lib/db-types';
 import {
   Dialog,
   DialogContent,
@@ -75,7 +76,7 @@ const AdminBuses = () => {
         variant: 'destructive',
       });
     } else {
-      const mappedData = (data || []).map((bus: any) => ({
+      const mappedData = (data || []).map((bus: DB.BusDetails) => ({
         id: bus.ID,
         bus_number: bus.bus_number,
         route: bus.route,

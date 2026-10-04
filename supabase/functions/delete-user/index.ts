@@ -3,6 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 import { handleCors, corsHeaders } from '../_shared/cors.ts';
 import { extractBearerToken } from '../_shared/auth.ts';
 import { isUuid } from '../_shared/validation.ts';
+import { errorMessage } from '../_shared/errors.ts';
 
 serve(async (req) => {
   const preflight = handleCors(req);
@@ -125,8 +126,8 @@ serve(async (req) => {
 
     return json({ success: true, message: 'User deleted successfully' });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error in delete-user function:', error);
-    return json({ error: error.message }, 500);
+    return json({ error: errorMessage(error) }, 500);
   }
 });

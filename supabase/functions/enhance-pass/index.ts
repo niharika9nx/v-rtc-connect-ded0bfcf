@@ -3,6 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 import { handleCors, corsHeaders } from '../_shared/cors.ts';
 import { extractBearerToken } from '../_shared/auth.ts';
 import { isUuid, isValidPassFilePath } from '../_shared/validation.ts';
+import { errorMessage } from '../_shared/errors.ts';
 
 const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
@@ -275,9 +276,9 @@ serve(async (req) => {
       imageUrl: publicUrl
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error in enhance-pass function:', error);
-    return json({ error: error.message || 'An unexpected error occurred' }, 500);
+    return json({ error: errorMessage(error) || 'An unexpected error occurred' }, 500);
   }
 });
 
@@ -287,14 +288,14 @@ function extractExpiryDate(text: string): string | null {
     // DD-MMM-YYYY format (e.g., 05-Nov-2025)
     /(?:to|until|till|expiry|expire|valid until|valid till|expires on|exp)[:\s]*(\d{1,2}[-\s](Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[-\s]\d{4})/i,
     // Standard numeric patterns
-    /(?:expiry|expire|valid until|valid till|expires on|exp)[:\s]*(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{4})/i,
-    /(?:expiry|expire|valid until|valid till|expires on|exp)[:\s]*(\d{4}[\/\-\.]\d{1,2}[\/\-\.]\d{1,2})/i,
+    /(?:expiry|expire|valid until|valid till|expires on|exp)[:\s]*(\d{1,2}[/.-]\d{1,2}[/.-]\d{4})/i,
+    /(?:expiry|expire|valid until|valid till|expires on|exp)[:\s]*(\d{4}[/.-]\d{1,2}[/.-]\d{1,2})/i,
     // Validity range pattern (capture the end date)
-    /validity[:\s]*\d{1,2}[-\/\.]\w{3}[-\/\.]\d{4}\s+to\s+(\d{1,2}[-\/\.]\w{3}[-\/\.]\d{4})/i,
+    /validity[:\s]*\d{1,2}[/.-]\w{3}[/.-]\d{4}\s+to\s+(\d{1,2}[/.-]\w{3}[/.-]\d{4})/i,
     // Generic date patterns
     /(\d{1,2}[-\s](Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[-\s]\d{4})/i,
-    /(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{4})/,
-    /(\d{4}[\/\-\.]\d{1,2}[\/\-\.]\d{1,2})/,
+    /(\d{1,2}[/.-]\d{1,2}[/.-]\d{4})/,
+    /(\d{4}[/.-]\d{1,2}[/.-]\d{1,2})/,
   ];
 
   for (const pattern of patterns) {
@@ -319,8 +320,8 @@ function extractExpiryDate(text: string): string | null {
 function extractPassId(text: string): string | null {
   // Look for pass ID patterns like "Pass ID: XXXXX" or "ID: XXXXX" or just alphanumeric IDs
   const patterns = [
-    /(?:bus\s*pass\s*id|pass\s*id|id\s*no|id)[:\s#]*([A-Z0-9\-]+)/i,
-    /(?:pass\s*number|ticket\s*number|number)[:\s#]*([A-Z0-9\-]+)/i,
+    /(?:bus\s*pass\s*id|pass\s*id|id\s*no|id)[:\s#]*([A-Z0-9-]+)/i,
+    /(?:pass\s*number|ticket\s*number|number)[:\s#]*([A-Z0-9-]+)/i,
     /\b([A-Z]{2,}\d{4,}|\d{4,}[A-Z]{2,})\b/i, // Pattern like ABC1234 or 1234ABC
   ];
 
@@ -351,9 +352,9 @@ function parseDateString(dateStr: string): Date | null {
     // DD-MMM-YYYY or DD MMM YYYY (e.g., 05-Nov-2025 or 05 Nov 2025)
     /^(\d{1,2})[-\s](Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[-\s](\d{4})$/i,
     // DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY
-    /^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/,
+    /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/,
     // YYYY/MM/DD or YYYY-MM-DD or YYYY.MM.DD
-    /^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/,
+    /^(\d{4})[/.-](\d{1,2})[/.-](\d{1,2})$/,
   ];
 
   for (const format of formats) {

@@ -13,6 +13,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { User, Bus, MessageSquare, Megaphone, Trash2, Upload, Send, Users, Bell, UserPlus } from 'lucide-react';
 import LogoutConfirmDialog from '@/components/LogoutConfirmDialog';
 import { useNotifications } from '@/hooks/useNotifications';
+import type { RealtimePostgresInsertPayload } from '@supabase/supabase-js';
+import type * as DB from '@/lib/db-types';
 
 interface Complaint {
   id: string;
@@ -46,9 +48,9 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { requestPermission, sendNotification } = useNotifications();
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<DB.Profile | null>(null);
   const [complaints, setComplaints] = useState<Complaint[]>([]);
-  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [announcements, setAnnouncements] = useState<DB.Announcement[]>([]);
   const [newAnnouncement, setNewAnnouncement] = useState('');
   const [complaintsOpen, setComplaintsOpen] = useState(false);
   const [announcementsOpen, setAnnouncementsOpen] = useState(false);
@@ -58,7 +60,7 @@ const AdminDashboard = () => {
   const [routeImageUrl, setRouteImageUrl] = useState<string | null>(null);
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<DB.Alert[]>([]);
 
   useEffect(() => {
     if (user) {
@@ -88,7 +90,7 @@ const AdminDashboard = () => {
             table: 'alerts',
             filter: `user_id=eq.${user.id}`,
           },
-          (payload: any) => {
+          (payload: RealtimePostgresInsertPayload<DB.Alert>) => {
             const row = payload.new;
             if (row?.type === 'new_account') {
               setNotifications((prev) => [row, ...prev]);

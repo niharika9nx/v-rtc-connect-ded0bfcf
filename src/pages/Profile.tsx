@@ -14,6 +14,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { getColleges, getBranches, getFacultyDepartments, getYears, getSections } from '@/lib/collegeConfig';
+import type * as DB from '@/lib/db-types';
 
 const profileSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
@@ -33,7 +34,7 @@ const Profile = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<DB.Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -144,9 +145,9 @@ const Profile = () => {
         return;
       }
 
-      const updateData: any = {
+      const updateData: DB.ProfileUpdate = {
         name: data.name,
-        phone: data.phone,
+        phone: Number(data.phone),
         gender: data.gender,
         college: data.college,
       };
@@ -174,7 +175,7 @@ const Profile = () => {
 
       setIsEditing(false);
       fetchProfile();
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: 'Error',
         description: error.message,

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import type { Database } from '@/integrations/supabase/types';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -31,7 +32,7 @@ export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) 
       for (const role of allowedRoles) {
         const { data } = await supabase.rpc('has_role', {
           _user_id: user.id,
-          _role: role as any,
+          _role: role as Database['public']['Enums']['app_role'],
         });
         if (data) {
           hasAnyRole = true;

@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Bus, UserCheck, UserX, Clock, Search } from 'lucide-react';
+import type * as DB from '@/lib/db-types';
 
 interface BusRequest {
   id: string;
@@ -46,7 +47,7 @@ const AdminBusRequests = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  const [buses, setBuses] = useState<any[]>([]);
+  const [buses, setBuses] = useState<DB.BusOption[]>([]);
   const [requests, setRequests] = useState<BusRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTab, setSelectedTab] = useState<string>('all');

@@ -9,14 +9,15 @@ import { ArrowLeft, Bus, Clock, MapPin, IndianRupee, Calendar, Send } from 'luci
 import { formatTo12Hour } from '@/lib/utils';
 import { BusRequestDialog } from '@/components/BusRequestDialog';
 import { BusRequestStatus } from '@/components/BusRequestStatus';
+import type * as DB from '@/lib/db-types';
 
 const BusDetails = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [profile, setProfile] = useState<any>(null);
-  const [busDetails, setBusDetails] = useState<any>(null);
-  const [feeStatus, setFeeStatus] = useState<any>(null);
-  const [passData, setPassData] = useState<any>(null);
+  const [profile, setProfile] = useState<DB.Profile | null>(null);
+  const [busDetails, setBusDetails] = useState<DB.BusDetails | null>(null);
+  const [feeStatus, setFeeStatus] = useState<DB.FeeHistory | null>(null);
+  const [passData, setPassData] = useState<DB.Pass | null>(null);
   const [loading, setLoading] = useState(true);
   const [showRequestDialog, setShowRequestDialog] = useState(false);
 

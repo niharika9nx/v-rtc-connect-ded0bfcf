@@ -10,6 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ArrowLeft, CreditCard, Upload, RefreshCw, ZoomIn, ZoomOut, Maximize2, X, Check, Trash2, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import heic2any from 'heic2any';
+import type { RealtimePostgresUpdatePayload } from '@supabase/supabase-js';
+import type * as DB from '@/lib/db-types';
 
 // Helper function to check if file is HEIC format
 const isHeicFile = (file: File): boolean => {
@@ -79,7 +81,7 @@ const EPass = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [pass, setPass] = useState<any>(null);
+  const [pass, setPass] = useState<DB.Pass | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -93,7 +95,7 @@ const EPass = () => {
   const [conversionStatus, setConversionStatus] = useState<string | null>(null);
   const [deletingIdentity, setDeletingIdentity] = useState(false);
   const [deletingMonthly, setDeletingMonthly] = useState(false);
-  const [feeStatus, setFeeStatus] = useState<any>(null);
+  const [feeStatus, setFeeStatus] = useState<DB.FeeHistory | null>(null);
   const [identityCardSignedUrl, setIdentityCardSignedUrl] = useState<string | null>(null);
   const [monthlyPassSignedUrl, setMonthlyPassSignedUrl] = useState<string | null>(null);
   const [processingStep, setProcessingStep] = useState<string | null>(null);
@@ -114,7 +116,7 @@ const EPass = () => {
             table: 'passes',
             filter: `user_id=eq.${user.id}`
           },
-          (payload) => {
+          (payload: RealtimePostgresUpdatePayload<DB.Pass>) => {
             console.log('Pass updated:', payload);
             setPass(payload.new);
             
@@ -173,7 +175,7 @@ const EPass = () => {
     }
   };
 
-  const fetchSignedUrls = async (passData: any) => {
+  const fetchSignedUrls = async (passData: DB.Pass) => {
     if (!user) return;
     
     try {
@@ -236,7 +238,7 @@ const EPass = () => {
         title: "Refreshed",
         description: "Pass data reloaded successfully"
       });
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Refresh failed",
         description: error.message,
@@ -370,7 +372,7 @@ const EPass = () => {
 
       setIdentityCardFile(null);
       fetchPass();
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Upload failed",
         description: error.message,
@@ -433,7 +435,7 @@ const EPass = () => {
       if (!uploadResult) throw new Error('Upload failed');
 
       // Step 3: Save file path to DB immediately (so it's not lost)
-      const initialPassData: any = {
+      const initialPassData: DB.PassInsert = {
         user_id: user.id,
         monthly_pass_url: uploadResult.filePath,
       };
@@ -478,7 +480,7 @@ const EPass = () => {
         });
       }
       
-    } catch (error: any) {
+    } catch (error) {
       console.error('Upload error:', error);
       toast({
         title: "Processing failed",
@@ -551,7 +553,7 @@ const EPass = () => {
       }
 
       // Save pass to database with correct verification status (store file path, not public URL)
-      const passData: any = {
+      const passData: DB.PassInsert = {
         user_id: user.id,
         monthly_pass_url: uploadResult.filePath,
         verified: !isDuplicate, // Mark as false if duplicate found
@@ -637,7 +639,7 @@ const EPass = () => {
       await new Promise(resolve => setTimeout(resolve, 500)); // Small delay to ensure DB is updated
       await fetchPass();
       
-    } catch (error: any) {
+    } catch (error) {
       console.error('Save error:', error);
       toast({
         title: "Save failed",
@@ -679,7 +681,7 @@ const EPass = () => {
       });
 
       await fetchPass();
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Delete failed",
         description: error.message,
@@ -729,7 +731,7 @@ const EPass = () => {
       });
 
       await fetchPass();
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Delete failed",
         description: error.message,

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import type * as DB from '@/lib/db-types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -419,7 +420,7 @@ const AdminUserProfile = () => {
     }
 
     const currentYear = new Date().getFullYear();
-    const inserts: any[] = [];
+    const inserts: DB.FeeHistoryInsert[] = [];
 
     try {
       // Process each selected month
@@ -625,7 +626,7 @@ const AdminUserProfile = () => {
 
       // Navigate back to buses page
       navigate('/admin/buses');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error deleting user:', error);
       toast({
         title: 'Error',
@@ -671,7 +672,7 @@ const AdminUserProfile = () => {
 
       setShowEditDialog(false);
       fetchUserProfile();
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: 'Error',
         description: error.message || 'Failed to update user',
