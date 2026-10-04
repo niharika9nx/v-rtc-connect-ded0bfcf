@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 import { handleCors, corsHeaders } from '../_shared/cors.ts';
-import { extractBearerToken } from '../_shared/auth.ts';
+import { extractBearerToken, constantTimeEqual } from '../_shared/auth.ts';
 
 serve(async (req) => {
   const preflight = handleCors(req);
@@ -20,23 +20,26 @@ serve(async (req) => {
       return json({ error: 'Unauthorized: Missing or malformed authorization header' }, 401);
     }
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('Missing Supabase configuration');
+      return json({ error: 'Server configuration error' }, 500);
+    }
 
-    // Validate the cron token as a proper service-role JWT instead of
-    // comparing it against the raw key value.
+    // The scheduled invoker authenticates with the service-role key itself,
+    // so compare the bearer token against it in constant time.
+    if (!(await constantTimeEqual(token, supabaseServiceKey))) {
+      console.error('Invalid cron token');
+      return json({ error: 'Unauthorized: Invalid token' }, 401);
+    }
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
       },
     });
-
-    const { data: { user: cronUser }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !cronUser) {
-      console.error('Invalid cron token:', authError);
-      return json({ error: 'Unauthorized: Invalid token' }, 401);
-    }
 
     console.log('Authorization verified, checking for expiring passes...');
 
