@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { errorMessage } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -189,7 +190,7 @@ const AdminUsers = () => {
       console.error('Error deleting users:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to delete users',
+        description: errorMessage(error) || 'Failed to delete users',
         variant: 'destructive',
       });
     } finally {

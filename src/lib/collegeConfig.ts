@@ -1,5 +1,12 @@
 // Shared college configuration for consistent options across the app
-export const collegeConfig = {
+interface CollegeConfigEntry {
+  branches: string[];
+  facultyBranches: string[];
+  years: { default?: string[] } & Record<string, string[] | undefined>;
+  sections: string[];
+}
+
+export const collegeConfig: Record<string, CollegeConfigEntry> = {
   'SVECW': {
     branches: ['CSE', 'AIDS', 'AIML', 'CSE-CS', 'IT', 'ECE', 'EEE', 'CE', 'ME'],
     facultyBranches: ['CSE', 'AIDS', 'AIML', 'CSE-CS', 'IT', 'ECE', 'EEE', 'CE', 'ME', 'Freshman Engineering'],
@@ -63,9 +70,10 @@ export const getFacultyDepartments = (college: string): string[] => {
 export const getYears = (college: string, branch?: string): string[] => {
   if (!college || !collegeConfig[college as CollegeKey]) return [];
   const config = collegeConfig[college as CollegeKey];
-  const years = config.years as Record<string, string[]>;
+  const years = config.years;
   if (years.default) return years.default;
-  if (branch && years[branch]) return years[branch];
+  const branchYears = branch ? years[branch] : undefined;
+  if (branchYears) return branchYears;
   return [];
 };
 

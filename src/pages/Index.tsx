@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Bus, Sparkles, Mail, Phone, GraduationCap, Building2, User } from "lucide-react";
+import { Bus, Mail, Phone, GraduationCap, Building2, User } from "lucide-react";
 import { useState, useEffect } from "react";
 import vishnuLogo from '@/assets/vishnu-logo.png';
 

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { X, AlertCircle, Calendar, Bell, BellOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNotifications } from '@/hooks/useNotifications';
+import { errorMessage } from '@/lib/utils';
 
 interface AlertNotification {
   id: string;
@@ -95,13 +96,22 @@ export const AlertNotifications = () => {
       console.error('Error fetching alerts:', error);
     } else {
       // Filter out pass-related alerts if pass is fake (not verified)
-      const filteredAlerts = (data || []).filter(alert => {
-        // If pass is fake, hide pass renewal reminders
-        if (passVerified === false && alert.type === 'pass_renewal_reminder') {
-          return false;
-        }
-        return true;
-      });
+      const filteredAlerts = (data || [])
+        .filter(alert => {
+          // If pass is fake, hide pass renewal reminders
+          if (passVerified === false && alert.type === 'pass_renewal_reminder') {
+            return false;
+          }
+          return true;
+        })
+        .map(alert => ({
+          id: alert.id,
+          type: alert.type ?? '',
+          message: alert.message ?? '',
+          status: alert.status ?? '',
+          send_at: alert.send_at ?? '',
+          created_at: alert.created_at,
+        }));
       setAlerts(filteredAlerts);
     }
     setLoading(false);
@@ -127,7 +137,7 @@ export const AlertNotifications = () => {
     } catch (error) {
       toast({
         title: 'Error',
-        description: error.message,
+        description: errorMessage(error),
         variant: 'destructive'
       });
     }
@@ -162,7 +172,7 @@ export const AlertNotifications = () => {
       console.error('Error dismissing alert:', error);
       toast({
         title: 'Error',
-        description: error?.message || 'Failed to dismiss alert. Please try again.',
+        description: errorMessage(error) || 'Failed to dismiss alert. Please try again.',
         variant: 'destructive'
       });
     }

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import type * as DB from '@/lib/db-types';
+import { errorMessage } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -80,7 +81,7 @@ interface BusDetail {
 }
 
 const AdminUserProfile = () => {
-  const { userId } = useParams();
+  const userId = useParams().userId ?? '';
   const navigate = useNavigate();
   const { toast } = useToast();
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -158,8 +159,8 @@ const AdminUserProfile = () => {
 
     setProfile({
       ...data,
-      buss_pass_id: passData?.buss_pass_id
-    });
+      buss_pass_id: passData?.buss_pass_id ?? undefined
+    } as unknown as UserProfile);
     setLoading(false);
   };
 
@@ -259,17 +260,6 @@ const AdminUserProfile = () => {
     return { status: 'valid', message: '' };
   };
 
-  const getPassImageUrl = (path: string | null): string | null => {
-    if (!path) return null;
-    // Check if it's already a full URL
-    if (path.startsWith('http://') || path.startsWith('https://')) {
-      return path;
-    }
-    // Otherwise, construct the URL from the storage path
-    const { data } = supabase.storage.from('pass-documents').getPublicUrl(path);
-    return data?.publicUrl || null;
-  };
-
   const handleSendNoPassAlert = async () => {
     if (!alertMessage.trim()) {
       toast({
@@ -325,12 +315,12 @@ const AdminUserProfile = () => {
     // Create a map of existing fee records
     const feeMap = new Map<string, FeeHistory>();
     data?.forEach((fee) => {
-      feeMap.set(fee.month, {
+      feeMap.set(fee.month ?? '', {
         id: fee.id,
-        month: fee.month,
-        year: fee.year,
-        status: fee.status,
-        amount: fee.amount,
+        month: fee.month ?? '',
+        year: fee.year ?? 0,
+        status: fee.status ?? '',
+        amount: fee.amount ?? 0,
         created_at: fee.created_at,
       });
     });
@@ -508,14 +498,14 @@ const AdminUserProfile = () => {
     
     // Add organization name header
     doc.setFontSize(16);
-    doc.setFont(undefined, 'bold');
+    doc.setFont('helvetica', 'bold');
     doc.text('Shri Vishnu Educational Society (SVES)', 105, 20, { align: 'center' });
     
     // Add title
     doc.setFontSize(14);
-    doc.setFont(undefined, 'bold');
+    doc.setFont('helvetica', 'bold');
     doc.text('Fee History Report', 105, 30, { align: 'center' });
-    doc.setFont(undefined, 'normal');
+    doc.setFont('helvetica', 'normal');
     
     // Add student details
     doc.setFontSize(11);
@@ -630,7 +620,7 @@ const AdminUserProfile = () => {
       console.error('Error deleting user:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to delete user',
+        description: errorMessage(error) || 'Failed to delete user',
         variant: 'destructive',
       });
     } finally {
@@ -675,7 +665,7 @@ const AdminUserProfile = () => {
     } catch (error) {
       toast({
         title: 'Error',
-        description: error.message || 'Failed to update user',
+        description: errorMessage(error) || 'Failed to update user',
         variant: 'destructive',
       });
     } finally {

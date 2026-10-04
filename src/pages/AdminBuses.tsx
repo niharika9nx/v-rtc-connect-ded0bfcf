@@ -84,7 +84,7 @@ const AdminBuses = () => {
         arrival_time: bus.arrival_time,
         capacity: bus.capacity,
       }));
-      setBuses(mappedData);
+      setBuses(mappedData as unknown as BusDetail[]);
     }
     setLoading(false);
   };

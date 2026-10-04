@@ -94,7 +94,7 @@ const AdminDashboard = () => {
             const row = payload.new;
             if (row?.type === 'new_account') {
               setNotifications((prev) => [row, ...prev]);
-              sendNotification('🆕 New Account Created', { body: row.message });
+              sendNotification('🆕 New Account Created', { body: row.message ?? undefined });
               toast({ title: 'New Account', description: row.message });
             }
           }

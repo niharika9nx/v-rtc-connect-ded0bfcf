@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,9 +25,8 @@ interface ParsedRow {
 const AdminBulkImport = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user } = useAuth();
   const [importType, setImportType] = useState<ImportType>('profiles');
-  const [file, setFile] = useState<File | null>(null);
+  const [, setFile] = useState<File | null>(null);
   const [parsedData, setParsedData] = useState<ParsedRow[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [importResults, setImportResults] = useState<{ success: number; failed: number } | null>(null);
@@ -123,7 +121,7 @@ const AdminBulkImport = () => {
           const worksheet = workbook.Sheets[sheetName];
           const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-          const validated = jsonData.map((row: RowData) => {
+          const validated = (jsonData as RowData[]).map((row) => {
             let validation;
             switch (importType) {
               case 'profiles':
@@ -160,7 +158,7 @@ const AdminBulkImport = () => {
         header: true,
         skipEmptyLines: true,
         complete: (results) => {
-          const validated = results.data.map((row: RowData) => {
+          const validated = (results.data as RowData[]).map((row) => {
             let validation;
             switch (importType) {
               case 'profiles':

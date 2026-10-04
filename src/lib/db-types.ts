@@ -18,4 +18,4 @@ export type Complaint = Tables<'complaints'>;
 export type Alert = Tables<'alerts'>;
 export type UserRole = Tables<'user_roles'>;
 
-export type BusOption = Pick<BusDetails, 'bus_number' | 'route'>;
+export type BusOption = { bus_number: string; route: string | null };

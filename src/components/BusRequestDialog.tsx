@@ -95,7 +95,7 @@ export const BusRequestDialog = ({ open, onOpenChange, onSuccess }: BusRequestDi
       .from('bus_details')
       .select('bus_number, route')
       .order('bus_number');
-    setBuses(data || []);
+    setBuses((data || []) as unknown as DB.BusOption[]);
   };
 
   const resetForm = () => {
@@ -110,6 +110,7 @@ export const BusRequestDialog = ({ open, onOpenChange, onSuccess }: BusRequestDi
   };
 
   const handleSubmitExisting = async () => {
+    if (!user) return;
     if (!busNumber.trim()) {
       toast({
         title: 'Error',
@@ -121,7 +122,7 @@ export const BusRequestDialog = ({ open, onOpenChange, onSuccess }: BusRequestDi
 
     setSubmitting(true);
     const { error } = await supabase.from('bus_requests').insert({
-      user_id: user?.id,
+      user_id: user.id,
       request_type: 'existing',
       requested_bus_number: busNumber.trim(),
     });
@@ -144,6 +145,7 @@ export const BusRequestDialog = ({ open, onOpenChange, onSuccess }: BusRequestDi
   };
 
   const handleSubmitNew = async () => {
+    if (!user) return;
     const isFaculty = userRole === 'faculty';
     
     if (!fromMonth || !toMonth || !year || !college || (isFaculty ? !department : !studyYear)) {
@@ -157,7 +159,7 @@ export const BusRequestDialog = ({ open, onOpenChange, onSuccess }: BusRequestDi
 
     setSubmitting(true);
     const { error } = await supabase.from('bus_requests').insert({
-      user_id: user?.id,
+      user_id: user.id,
       request_type: 'new',
       from_month: fromMonth,
       to_month: toMonth,
@@ -240,7 +242,7 @@ export const BusRequestDialog = ({ open, onOpenChange, onSuccess }: BusRequestDi
                 </SelectTrigger>
                 <SelectContent>
                   {buses.map((bus) => (
-                    <SelectItem key={bus.bus_number} value={bus.bus_number}>
+                    <SelectItem key={bus.bus_number ?? ''} value={bus.bus_number ?? ''}>
                       Bus {bus.bus_number} {bus.route ? `- ${bus.route}` : ''}
                     </SelectItem>
                   ))}

@@ -24,7 +24,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { formatTo12Hour } from '@/lib/utils';
+import { formatTo12Hour, errorMessage } from '@/lib/utils';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import vishnuLogo from '@/assets/vishnu-logo.png';
@@ -111,7 +111,7 @@ interface Stats {
 }
 
 const AdminBusDashboard = () => {
-  const { busNumber } = useParams();
+  const busNumber = useParams().busNumber ?? '';
   const navigate = useNavigate();
   const { toast } = useToast();
   const [busDetails, setBusDetails] = useState<BusDetail | null>(null);
@@ -199,7 +199,7 @@ const AdminBusDashboard = () => {
         variant: 'destructive',
       });
     } else if (data) {
-      setBusDetails(data);
+      setBusDetails(data as unknown as BusDetail);
       setEditBusForm({
         route: data.route || '',
         departure_time: data.departure_time || '',
@@ -425,7 +425,7 @@ const AdminBusDashboard = () => {
         ...p,
         feeStatus: status as 'paid' | 'due'
       })) || [];
-      setUserList(filteredProfiles);
+      setUserList(filteredProfiles as unknown as Profile[]);
     } else if (type === 'expiringPasses') {
       const fiveDaysFromNow = new Date();
       fiveDaysFromNow.setDate(fiveDaysFromNow.getDate() + 5);
@@ -453,7 +453,7 @@ const AdminBusDashboard = () => {
         }));
       }
 
-      setUserList(expiringWithPassIds);
+      setUserList(expiringWithPassIds as unknown as Profile[]);
     } else if (type === 'passesExpired') {
       // Fetch users whose pass_expiry_date is in the past
       const today = new Date().toISOString().split('T')[0];
@@ -492,9 +492,9 @@ const AdminBusDashboard = () => {
         }));
       }
 
-      setUserList(expiredWithPassIds);
+      setUserList(expiredWithPassIds as unknown as Profile[]);
     } else {
-      setUserList(profilesWithPassIds || []);
+      setUserList((profilesWithPassIds || []) as unknown as Profile[]);
     }
 
     setSearchQuery('');
@@ -509,7 +509,7 @@ const AdminBusDashboard = () => {
       .select('user_id')
       .or('monthly_pass_url.not.is.null,identity_card_url.not.is.null');
 
-    const passUserIds = passesData?.map((p) => p.user_id) || [];
+    const passUserIds = passesData?.map((p) => p.user_id).filter((id): id is string => id !== null) || [];
     
     let query = supabase
       .from('profiles')
@@ -549,8 +549,8 @@ const AdminBusDashboard = () => {
     const students = profilesWithPassIds.filter(p => p.role === 'student');
     const faculty = profilesWithPassIds.filter(p => p.role === 'faculty');
 
-    setStudentsWithPasses(students);
-    setFacultyWithPasses(faculty);
+    setStudentsWithPasses(students as unknown as Profile[]);
+    setFacultyWithPasses(faculty as unknown as Profile[]);
     setStudentSearchQuery('');
     setFacultySearchQuery('');
     setShowPassesUploadedDialog(true);
@@ -721,7 +721,7 @@ const AdminBusDashboard = () => {
       console.error('Error deleting users:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to delete users',
+        description: errorMessage(error) || 'Failed to delete users',
         variant: 'destructive',
       });
     } finally {
@@ -786,14 +786,14 @@ const AdminBusDashboard = () => {
     
     // Add organization name header
     doc.setFontSize(16);
-    doc.setFont(undefined, 'bold');
+    doc.setFont('helvetica', 'bold');
     doc.text('Shri Vishnu Educational Society (SVES)', 148, 20, { align: 'center' });
     
     // Add title
     doc.setFontSize(14);
-    doc.setFont(undefined, 'bold');
+    doc.setFont('helvetica', 'bold');
     doc.text(`Bus ${busNumber} - Fee History Report`, 148, 30, { align: 'center' });
-    doc.setFont(undefined, 'normal');
+    doc.setFont('helvetica', 'normal');
     
     // Add bus details
     doc.setFontSize(11);

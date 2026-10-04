@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import heic2any from 'heic2any';
 import type { RealtimePostgresUpdatePayload } from '@supabase/supabase-js';
 import type * as DB from '@/lib/db-types';
+import { errorMessage } from '@/lib/utils';
 
 // Helper function to check if file is HEIC format
 const isHeicFile = (file: File): boolean => {
@@ -241,7 +242,7 @@ const EPass = () => {
     } catch (error) {
       toast({
         title: "Refresh failed",
-        description: error.message,
+        description: errorMessage(error),
         variant: "destructive"
       });
     } finally {
@@ -375,7 +376,7 @@ const EPass = () => {
     } catch (error) {
       toast({
         title: "Upload failed",
-        description: error.message,
+        description: errorMessage(error),
         variant: "destructive"
       });
     } finally {
@@ -484,7 +485,7 @@ const EPass = () => {
       console.error('Upload error:', error);
       toast({
         title: "Processing failed",
-        description: error.message,
+        description: errorMessage(error),
         variant: "destructive"
       });
     } finally {
@@ -562,21 +563,15 @@ const EPass = () => {
         file_hash: pendingFileHash || null
       };
 
-      let currentPassId: string;
-      
       if (pass) {
         await supabase
           .from('passes')
           .update(passData)
           .eq('id', pass.id);
-        currentPassId = pass.id;
       } else {
-        const { data: newPass } = await supabase
+        await supabase
           .from('passes')
-          .insert(passData)
-          .select('id')
-          .single();
-        currentPassId = newPass?.id;
+          .insert(passData);
       }
 
       // Update profile with expiry date
@@ -643,7 +638,7 @@ const EPass = () => {
       console.error('Save error:', error);
       toast({
         title: "Save failed",
-        description: error.message,
+        description: errorMessage(error),
         variant: "destructive"
       });
     } finally {
@@ -684,7 +679,7 @@ const EPass = () => {
     } catch (error) {
       toast({
         title: "Delete failed",
-        description: error.message,
+        description: errorMessage(error),
         variant: "destructive"
       });
     } finally {
@@ -734,7 +729,7 @@ const EPass = () => {
     } catch (error) {
       toast({
         title: "Delete failed",
-        description: error.message,
+        description: errorMessage(error),
         variant: "destructive"
       });
     } finally {
@@ -906,7 +901,7 @@ const EPass = () => {
                       type="file"
                       accept="image/*,.heic,.heif"
                       onChange={(e) => setMonthlyPassFile(e.target.files?.[0] || null)}
-                      disabled={uploading || (pass?.monthly_pass_url && pass?.expiry_date && 
+                      disabled={uploading || !!(pass?.monthly_pass_url && pass?.expiry_date && 
                         new Date(pass.expiry_date) >= new Date() && 
                         pass.verified !== false)}
                       className="bg-muted/30 border-border/50 text-foreground flex-1"
@@ -914,7 +909,7 @@ const EPass = () => {
                     <Button 
                       onClick={handleMonthlyPassUpload} 
                       disabled={uploading || !monthlyPassFile || 
-                        (pass?.monthly_pass_url && pass?.expiry_date && 
+                        !!(pass?.monthly_pass_url && pass?.expiry_date && 
                           new Date(pass.expiry_date) >= new Date() && 
                           pass.verified !== false)}
                       className="bg-primary hover:bg-primary/90"
@@ -987,7 +982,7 @@ const EPass = () => {
                           variant="destructive"
                           size="sm"
                           onClick={handleDeleteMonthlyPass}
-                          disabled={deletingMonthly || (pass?.expiry_date && 
+                          disabled={deletingMonthly || !!(pass?.expiry_date && 
                             new Date(pass.expiry_date) >= new Date() && 
                             pass.verified !== false)}
                           title={pass?.expiry_date && new Date(pass.expiry_date) >= new Date() && pass.verified !== false 

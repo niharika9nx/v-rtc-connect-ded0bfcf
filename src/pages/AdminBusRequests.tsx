@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -43,7 +42,6 @@ interface BusRequest {
 }
 
 const AdminBusRequests = () => {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -84,7 +82,7 @@ const AdminBusRequests = () => {
       .from('bus_details')
       .select('bus_number, route')
       .order('bus_number');
-    setBuses(busData || []);
+    setBuses((busData || []) as unknown as DB.BusOption[]);
 
     // Fetch all pending requests
     const { data: requestData, error } = await supabase

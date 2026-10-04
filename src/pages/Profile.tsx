@@ -5,7 +5,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Edit2, X, User } from 'lucide-react';
@@ -14,6 +13,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { getColleges, getBranches, getFacultyDepartments, getYears, getSections } from '@/lib/collegeConfig';
+import { errorMessage } from '@/lib/utils';
 import type * as DB from '@/lib/db-types';
 
 const profileSchema = z.object({
@@ -116,6 +116,7 @@ const Profile = () => {
 
   const onSubmit = async (data: ProfileFormData) => {
     try {
+      if (!profile || !user) return;
       // Ensure no field is empty based on role
       const requiredCommon: Array<[string, string]> = [
         [data.name, 'Name'],
@@ -164,7 +165,7 @@ const Profile = () => {
       const { error } = await supabase
         .from('profiles')
         .update(updateData)
-        .eq('id', user?.id);
+        .eq('id', user.id);
 
       if (error) throw error;
 
@@ -178,7 +179,7 @@ const Profile = () => {
     } catch (error) {
       toast({
         title: 'Error',
-        description: error.message,
+        description: errorMessage(error),
         variant: 'destructive',
       });
     }

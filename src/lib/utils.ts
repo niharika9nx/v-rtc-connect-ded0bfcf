@@ -15,3 +15,7 @@ export function formatTo12Hour(time24: string): string {
   
   return `${hour12}:${minutes} ${ampm}`;
 }
+
+export function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}

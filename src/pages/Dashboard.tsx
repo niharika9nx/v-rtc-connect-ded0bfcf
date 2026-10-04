@@ -77,7 +77,7 @@ const Dashboard = () => {
           data: feeData
         } = await supabase.from('fee_history').select('*').eq('user_id', user.id).eq('month', currentMonth).eq('year', currentYear).eq('status', 'paid').maybeSingle();
         const hasNoPass = !passInfo?.monthly_pass_url;
-        const hasExpiredPass = passInfo?.expiry_date && new Date(passInfo.expiry_date) < new Date();
+        const hasExpiredPass = !!passInfo?.expiry_date && new Date(passInfo.expiry_date) < new Date();
         const feePaid = !!feeData;
 
         // Only show PASS button if pass is verified
@@ -191,7 +191,7 @@ const Dashboard = () => {
       // Refresh complaints list
       const {
         data
-      } = await supabase.from('complaints').select('*').eq('user_id', user?.id).order('created_at', {
+      } = await supabase.from('complaints').select('*').eq('user_id', user?.id ?? '').order('created_at', {
         ascending: false
       });
       setUserComplaints(data || []);
@@ -216,7 +216,7 @@ const Dashboard = () => {
       // Refresh complaints list
       const {
         data
-      } = await supabase.from('complaints').select('*').eq('user_id', user?.id).order('created_at', {
+      } = await supabase.from('complaints').select('*').eq('user_id', user?.id ?? '').order('created_at', {
         ascending: false
       });
       setUserComplaints(data || []);
@@ -262,7 +262,7 @@ const Dashboard = () => {
                       <div className="flex flex-col sm:flex-row justify-between items-start gap-1">
                         <span className="text-sm break-words">{announcement.message}</span>
                         <span className="text-xs text-muted-foreground whitespace-nowrap">
-                          {new Date(announcement.created_at).toLocaleDateString()}
+                          {announcement.created_at ? new Date(announcement.created_at).toLocaleDateString() : ''}
                         </span>
                       </div>
                     </AlertDescription>

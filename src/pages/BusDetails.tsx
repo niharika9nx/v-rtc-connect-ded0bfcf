@@ -217,9 +217,9 @@ const BusDetails = () => {
                         Pass Expiry Date
                       </p>
                       <p className="font-medium text-lg">
-                        {new Date(passData?.expiry_date || profile?.pass_expiry_date).toLocaleDateString()}
+                        {new Date(passData?.expiry_date || profile?.pass_expiry_date || '').toLocaleDateString()}
                       </p>
-                      {new Date(passData?.expiry_date || profile?.pass_expiry_date) < new Date() && (
+                      {new Date(passData?.expiry_date || profile?.pass_expiry_date || '') < new Date() && (
                         <Badge variant="destructive" className="mt-2">Expired</Badge>
                       )}
                     </div>
