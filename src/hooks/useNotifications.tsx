@@ -59,7 +59,6 @@ export const useNotifications = () => {
     }
 
     if (permission !== 'granted') {
-      console.log('Notification permission not granted');
       return;
     }
 

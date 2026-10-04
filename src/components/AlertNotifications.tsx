@@ -49,7 +49,6 @@ export const AlertNotifications = () => {
             filter: `user_id=eq.${user.id}`
           },
           (payload) => {
-            console.log('New alert received:', payload);
             fetchAlerts();
             
             // Send browser notification

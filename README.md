@@ -1,73 +1,112 @@
-# Welcome to your Lovable project
+# V-RTC Connect
 
-## Project info
+A bus management system for college transportation (VES – APSRTC). It handles student/faculty
+profiles, bus allocation, bus pass upload + AI-assisted OCR verification, fee tracking, and alerts.
 
-**URL**: https://lovable.dev/projects/aef2ebc8-3b1f-4966-8e88-555f3a32c5cc
+## Tech stack
 
-## How can I edit this code?
+- **Vite** + **React 18** + **TypeScript** (strict mode)
+- **shadcn/ui** + **Tailwind CSS**
+- **React Router 7** for routing
+- **TanStack Query** for async state
+- **Supabase** for auth, Postgres, storage, and edge functions
+- **Vitest** for unit tests
 
-There are several ways of editing your application.
+## Getting started
 
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/aef2ebc8-3b1f-4966-8e88-555f3a32c5cc) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+Requirements: Node.js 20.19+ (or 22.12+) and npm.
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+npm install
+cp .env.example .env   # then fill in the Supabase values
+npm run dev            # http://localhost:8080
 ```
 
-**Edit a file directly in GitHub**
+### Environment variables (front-end)
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Set these in `.env` (see `.env.example`). The publishable/anon key is safe to expose — Row Level
+Security protects the data. Never commit `.env` or the service-role key.
 
-**Use GitHub Codespaces**
+| Variable | Description |
+| --- | --- |
+| `VITE_SUPABASE_URL` | Supabase project URL |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Supabase anon/publishable key |
+| `VITE_SUPABASE_PROJECT_ID` | Supabase project ref |
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Scripts
 
-## What technologies are used for this project?
+| Script | Description |
+| --- | --- |
+| `npm run dev` | Start the dev server (port 8080) |
+| `npm run build` | Production build |
+| `npm run preview` | Preview the production build |
+| `npm run lint` | Run ESLint |
+| `npm test` | Run Vitest once |
+| `npm run test:watch` | Run Vitest in watch mode |
 
-This project is built with:
+## Project structure
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+```
+src/
+  components/        UI components (shadcn primitives under components/ui)
+  hooks/             Auth, notifications, session-timeout hooks
+  integrations/      Supabase client + generated DB types
+  lib/               Utilities, college config, shared DB type aliases
+  pages/             Route-level screens (student, faculty, admin)
+supabase/
+  functions/         Deno edge functions (+ _shared helpers)
+  migrations/        SQL migrations
+tests/               Vitest tests for edge-function helpers
+```
 
-## How can I deploy this project?
+## Edge functions
 
-Simply open [Lovable](https://lovable.dev/projects/aef2ebc8-3b1f-4966-8e88-555f3a32c5cc) and click on Share -> Publish.
+Deployed to Supabase (see `supabase/config.toml`). All browser-facing functions enforce an
+`ALLOWED_ORIGIN` CORS allowlist and validate input.
 
-## Can I connect a custom domain to my Lovable project?
+| Function | Purpose |
+| --- | --- |
+| `check-expiring-passes` | Scheduled job; creates pass-expiry / renewal alerts. Auth via service-role token. |
+| `enhance-pass` | AI (Gemini) OCR of uploaded bus passes; per-user hourly rate limit (fail-closed). |
+| `get-signed-url` | Issues short-lived signed URLs for pass documents (owner or admin only). |
+| `respond-to-alert` | Records a user's response to an alert. |
+| `delete-user` | Admin-only user deletion (blocks deleting other admins). |
+| `create-test-alert` | Admin test utility, disabled unless `ENABLE_TEST_ALERTS=true`. |
 
-Yes, you can!
+### Edge function secrets
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+Configured in the Supabase project (not in this repo):
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+- `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+- `LOVABLE_API_KEY` — used by `enhance-pass`
+- `ALLOWED_ORIGIN` — comma-separated list of allowed browser origins (e.g. the production URL)
+- `ENABLE_TEST_ALERTS` — set to `true` to enable `create-test-alert`
+
+Local development origins (`http://localhost:8080`, `http://127.0.0.1:8080`, and `:5173`) are
+allowed automatically.
+
+### Deploying
+
+```sh
+supabase link --project-ref <project-ref>
+supabase db push
+supabase functions deploy
+```
+
+## Testing
+
+Unit tests live in `tests/` and cover the shared edge-function helpers (`auth`, `cors`,
+`validation`, `errors`).
+
+```sh
+npm test
+```
+
+## CI
+
+`.github/workflows/ci.yml` runs on push/PR: install, lint, typecheck (`tsc --noEmit`), and tests.
+
+## Deployment
+
+The front-end is deployed on Vercel (`vercel.json` provides SPA routing). Pushing to `main`
+triggers a deployment.

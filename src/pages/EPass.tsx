@@ -34,7 +34,6 @@ const convertHeicToJpeg = async (
     return file;
   }
   
-  console.log('Converting HEIC file to JPEG:', file.name);
   onProgress?.('Preparing HEIC conversion...');
   
   // Yield to let UI update before heavy operation
@@ -61,7 +60,6 @@ const convertHeicToJpeg = async (
     const convertedFile = new File([blob], newFileName, { type: 'image/jpeg' });
     
     onProgress?.('HEIC conversion complete!');
-    console.log('HEIC conversion successful, new size:', convertedFile.size);
     
     return convertedFile;
   } catch (error) {
@@ -118,7 +116,6 @@ const EPass = () => {
             filter: `user_id=eq.${user.id}`
           },
           (payload: RealtimePostgresUpdatePayload<DB.Pass>) => {
-            console.log('Pass updated:', payload);
             setPass(payload.new);
             
             // Show notification if pass was marked as fake
@@ -290,7 +287,6 @@ const EPass = () => {
           .from('pass-documents')
           .remove(filesToDelete);
         
-        console.log(`Cleaned up ${filesToDelete.length} old files with prefix: ${prefix}`);
       }
     } catch (error) {
       console.error('Cleanup error:', error);
@@ -415,7 +411,6 @@ const EPass = () => {
 
       // Step 1: Check if hash matches existing pass (cache hit)
       if (pass?.file_hash && pass.file_hash === fileHash && pass.buss_pass_id) {
-        console.log('Cache hit! Reusing existing OCR data.');
         setExtractedPassId(pass.buss_pass_id || '');
         setExtractedExpiryDate(pass.expiry_date || '');
         setShowVerificationDialog(true);
@@ -470,7 +465,6 @@ const EPass = () => {
           variant: "destructive"
         });
       } else {
-        console.log('Server OCR result:', enhanceResult);
         setExtractedPassId(enhanceResult?.passId || '');
         setExtractedExpiryDate(enhanceResult?.expiryDate || '');
         setShowVerificationDialog(true);
@@ -507,8 +501,6 @@ const EPass = () => {
 
       // Extract only numeric characters from pass ID for duplicate checking
       const numericPassId = extractedPassId ? extractedPassId.replace(/\D/g, '').trim() : '';
-      console.log('Original Pass ID:', extractedPassId);
-      console.log('Numeric Pass ID for comparison:', numericPassId);
 
       // Check for duplicate numeric pass IDs BEFORE saving
       let isDuplicate = false;
@@ -523,27 +515,22 @@ const EPass = () => {
         if (queryError) {
           console.error('Error querying passes:', queryError);
         } else {
-          console.log('Total passes to check:', allPasses?.length || 0);
           
           allPasses?.forEach(existingPass => {
             if (existingPass.user_id === user.id) {
-              console.log('Skipping own pass:', existingPass.buss_pass_id);
               return; // Skip current user's existing pass
             }
             
             const existingNumeric = (existingPass.buss_pass_id || '').replace(/\D/g, '').trim();
-            console.log('Comparing with pass:', existingPass.buss_pass_id, '-> numeric:', existingNumeric);
             
             if (existingNumeric && existingNumeric === numericPassId && existingNumeric.length >= 4) {
               isDuplicate = true;
               duplicatePassIds.push(existingPass.id);
-              console.log('🚨 DUPLICATE FOUND:', existingPass.buss_pass_id, 'matches', extractedPassId);
             }
           });
         }
 
         if (isDuplicate) {
-          console.log('⚠️ Duplicate detected! Total duplicates:', duplicatePassIds.length);
           toast({
             title: "⚠️ Duplicate Pass ID Detected",
             description: `This numeric pass ID (${numericPassId}) already exists. Pass will be marked as FAKE.`,
@@ -584,7 +571,6 @@ const EPass = () => {
 
       // If duplicates found, mark all duplicate passes as unverified
       if (isDuplicate && duplicatePassIds.length > 0) {
-        console.log('Marking all duplicate passes as unverified...');
         
         // Mark all duplicate passes as unverified
         for (const duplicateId of duplicatePassIds) {
@@ -592,7 +578,6 @@ const EPass = () => {
             .from('passes')
             .update({ verified: false })
             .eq('id', duplicateId);
-          console.log('Marked pass as unverified:', duplicateId);
         }
 
         // Notify admins
@@ -602,7 +587,6 @@ const EPass = () => {
           .eq('role', 'admin');
 
         if (admins && admins.length > 0) {
-          console.log('Notifying admins about duplicate...');
           const alertPromises = admins.map(admin =>
             supabase.from('alerts').insert({
               user_id: admin.user_id,
@@ -613,7 +597,6 @@ const EPass = () => {
             })
           );
           await Promise.all(alertPromises);
-          console.log('Admin alerts sent successfully');
         }
       }
 
