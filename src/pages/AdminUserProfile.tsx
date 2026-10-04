@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import type * as DB from '@/lib/db-types';
@@ -37,6 +37,11 @@ import { Trash2, Edit2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import vishnuLogo from '@/assets/vishnu-logo.png';
+
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
 
 interface UserProfile {
   id: string;
@@ -108,21 +113,7 @@ const AdminUserProfile = () => {
   const [editSeatNumber, setEditSeatNumber] = useState('');
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
-  const months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ];
-
-  useEffect(() => {
-    if (userId) {
-      fetchUserProfile();
-      fetchFeeHistory();
-      fetchPassInfo();
-      fetchBuses();
-    }
-  }, [userId]);
-
-  const fetchBuses = async () => {
+  const fetchBuses = useCallback(async () => {
     const { data, error } = await supabase
       .from('bus_details')
       .select('ID, bus_number, route')
@@ -131,9 +122,9 @@ const AdminUserProfile = () => {
     if (!error && data) {
       setBuses(data as BusDetail[]);
     }
-  };
+  }, []);
 
-  const fetchUserProfile = async () => {
+  const fetchUserProfile = useCallback(async () => {
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -162,22 +153,9 @@ const AdminUserProfile = () => {
       buss_pass_id: passData?.buss_pass_id ?? undefined
     } as unknown as UserProfile);
     setLoading(false);
-  };
+  }, [userId, toast]);
 
-  const fetchPassInfo = async () => {
-    const { data, error } = await supabase
-      .from('passes')
-      .select('monthly_pass_url, identity_card_url, expiry_date, verified, buss_pass_id')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    if (!error && data) {
-      setPassInfo(data);
-      await fetchSignedUrls(data);
-    }
-  };
-
-  const extractFilePath = (url: string): string | null => {
+  const extractFilePath = useCallback((url: string): string | null => {
     if (!url) return null;
     // Check if it's already just a file path (no http)
     if (!url.startsWith('http')) {
@@ -186,9 +164,9 @@ const AdminUserProfile = () => {
     // Extract file path from public URL
     const match = url.match(/pass-documents\/(.+?)(\?|$)/);
     return match ? match[1] : null;
-  };
+  }, []);
 
-  const getSignedUrl = async (filePath: string): Promise<string | null> => {
+  const getSignedUrl = useCallback(async (filePath: string): Promise<string | null> => {
     try {
       const { data, error } = await supabase.functions.invoke('get-signed-url', {
         body: { filePath, targetUserId: userId }
@@ -204,9 +182,9 @@ const AdminUserProfile = () => {
       console.error('Error invoking get-signed-url:', error);
       return null;
     }
-  };
+  }, [userId]);
 
-  const fetchSignedUrls = async (passData: PassInfo) => {
+  const fetchSignedUrls = useCallback(async (passData: PassInfo) => {
     setLoadingImages(true);
     try {
       // Fetch signed URL for identity card
@@ -231,7 +209,20 @@ const AdminUserProfile = () => {
     } finally {
       setLoadingImages(false);
     }
-  };
+  }, [extractFilePath, getSignedUrl]);
+
+  const fetchPassInfo = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('passes')
+      .select('monthly_pass_url, identity_card_url, expiry_date, verified, buss_pass_id')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (!error && data) {
+      setPassInfo(data);
+      await fetchSignedUrls(data);
+    }
+  }, [userId, fetchSignedUrls]);
 
   const getPassStatus = (): { status: 'expired' | 'expiring' | 'fake' | 'valid' | null; message: string } => {
     if (!passInfo) return { status: null, message: '' };
@@ -293,7 +284,7 @@ const AdminUserProfile = () => {
     }
   };
 
-  const fetchFeeHistory = async () => {
+  const fetchFeeHistory = useCallback(async () => {
     const currentYear = new Date().getFullYear();
     const currentMonth = new Date().toLocaleString('default', { month: 'long' });
 
@@ -326,7 +317,7 @@ const AdminUserProfile = () => {
     });
 
     // Generate all months with their status
-    const allMonthsFees: FeeHistory[] = months.map((month) => {
+    const allMonthsFees: FeeHistory[] = MONTHS.map((month) => {
       const existingFee = feeMap.get(month);
       const isCurrentMonth = month === currentMonth;
       
@@ -344,7 +335,16 @@ const AdminUserProfile = () => {
     });
 
     setFeeHistory(allMonthsFees);
-  };
+  }, [userId, toast]);
+
+  useEffect(() => {
+    if (userId) {
+      fetchUserProfile();
+      fetchFeeHistory();
+      fetchPassInfo();
+      fetchBuses();
+    }
+  }, [userId, fetchUserProfile, fetchFeeHistory, fetchPassInfo, fetchBuses]);
 
   const handleFeeStatusChange = async (month: string, newStatus: 'paid' | 'due') => {
     if (!profile) return;

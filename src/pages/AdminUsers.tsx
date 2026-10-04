@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { errorMessage } from '@/lib/utils';
@@ -48,11 +48,7 @@ const AdminUsers = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [activeTab, setActiveTab] = useState('students');
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     setLoading(true);
     
     // Fetch all profiles
@@ -105,7 +101,11 @@ const AdminUsers = () => {
     }
 
     setLoading(false);
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   const filteredStudents = students.filter(s => 
     s.name?.toLowerCase().includes(studentSearch.toLowerCase())

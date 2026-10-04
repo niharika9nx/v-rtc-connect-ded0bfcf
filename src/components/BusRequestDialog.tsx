@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -71,16 +71,7 @@ export const BusRequestDialog = ({ open, onOpenChange, onSuccess }: BusRequestDi
   const [department, setDepartment] = useState('');
   const [comment, setComment] = useState('');
 
-  useEffect(() => {
-    if (open) {
-      fetchBuses();
-      fetchUserRole();
-      setStep('select');
-      resetForm();
-    }
-  }, [open]);
-
-  const fetchUserRole = async () => {
+  const fetchUserRole = useCallback(async () => {
     if (!user?.id) return;
     const { data } = await supabase
       .from('profiles')
@@ -88,17 +79,17 @@ export const BusRequestDialog = ({ open, onOpenChange, onSuccess }: BusRequestDi
       .eq('id', user.id)
       .maybeSingle();
     setUserRole(data?.role || null);
-  };
+  }, [user]);
 
-  const fetchBuses = async () => {
+  const fetchBuses = useCallback(async () => {
     const { data } = await supabase
       .from('bus_details')
       .select('bus_number, route')
       .order('bus_number');
     setBuses((data || []) as unknown as DB.BusOption[]);
-  };
+  }, []);
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setBusNumber('');
     setFromMonth('');
     setToMonth('');
@@ -107,7 +98,16 @@ export const BusRequestDialog = ({ open, onOpenChange, onSuccess }: BusRequestDi
     setStudyYear('');
     setDepartment('');
     setComment('');
-  };
+  }, []);
+
+  useEffect(() => {
+    if (open) {
+      fetchBuses();
+      fetchUserRole();
+      setStep('select');
+      resetForm();
+    }
+  }, [open, fetchBuses, fetchUserRole, resetForm]);
 
   const handleSubmitExisting = async () => {
     if (!user) return;

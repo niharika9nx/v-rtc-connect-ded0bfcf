@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -173,19 +173,7 @@ const AdminBusDashboard = () => {
   const [bulkDeleteConfirmation, setBulkDeleteConfirmation] = useState('');
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
-  useEffect(() => {
-    if (busNumber) {
-      fetchBusDetails();
-    }
-  }, [busNumber]);
-
-  useEffect(() => {
-    if (busNumber) {
-      fetchStats();
-    }
-  }, [busNumber, selectedCollege, selectedBranch, selectedYear]);
-
-  const fetchBusDetails = async () => {
+  const fetchBusDetails = useCallback(async () => {
     const { data, error } = await supabase
       .from('bus_details')
       .select('*')
@@ -207,7 +195,7 @@ const AdminBusDashboard = () => {
         capacity: data.capacity || 0,
       });
     }
-  };
+  }, [busNumber, toast]);
 
   const handleEditBusClick = () => {
     if (busDetails) {
@@ -274,7 +262,7 @@ const AdminBusDashboard = () => {
     setSelectedYear('all');
   };
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     setLoading(true);
 
     let query = supabase.from('profiles').select('id, role').eq('bus_number', busNumber);
@@ -366,7 +354,19 @@ const AdminBusDashboard = () => {
     }
 
     setLoading(false);
-  };
+  }, [busNumber, selectedCollege, selectedBranch, selectedYear]);
+
+  useEffect(() => {
+    if (busNumber) {
+      fetchBusDetails();
+    }
+  }, [busNumber, fetchBusDetails]);
+
+  useEffect(() => {
+    if (busNumber) {
+      fetchStats();
+    }
+  }, [busNumber, selectedCollege, selectedBranch, selectedYear, fetchStats]);
 
   const handleStatClick = async (type: string) => {
     let query = supabase

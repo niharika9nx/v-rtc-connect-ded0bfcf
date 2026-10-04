@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -40,6 +40,21 @@ export const BusRequestStatus = () => {
   const [requests, setRequests] = useState<BusRequest[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const fetchRequests = useCallback(async () => {
+    if (!user) return;
+    
+    const { data, error } = await supabase
+      .from('bus_requests')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (!error && data) {
+      setRequests(data as BusRequest[]);
+    }
+    setLoading(false);
+  }, [user]);
+
   useEffect(() => {
     if (user) {
       fetchRequests();
@@ -63,22 +78,7 @@ export const BusRequestStatus = () => {
         supabase.removeChannel(channel);
       };
     }
-  }, [user]);
-
-  const fetchRequests = async () => {
-    if (!user) return;
-    
-    const { data, error } = await supabase
-      .from('bus_requests')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
-
-    if (!error && data) {
-      setRequests(data as BusRequest[]);
-    }
-    setLoading(false);
-  };
+  }, [user, fetchRequests]);
 
   const handleDelete = async (requestId: string) => {
     const { error } = await supabase

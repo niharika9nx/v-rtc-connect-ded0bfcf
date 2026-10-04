@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -21,34 +21,7 @@ const BusDetails = () => {
   const [loading, setLoading] = useState(true);
   const [showRequestDialog, setShowRequestDialog] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      fetchData();
-
-      // Set up real-time subscription for fee_history updates
-      const channel = supabase
-        .channel('fee-history-changes')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'fee_history',
-            filter: `user_id=eq.${user.id}`
-          },
-          () => {
-            fetchData();
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }
-  }, [user]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!user) return;
 
     // Fetch profile
@@ -95,7 +68,34 @@ const BusDetails = () => {
     }
 
     setLoading(false);
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      fetchData();
+
+      // Set up real-time subscription for fee_history updates
+      const channel = supabase
+        .channel('fee-history-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'fee_history',
+            filter: `user_id=eq.${user.id}`
+          },
+          () => {
+            fetchData();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [user, fetchData]);
 
   if (loading) {
     return (

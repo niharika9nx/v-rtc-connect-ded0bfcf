@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -26,47 +26,7 @@ export const AlertNotifications = () => {
   const [showPermissionPrompt, setShowPermissionPrompt] = useState(false);
   const [passVerified, setPassVerified] = useState<boolean | null>(null);
 
-  useEffect(() => {
-    if (user) {
-      // Check pass verification status first
-      checkPassVerification();
-      fetchAlerts();
-
-      // Check if we should show notification permission prompt
-      if (supported && permission === 'default') {
-        setShowPermissionPrompt(true);
-      }
-
-      // Set up real-time subscription for new alerts
-      const channel = supabase
-        .channel('alerts-changes')
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'alerts',
-            filter: `user_id=eq.${user.id}`
-          },
-          (payload) => {
-            fetchAlerts();
-            
-            // Send browser notification
-            const newAlert = payload.new as AlertNotification;
-            if (newAlert.message) {
-              sendAlertNotification(newAlert.message, newAlert.type);
-            }
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }
-  }, [user, supported, permission]);
-
-  const checkPassVerification = async () => {
+  const checkPassVerification = useCallback(async () => {
     if (!user) return;
 
     const { data } = await supabase
@@ -76,9 +36,9 @@ export const AlertNotifications = () => {
       .maybeSingle();
 
     setPassVerified(data?.verified !== false);
-  };
+  }, [user]);
 
-  const fetchAlerts = async () => {
+  const fetchAlerts = useCallback(async () => {
     if (!user) return;
 
     // Recheck pass verification status on every fetch
@@ -114,7 +74,47 @@ export const AlertNotifications = () => {
       setAlerts(filteredAlerts);
     }
     setLoading(false);
-  };
+  }, [user, passVerified, checkPassVerification]);
+
+  useEffect(() => {
+    if (user) {
+      // Check pass verification status first
+      checkPassVerification();
+      fetchAlerts();
+
+      // Check if we should show notification permission prompt
+      if (supported && permission === 'default') {
+        setShowPermissionPrompt(true);
+      }
+
+      // Set up real-time subscription for new alerts
+      const channel = supabase
+        .channel('alerts-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'alerts',
+            filter: `user_id=eq.${user.id}`
+          },
+          (payload) => {
+            fetchAlerts();
+
+            // Send browser notification
+            const newAlert = payload.new as AlertNotification;
+            if (newAlert.message) {
+              sendAlertNotification(newAlert.message, newAlert.type);
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [user, supported, permission, checkPassVerification, fetchAlerts, sendAlertNotification]);
 
   const handleResponse = async (alertId: string, response: 'yes' | 'no') => {
     try {

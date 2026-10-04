@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -78,7 +78,7 @@ const Profile = () => {
     form.setValue('year', '');
   };
 
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
     if (user) {
       const { data } = await supabase
         .from('profiles')
@@ -108,11 +108,11 @@ const Profile = () => {
 
       setLoading(false);
     }
-  };
+  }, [user, form]);
 
   useEffect(() => {
     fetchProfile();
-  }, [user]);
+  }, [fetchProfile]);
 
   const onSubmit = async (data: ProfileFormData) => {
     try {

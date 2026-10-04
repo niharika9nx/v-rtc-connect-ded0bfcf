@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -99,10 +99,101 @@ const EPass = () => {
   const [monthlyPassSignedUrl, setMonthlyPassSignedUrl] = useState<string | null>(null);
   const [processingStep, setProcessingStep] = useState<string | null>(null);
   const [pendingFileHash, setPendingFileHash] = useState<string | null>(null);
+  const checkFeeStatus = useCallback(async () => {
+    if (!user) return;
+    
+    const currentMonth = new Date().toLocaleString('default', { month: 'long' });
+    const currentYear = new Date().getFullYear();
+    
+    const { data: feeData } = await supabase
+      .from('fee_history')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('month', currentMonth)
+      .eq('year', currentYear)
+      .eq('status', 'paid')
+      .maybeSingle();
+    
+    setFeeStatus(feeData);
+  }, [user]);
+
+  const extractFilePath = useCallback((url: string): string | null => {
+    if (!url) return null;
+    // Check if it's already just a file path (no http)
+    if (!url.startsWith('http')) {
+      return url;
+    }
+    // Extract file path from public URL
+    const match = url.match(/pass-documents\/(.+?)(\?|$)/);
+    return match ? match[1] : null;
+  }, []);
+
+  const getSignedUrl = useCallback(async (filePath: string): Promise<string | null> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('get-signed-url', {
+        body: { filePath }
+      });
+      
+      if (error) {
+        console.error('Error getting signed URL:', error);
+        return null;
+      }
+      
+      return data?.signedUrl || null;
+    } catch (error) {
+      console.error('Error invoking get-signed-url:', error);
+      return null;
+    }
+  }, []);
+
+  const fetchSignedUrls = useCallback(async (passData: DB.Pass) => {
+    if (!user) return;
+
+    try {
+      // Fetch signed URL for identity card
+      if (passData.identity_card_url) {
+        const filePath = extractFilePath(passData.identity_card_url);
+        if (filePath) {
+          const signedUrl = await getSignedUrl(filePath);
+          setIdentityCardSignedUrl(signedUrl);
+        }
+      }
+
+      // Fetch signed URL for monthly pass
+      if (passData.monthly_pass_url) {
+        const filePath = extractFilePath(passData.monthly_pass_url);
+        if (filePath) {
+          const signedUrl = await getSignedUrl(filePath);
+          setMonthlyPassSignedUrl(signedUrl);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching signed URLs:', error);
+    }
+  }, [user, extractFilePath, getSignedUrl]);
+
+  const fetchPass = useCallback(async () => {
+    if (user) {
+      const { data } = await supabase
+        .from('passes')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      setPass(data);
+
+      // Fetch signed URLs for existing pass documents
+      if (data) {
+        await fetchSignedUrls(data);
+      }
+
+      setLoading(false);
+    }
+  }, [user, fetchSignedUrls]);
+
   useEffect(() => {
     fetchPass();
     checkFeeStatus();
-    
+
     // Set up real-time subscription for pass changes (to detect when marked as fake)
     if (user) {
       const channel = supabase
@@ -117,7 +208,7 @@ const EPass = () => {
           },
           (payload: RealtimePostgresUpdatePayload<DB.Pass>) => {
             setPass(payload.new);
-            
+
             // Show notification if pass was marked as fake
             if (payload.new.verified === false && payload.old?.verified === true) {
               toast({
@@ -135,98 +226,7 @@ const EPass = () => {
         supabase.removeChannel(channel);
       };
     }
-  }, [user]);
-
-  const checkFeeStatus = async () => {
-    if (!user) return;
-    
-    const currentMonth = new Date().toLocaleString('default', { month: 'long' });
-    const currentYear = new Date().getFullYear();
-    
-    const { data: feeData } = await supabase
-      .from('fee_history')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('month', currentMonth)
-      .eq('year', currentYear)
-      .eq('status', 'paid')
-      .maybeSingle();
-    
-    setFeeStatus(feeData);
-  };
-
-  const fetchPass = async () => {
-    if (user) {
-      const { data } = await supabase
-        .from('passes')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      setPass(data);
-      
-      // Fetch signed URLs for existing pass documents
-      if (data) {
-        await fetchSignedUrls(data);
-      }
-      
-      setLoading(false);
-    }
-  };
-
-  const fetchSignedUrls = async (passData: DB.Pass) => {
-    if (!user) return;
-    
-    try {
-      // Fetch signed URL for identity card
-      if (passData.identity_card_url) {
-        const filePath = extractFilePath(passData.identity_card_url);
-        if (filePath) {
-          const signedUrl = await getSignedUrl(filePath);
-          setIdentityCardSignedUrl(signedUrl);
-        }
-      }
-      
-      // Fetch signed URL for monthly pass
-      if (passData.monthly_pass_url) {
-        const filePath = extractFilePath(passData.monthly_pass_url);
-        if (filePath) {
-          const signedUrl = await getSignedUrl(filePath);
-          setMonthlyPassSignedUrl(signedUrl);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching signed URLs:', error);
-    }
-  };
-
-  const extractFilePath = (url: string): string | null => {
-    if (!url) return null;
-    // Check if it's already just a file path (no http)
-    if (!url.startsWith('http')) {
-      return url;
-    }
-    // Extract file path from public URL
-    const match = url.match(/pass-documents\/(.+?)(\?|$)/);
-    return match ? match[1] : null;
-  };
-
-  const getSignedUrl = async (filePath: string): Promise<string | null> => {
-    try {
-      const { data, error } = await supabase.functions.invoke('get-signed-url', {
-        body: { filePath }
-      });
-      
-      if (error) {
-        console.error('Error getting signed URL:', error);
-        return null;
-      }
-      
-      return data?.signedUrl || null;
-    } catch (error) {
-      console.error('Error invoking get-signed-url:', error);
-      return null;
-    }
-  };
+  }, [user, checkFeeStatus, fetchPass, toast]);
 
   const handleRefresh = async () => {
     setRefreshing(true);

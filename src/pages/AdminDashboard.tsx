@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -62,6 +62,108 @@ const AdminDashboard = () => {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<DB.Alert[]>([]);
 
+  const fetchNotifications = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('alerts')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('type', 'new_account')
+      .order('created_at', { ascending: false })
+      .limit(100);
+    if (data) setNotifications(data);
+  }, [user]);
+
+  const fetchPendingRequestsCount = useCallback(async () => {
+    const { count } = await supabase
+      .from('bus_requests')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'pending');
+    setPendingRequestsCount(count || 0);
+  }, []);
+
+  const fetchRouteImage = useCallback(async () => {
+    // Try to fetch a default route image
+    const possibleFileNames = [
+      'route.png',
+      'bus-1.png',
+      'bus-2.png'
+    ];
+
+    for (const fileName of possibleFileNames) {
+      const { data: publicUrl } = supabase.storage
+        .from('route')
+        .getPublicUrl(fileName);
+      
+      if (publicUrl?.publicUrl) {
+        try {
+          const response = await fetch(publicUrl.publicUrl, { method: 'HEAD' });
+          if (response.ok) {
+            setRouteImageUrl(publicUrl.publicUrl);
+            break;
+          }
+        } catch (error) {
+          continue;
+        }
+      }
+    }
+  }, []);
+
+  const fetchComplaints = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('complaints')
+      .select(`
+        *,
+        profiles:user_id (
+          name,
+          registration_id
+        )
+      `)
+      .order('created_at', { ascending: false });
+
+    if (!error && data) {
+      setComplaints(data as Complaint[]);
+    }
+  }, []);
+
+  const fetchAnnouncements = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('announcements')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (!error && data) {
+      setAnnouncements(data);
+    }
+  }, []);
+
+  const fetchAlertsSent = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('alerts')
+      .select(`
+        id,
+        user_id,
+        message,
+        status,
+        created_at,
+        deleted_at,
+        send_at,
+        profiles:user_id (
+          name,
+          role,
+          registration_id
+        )
+      `)
+      .eq('type', 'custom')
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (!error && data) {
+      setAlertsSent(data as SentAlert[]);
+    }
+  }, []);
+
   useEffect(() => {
     if (user) {
       supabase
@@ -70,7 +172,7 @@ const AdminDashboard = () => {
         .eq('id', user.id)
         .single()
         .then(({ data }) => setProfile(data));
-      
+
       fetchComplaints();
       fetchAnnouncements();
       fetchAlertsSent();
@@ -105,109 +207,7 @@ const AdminDashboard = () => {
         supabase.removeChannel(channel);
       };
     }
-  }, [user]);
-
-  const fetchNotifications = async () => {
-    if (!user) return;
-    const { data } = await supabase
-      .from('alerts')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('type', 'new_account')
-      .order('created_at', { ascending: false })
-      .limit(100);
-    if (data) setNotifications(data);
-  };
-
-  const fetchPendingRequestsCount = async () => {
-    const { count } = await supabase
-      .from('bus_requests')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'pending');
-    setPendingRequestsCount(count || 0);
-  };
-
-  const fetchRouteImage = async () => {
-    // Try to fetch a default route image
-    const possibleFileNames = [
-      'route.png',
-      'bus-1.png',
-      'bus-2.png'
-    ];
-
-    for (const fileName of possibleFileNames) {
-      const { data: publicUrl } = supabase.storage
-        .from('route')
-        .getPublicUrl(fileName);
-      
-      if (publicUrl?.publicUrl) {
-        try {
-          const response = await fetch(publicUrl.publicUrl, { method: 'HEAD' });
-          if (response.ok) {
-            setRouteImageUrl(publicUrl.publicUrl);
-            break;
-          }
-        } catch (error) {
-          continue;
-        }
-      }
-    }
-  };
-
-  const fetchComplaints = async () => {
-    const { data, error } = await supabase
-      .from('complaints')
-      .select(`
-        *,
-        profiles:user_id (
-          name,
-          registration_id
-        )
-      `)
-      .order('created_at', { ascending: false });
-
-    if (!error && data) {
-      setComplaints(data as Complaint[]);
-    }
-  };
-
-  const fetchAnnouncements = async () => {
-    const { data, error } = await supabase
-      .from('announcements')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(10);
-
-    if (!error && data) {
-      setAnnouncements(data);
-    }
-  };
-
-  const fetchAlertsSent = async () => {
-    const { data, error } = await supabase
-      .from('alerts')
-      .select(`
-        id,
-        user_id,
-        message,
-        status,
-        created_at,
-        deleted_at,
-        send_at,
-        profiles:user_id (
-          name,
-          role,
-          registration_id
-        )
-      `)
-      .eq('type', 'custom')
-      .order('created_at', { ascending: false })
-      .limit(50);
-
-    if (!error && data) {
-      setAlertsSent(data as SentAlert[]);
-    }
-  };
+  }, [user, fetchComplaints, fetchAnnouncements, fetchAlertsSent, fetchRouteImage, fetchPendingRequestsCount, fetchNotifications, requestPermission, sendNotification, toast]);
 
   const handleResolveComplaint = async (complaintId: string) => {
     const { error } = await supabase

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
 export const useNotifications = () => {
@@ -14,7 +14,7 @@ export const useNotifications = () => {
     }
   }, []);
 
-  const requestPermission = async () => {
+  const requestPermission = useCallback(async () => {
     if (!supported) {
       toast({
         title: 'Not Supported',
@@ -31,7 +31,7 @@ export const useNotifications = () => {
     try {
       const result = await Notification.requestPermission();
       setPermission(result);
-      
+
       if (result === 'granted') {
         toast({
           title: 'Notifications Enabled',
@@ -51,9 +51,9 @@ export const useNotifications = () => {
       console.error('Error requesting notification permission:', error);
       return false;
     }
-  };
+  }, [supported, permission, toast]);
 
-  const sendNotification = (title: string, options?: NotificationOptions) => {
+  const sendNotification = useCallback((title: string, options?: NotificationOptions) => {
     if (!supported) {
       return;
     }
@@ -86,9 +86,9 @@ export const useNotifications = () => {
     } catch (error) {
       console.error('Error sending notification:', error);
     }
-  };
+  }, [supported, permission]);
 
-  const sendAlertNotification = (message: string, type: string = 'alert') => {
+  const sendAlertNotification = useCallback((message: string, type: string = 'alert') => {
     const titles: Record<string, string> = {
       alert: '🔔 New Alert',
       announcement: '📢 New Announcement',
@@ -100,7 +100,7 @@ export const useNotifications = () => {
       body: message,
       icon: '/favicon.ico',
     });
-  };
+  }, [sendNotification]);
 
   return {
     supported,

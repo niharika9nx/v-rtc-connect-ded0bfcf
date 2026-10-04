@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -59,11 +59,7 @@ const AdminBuses = () => {
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => {
-    fetchBuses();
-  }, []);
-
-  const fetchBuses = async () => {
+  const fetchBuses = useCallback(async () => {
     const { data, error } = await supabase
       .from('bus_details')
       .select('*')
@@ -87,7 +83,11 @@ const AdminBuses = () => {
       setBuses(mappedData as unknown as BusDetail[]);
     }
     setLoading(false);
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    fetchBuses();
+  }, [fetchBuses]);
 
   const handleAddBus = async () => {
     if (!addForm.bus_number || !addForm.route) {

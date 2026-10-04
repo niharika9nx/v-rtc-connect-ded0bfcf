@@ -156,7 +156,7 @@ const Dashboard = () => {
         supabase.removeChannel(channel);
       };
     }
-  }, [user]);
+  }, [user, sendAlertNotification]);
   const handleComplaintSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setValidationError(null);
