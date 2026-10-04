@@ -76,36 +76,25 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // --- Rate limiting: max RATE_LIMIT_MAX_CALLS enhance calls per user per hour ---
-    const { data: rateRow, error: rateError } = await supabase
-      .from('function_rate_limits')
-      .select('calls, window_start')
-      .eq('user_id', userId)
-      .eq('function_name', 'enhance-pass')
-      .maybeSingle();
+    // Atomic check-and-increment via RPC (see check_and_increment_rate_limit migration).
+    const { data: allowed, error: rateError } = await supabase.rpc('check_and_increment_rate_limit', {
+      _user_id: userId,
+      _function_name: 'enhance-pass',
+      _max_calls: RATE_LIMIT_MAX_CALLS,
+      _window_seconds: Math.floor(RATE_LIMIT_WINDOW_MS / 1000),
+    });
 
     if (rateError) {
+      // Fail closed: don't call the paid AI gateway when the limit can't be enforced.
       console.error('Rate limit check failed:', rateError);
-    } else {
-      const now = Date.now();
-      const windowStartMs = rateRow?.window_start ? new Date(rateRow.window_start).getTime() : 0;
-      const windowActive = rateRow != null && (now - windowStartMs) < RATE_LIMIT_WINDOW_MS;
-      const calls = windowActive ? (rateRow?.calls ?? 0) : 0;
+      return json({ error: 'Service temporarily unavailable' }, 503);
+    }
 
-      if (calls >= RATE_LIMIT_MAX_CALLS) {
-        return json(
-          { error: `Rate limit exceeded. Maximum ${RATE_LIMIT_MAX_CALLS} pass enhancements per hour.` },
-          429,
-        );
-      }
-
-      await supabase
-        .from('function_rate_limits')
-        .upsert({
-          user_id: userId,
-          function_name: 'enhance-pass',
-          calls: calls + 1,
-          window_start: new Date(windowActive ? windowStartMs : now).toISOString(),
-        });
+    if (!allowed) {
+      return json(
+        { error: `Rate limit exceeded. Maximum ${RATE_LIMIT_MAX_CALLS} pass enhancements per hour.` },
+        429,
+      );
     }
 
     // Download the original image
