@@ -7,20 +7,30 @@ export const useNotifications = () => {
   const [supported, setSupported] = useState(false);
 
   useEffect(() => {
-    // Check if notifications are supported
-    if ('Notification' in window) {
-      setSupported(true);
+    const hasNotificationApi = 'Notification' in window;
+    const hasServiceWorker = 'serviceWorker' in navigator;
+    setSupported(hasNotificationApi || hasServiceWorker);
+    if (hasNotificationApi) {
       setPermission(Notification.permission);
     }
   }, []);
 
   const requestPermission = useCallback(async () => {
-    if (!supported) {
-      toast({
-        title: 'Not Supported',
-        description: 'Browser notifications are not supported on this device.',
-        variant: 'destructive',
-      });
+    if (!('Notification' in window)) {
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      if (isIOS) {
+        toast({
+          title: 'iOS Limitation',
+          description: 'On iOS, first tap the Share button, then "Add to Home Screen" to install the app and enable notifications.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Not Supported',
+          description: 'Your browser does not support notifications.',
+          variant: 'destructive',
+        });
+      }
       return false;
     }
 
@@ -41,7 +51,7 @@ export const useNotifications = () => {
       } else if (result === 'denied') {
         toast({
           title: 'Notifications Blocked',
-          description: 'Please enable notifications in your browser settings.',
+          description: 'Please enable notifications in your browser site settings.',
           variant: 'destructive',
         });
         return false;
@@ -51,42 +61,41 @@ export const useNotifications = () => {
       console.error('Error requesting notification permission:', error);
       return false;
     }
-  }, [supported, permission, toast]);
+  }, [permission, toast]);
 
-  const sendNotification = useCallback((title: string, options?: NotificationOptions) => {
-    if (!supported) {
-      return;
-    }
-
+  const sendNotification = useCallback(async (title: string, options?: NotificationOptions) => {
     if (permission !== 'granted') {
       return;
     }
 
-    // Don't send notification if page is visible
-    if (document.visibilityState === 'visible') {
-      return;
-    }
+    const iconUrl = '/icons/icon-192.png';
 
     try {
-      const notification = new Notification(title, {
-        icon: '/favicon.ico',
-        badge: '/favicon.ico',
-        tag: 'vbus-notification',
-        ...options,
-      });
-
-      // Close notification after 10 seconds
-      setTimeout(() => notification.close(), 10000);
-
-      // Handle notification click
-      notification.onclick = () => {
-        window.focus();
-        notification.close();
-      };
+      if ('serviceWorker' in navigator) {
+        const registration = await navigator.serviceWorker.ready;
+        await registration.showNotification(title, {
+          icon: iconUrl,
+          badge: iconUrl,
+          tag: 'vbus-notification',
+          ...options,
+        });
+      } else if ('Notification' in window) {
+        const notification = new Notification(title, {
+          icon: iconUrl,
+          badge: iconUrl,
+          tag: 'vbus-notification',
+          ...options,
+        });
+        setTimeout(() => notification.close(), 10000);
+        notification.onclick = () => {
+          window.focus();
+          notification.close();
+        };
+      }
     } catch (error) {
       console.error('Error sending notification:', error);
     }
-  }, [supported, permission]);
+  }, [permission]);
 
   const sendAlertNotification = useCallback((message: string, type: string = 'alert') => {
     const titles: Record<string, string> = {
@@ -98,7 +107,7 @@ export const useNotifications = () => {
 
     sendNotification(titles[type] || titles.alert, {
       body: message,
-      icon: '/favicon.ico',
+      icon: '/icons/icon-192.png',
     });
   }, [sendNotification]);
 

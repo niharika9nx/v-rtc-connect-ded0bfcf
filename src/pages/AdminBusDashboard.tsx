@@ -108,6 +108,7 @@ interface Stats {
   expiringPasses: number;
   passesExpired: number;
   passesUploaded: number;
+  passesNotUploaded: number;
 }
 
 const AdminBusDashboard = () => {
@@ -123,6 +124,7 @@ const AdminBusDashboard = () => {
     expiringPasses: 0,
     passesExpired: 0,
     passesUploaded: 0,
+    passesNotUploaded: 0,
   });
   const [loading, setLoading] = useState(true);
   const [selectedCollege, setSelectedCollege] = useState<string>('all');
@@ -350,6 +352,7 @@ const AdminBusDashboard = () => {
         expiringPasses: passData?.length || 0,
         passesExpired: filteredExpiredPasses?.length || 0,
         passesUploaded: filteredPassesUploaded?.length || 0,
+        passesNotUploaded: profiles.length - (filteredPassesUploaded?.length || 0),
       });
     }
 
@@ -554,6 +557,53 @@ const AdminBusDashboard = () => {
     setStudentSearchQuery('');
     setFacultySearchQuery('');
     setShowPassesUploadedDialog(true);
+  };
+
+  const handlePassesNotUploadedClick = async () => {
+    const { data: passesData } = await supabase
+      .from('passes')
+      .select('user_id')
+      .or('monthly_pass_url.not.is.null,identity_card_url.not.is.null');
+
+    const passUserIds = passesData?.map((p) => p.user_id).filter((id): id is string => id !== null) || [];
+
+    let query = supabase
+      .from('profiles')
+      .select('id, name, role, college, branch, year, phone, seat_number')
+      .eq('bus_number', busNumber)
+      .not('id', 'in', `(${passUserIds.join(',')})`);
+
+    if (selectedCollege !== 'all') {
+      query = query.eq('college', selectedCollege);
+    }
+    if (selectedBranch !== 'all') {
+      query = query.eq('branch', selectedBranch);
+    }
+    if (selectedYear !== 'all') {
+      query = query.eq('year', selectedYear);
+    }
+
+    const { data: profiles } = await query;
+
+    let profilesWithPassIds = profiles || [];
+    if (profiles && profiles.length > 0) {
+      const userIds = profiles.map(p => p.id);
+      const { data: passIdData } = await supabase
+        .from('passes')
+        .select('user_id, buss_pass_id')
+        .in('user_id', userIds);
+
+      const passIdMap = new Map(passIdData?.map(p => [p.user_id, p.buss_pass_id]) || []);
+      profilesWithPassIds = profiles.map(p => ({
+        ...p,
+        buss_pass_id: passIdMap.get(p.id)
+      }));
+    }
+
+    setSearchQuery('');
+    setUserListType('passesNotUploaded');
+    setUserList(profilesWithPassIds as unknown as Profile[]);
+    setShowUserList(true);
   };
 
   const filteredUserList = userList.filter(user => 
@@ -1078,6 +1128,20 @@ const AdminBusDashboard = () => {
               </p>
             </CardContent>
           </Card>
+
+          <Card
+            className="hover:shadow-lg transition-shadow cursor-pointer"
+            onClick={handlePassesNotUploadedClick}
+          >
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base md:text-lg">Passes Not Uploaded</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl md:text-3xl font-bold text-amber-600">
+                {stats.passesNotUploaded}
+              </p>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
@@ -1095,6 +1159,7 @@ const AdminBusDashboard = () => {
               {userListType === 'expiringPasses' && 'Expiring Passes <= 5 days List'}
               {userListType === 'passesIssued' && 'Passes Issued List'}
               {userListType === 'passesExpired' && 'Passes Expired - Awaiting New Pass'}
+              {userListType === 'passesNotUploaded' && 'Passes Not Uploaded'}
             </DialogTitle>
           </DialogHeader>
           {/* Search Bar and Actions */}

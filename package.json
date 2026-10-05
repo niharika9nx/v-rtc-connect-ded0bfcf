@@ -71,6 +71,7 @@
     "sonner": "^1.7.4",
     "tailwind-merge": "^2.6.0",
     "vaul": "^0.9.9",
+    "vite-plugin-pwa": "^2.0.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "zod": "^3.25.76"
   },

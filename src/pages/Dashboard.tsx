@@ -125,12 +125,16 @@ const Dashboard = () => {
         }
       });
 
-      // Fetch announcements using secure view (hides admin_id)
+      // Fetch announcements using secure view (hides admin_id), filter out expired ones
       supabase.from('public_announcements').select('*').order('created_at', {
         ascending: false
       }).limit(3).then(({
         data
-      }) => setAnnouncements(data || []));
+      }) => {
+        const now = new Date();
+        const active = (data || []).filter(a => !a.expires_at || new Date(a.expires_at) > now);
+        setAnnouncements(active);
+      });
 
       // Fetch user's complaints
       supabase.from('complaints').select('*').eq('user_id', user.id).order('created_at', {
@@ -145,11 +149,15 @@ const Dashboard = () => {
         schema: 'public',
         table: 'announcements'
       }, (payload: RealtimePostgresInsertPayload<DB.PublicAnnouncement>) => {
-        setAnnouncements(prev => [payload.new, ...prev].slice(0, 3));
+        const newAnnouncement = payload.new;
+        const isExpired = newAnnouncement.expires_at && new Date(newAnnouncement.expires_at) <= new Date();
+        if (!isExpired) {
+          setAnnouncements(prev => [newAnnouncement, ...prev].slice(0, 3));
+        }
 
         // Send browser notification for new announcement
-        if (payload.new.message) {
-          sendAlertNotification(payload.new.message, 'announcement');
+        if (newAnnouncement.message) {
+          sendAlertNotification(newAnnouncement.message, 'announcement');
         }
       }).subscribe();
       return () => {

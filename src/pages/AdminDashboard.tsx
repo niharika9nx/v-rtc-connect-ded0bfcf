@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { User, Bus, MessageSquare, Megaphone, Trash2, Upload, Send, Users, Bell, UserPlus } from 'lucide-react';
@@ -47,11 +48,13 @@ const AdminDashboard = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { requestPermission, sendNotification } = useNotifications();
+  const { sendNotification } = useNotifications();
   const [profile, setProfile] = useState<DB.Profile | null>(null);
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [announcements, setAnnouncements] = useState<DB.Announcement[]>([]);
   const [newAnnouncement, setNewAnnouncement] = useState('');
+  const [expiryFormat, setExpiryFormat] = useState<'hours' | 'days'>('hours');
+  const [expiryValue, setExpiryValue] = useState('24');
   const [complaintsOpen, setComplaintsOpen] = useState(false);
   const [announcementsOpen, setAnnouncementsOpen] = useState(false);
   const [alertsOpen, setAlertsOpen] = useState(false);
@@ -179,7 +182,6 @@ const AdminDashboard = () => {
       fetchRouteImage();
       fetchPendingRequestsCount();
       fetchNotifications();
-      requestPermission();
 
       // Realtime subscription for new_account notifications
       const channel = supabase
@@ -207,7 +209,7 @@ const AdminDashboard = () => {
         supabase.removeChannel(channel);
       };
     }
-  }, [user, fetchComplaints, fetchAnnouncements, fetchAlertsSent, fetchRouteImage, fetchPendingRequestsCount, fetchNotifications, requestPermission, sendNotification, toast]);
+  }, [user, fetchComplaints, fetchAnnouncements, fetchAlertsSent, fetchRouteImage, fetchPendingRequestsCount, fetchNotifications, sendNotification, toast]);
 
   const handleResolveComplaint = async (complaintId: string) => {
     const { error } = await supabase
@@ -249,12 +251,30 @@ const AdminDashboard = () => {
       return;
     }
 
+    const expiryNum = parseInt(expiryValue, 10);
+    if (isNaN(expiryNum) || expiryNum < 1) {
+      toast({
+        title: 'Error',
+        description: 'Expiry must be a positive number',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const expiresAt = new Date();
+    if (expiryFormat === 'hours') {
+      expiresAt.setHours(expiresAt.getHours() + expiryNum);
+    } else {
+      expiresAt.setDate(expiresAt.getDate() + expiryNum);
+    }
+
     setLoading(true);
     const { error } = await supabase
       .from('announcements')
       .insert({
         admin_id: user?.id,
         message: newAnnouncement.trim(),
+        expires_at: expiresAt.toISOString(),
       });
 
     setLoading(false);
@@ -271,6 +291,8 @@ const AdminDashboard = () => {
         description: 'Announcement created successfully',
       });
       setNewAnnouncement('');
+      setExpiryFormat('hours');
+      setExpiryValue('24');
       fetchAnnouncements();
     }
   };
@@ -614,13 +636,36 @@ const AdminDashboard = () => {
                     rows={4}
                     className="bg-muted/30 border-border/50 text-foreground"
                   />
-                  <div className="flex justify-between items-center">
-                    <p className="text-xs text-muted-foreground">
-                      {newAnnouncement.length}/500 characters
-                    </p>
+                  <p className="text-xs text-muted-foreground">
+                    {newAnnouncement.length}/500 characters
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
+                    <div className="flex-1 space-y-2">
+                      <Label className="text-foreground text-sm">Expiry</Label>
+                      <div className="flex gap-2">
+                        <Select value={expiryFormat} onValueChange={(v) => setExpiryFormat(v as 'hours' | 'days')}>
+                          <SelectTrigger className="w-[110px] bg-muted/30 border-border/50">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="hours">Hours</SelectItem>
+                            <SelectItem value="days">Days</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <input
+                          type="number"
+                          min="1"
+                          max={expiryFormat === 'hours' ? 168 : 30}
+                          value={expiryValue}
+                          onChange={(e) => setExpiryValue(e.target.value)}
+                          className="flex h-9 w-full rounded-md border border-border/50 bg-muted/30 px-3 py-1 text-sm text-foreground shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                          placeholder="Number"
+                        />
+                      </div>
+                    </div>
                     <Button 
                       onClick={handleCreateAnnouncement}
-                      disabled={loading || !newAnnouncement.trim()}
+                      disabled={loading || !newAnnouncement.trim() || !expiryValue}
                       className="bg-primary hover:bg-primary/90 hover:shadow-glow"
                     >
                       {loading ? 'Creating...' : 'Create Announcement'}
@@ -641,10 +686,19 @@ const AdminDashboard = () => {
                               <div className="flex items-start justify-between gap-2">
                                 <div className="flex-1">
                                   <p className="text-sm mb-2 text-foreground">{announcement.message}</p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {new Date(announcement.created_at).toLocaleDateString()} at{' '}
-                                    {new Date(announcement.created_at).toLocaleTimeString()}
-                                  </p>
+                                  <div className="flex items-center gap-2">
+                                    <p className="text-xs text-muted-foreground">
+                                      {new Date(announcement.created_at).toLocaleDateString()} at{' '}
+                                      {new Date(announcement.created_at).toLocaleTimeString()}
+                                    </p>
+                                    {announcement.expires_at && (
+                                      <Badge variant="outline" className="text-xs">
+                                        {new Date(announcement.expires_at) > new Date()
+                                          ? `Expires ${new Date(announcement.expires_at).toLocaleDateString()}`
+                                          : 'Expired'}
+                                      </Badge>
+                                    )}
+                                  </div>
                                 </div>
                                 <Button
                                   variant="ghost"

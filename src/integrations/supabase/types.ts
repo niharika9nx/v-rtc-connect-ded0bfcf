@@ -63,6 +63,7 @@ export type Database = {
           admin_id: string | null
           created_at: string
           deleted_at: string | null
+          expires_at: string | null
           id: string
           message: string | null
         }
@@ -70,6 +71,7 @@ export type Database = {
           admin_id?: string | null
           created_at?: string
           deleted_at?: string | null
+          expires_at?: string | null
           id?: string
           message?: string | null
         }
@@ -77,6 +79,7 @@ export type Database = {
           admin_id?: string | null
           created_at?: string
           deleted_at?: string | null
+          expires_at?: string | null
           id?: string
           message?: string | null
         }
@@ -395,16 +398,19 @@ export type Database = {
       public_announcements: {
         Row: {
           created_at: string | null
+          expires_at: string | null
           id: string | null
           message: string | null
         }
         Insert: {
           created_at?: string | null
+          expires_at?: string | null
           id?: string | null
           message?: string | null
         }
         Update: {
           created_at?: string | null
+          expires_at?: string | null
           id?: string | null
           message?: string | null
         }

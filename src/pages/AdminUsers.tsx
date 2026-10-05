@@ -18,6 +18,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Trash2, ArrowLeft, Users, GraduationCap, User } from 'lucide-react';
 
 interface UserProfile {
@@ -47,6 +48,8 @@ const AdminUsers = () => {
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [activeTab, setActiveTab] = useState('students');
+  const [busFilter, setBusFilter] = useState('all');
+  const [busOptions, setBusOptions] = useState<string[]>([]);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -107,13 +110,30 @@ const AdminUsers = () => {
     fetchUsers();
   }, [fetchUsers]);
 
-  const filteredStudents = students.filter(s => 
-    s.name?.toLowerCase().includes(studentSearch.toLowerCase())
-  );
+  useEffect(() => {
+    const fetchBusOptions = async () => {
+      const { data } = await supabase
+        .from('bus_details')
+        .select('bus_number')
+        .order('bus_number');
+      if (data) {
+        setBusOptions(data.map(b => b.bus_number).filter(Boolean) as string[]);
+      }
+    };
+    fetchBusOptions();
+  }, []);
 
-  const filteredFaculty = faculty.filter(f => 
-    f.name?.toLowerCase().includes(facultySearch.toLowerCase())
-  );
+  const filteredStudents = students.filter(s => {
+    const matchesSearch = s.name?.toLowerCase().includes(studentSearch.toLowerCase());
+    const matchesBus = busFilter === 'all' || s.bus_number === busFilter;
+    return matchesSearch && matchesBus;
+  });
+
+  const filteredFaculty = faculty.filter(f => {
+    const matchesSearch = f.name?.toLowerCase().includes(facultySearch.toLowerCase());
+    const matchesBus = busFilter === 'all' || f.bus_number === busFilter;
+    return matchesSearch && matchesBus;
+  });
 
   const toggleUserSelection = (userId: string) => {
     const newSelection = new Set(selectedUsers);
@@ -339,12 +359,25 @@ const AdminUsers = () => {
           </div>
 
           <TabsContent value="students" className="mt-4 space-y-4">
-            <Input
-              placeholder="Search students by name..."
-              value={studentSearch}
-              onChange={(e) => setStudentSearch(e.target.value)}
-              className="bg-background"
-            />
+            <div className="flex gap-3">
+              <Input
+                placeholder="Search students by name..."
+                value={studentSearch}
+                onChange={(e) => setStudentSearch(e.target.value)}
+                className="bg-background flex-1"
+              />
+              <Select value={busFilter} onValueChange={setBusFilter}>
+                <SelectTrigger className="w-[140px] bg-background">
+                  <SelectValue placeholder="Bus" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Show All</SelectItem>
+                  {busOptions.map(bus => (
+                    <SelectItem key={bus} value={bus}>Bus {bus}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <ScrollArea className="h-[60vh]">
               <div className="space-y-3 pr-4">
                 {filteredStudents.length === 0 ? (
@@ -357,12 +390,25 @@ const AdminUsers = () => {
           </TabsContent>
 
           <TabsContent value="faculty" className="mt-4 space-y-4">
-            <Input
-              placeholder="Search faculty by name..."
-              value={facultySearch}
-              onChange={(e) => setFacultySearch(e.target.value)}
-              className="bg-background"
-            />
+            <div className="flex gap-3">
+              <Input
+                placeholder="Search faculty by name..."
+                value={facultySearch}
+                onChange={(e) => setFacultySearch(e.target.value)}
+                className="bg-background flex-1"
+              />
+              <Select value={busFilter} onValueChange={setBusFilter}>
+                <SelectTrigger className="w-[140px] bg-background">
+                  <SelectValue placeholder="Bus" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Show All</SelectItem>
+                  {busOptions.map(bus => (
+                    <SelectItem key={bus} value={bus}>Bus {bus}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <ScrollArea className="h-[60vh]">
               <div className="space-y-3 pr-4">
                 {filteredFaculty.length === 0 ? (
