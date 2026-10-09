@@ -34,8 +34,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Trash2, Edit2 } from 'lucide-react';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import vishnuLogo from '@/assets/vishnu-logo.png';
 
 const MONTHS = [
@@ -486,8 +484,11 @@ const AdminUserProfile = () => {
     }
   };
 
-  const downloadFeeHistoryPDF = () => {
+  const downloadFeeHistoryPDF = async () => {
     if (!profile) return;
+
+    const { default: jsPDF } = await import('jspdf');
+    const { default: autoTable } = await import('jspdf-autotable');
 
     const doc = new jsPDF();
     
