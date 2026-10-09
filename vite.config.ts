@@ -1,8 +1,20 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { visualizer } from "rollup-plugin-visualizer";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
 import path from "path";
+
+// Bundle treemap is opt-in: set BUNDLE_REPORT=1 to emit bundle-report.html
+const bundleReport = process.env.BUNDLE_REPORT
+  ? [
+      visualizer({
+        filename: "bundle-report.html",
+        gzipSize: true,
+        brotliSize: true,
+      }),
+    ]
+  : [];
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -49,6 +61,7 @@ export default defineConfig({
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
       },
     }),
+    ...bundleReport,
   ],
   resolve: {
     alias: {
