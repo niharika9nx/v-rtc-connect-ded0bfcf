@@ -1,19 +1,14 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
 export const useNotifications = () => {
   const { toast } = useToast();
-  const [permission, setPermission] = useState<NotificationPermission>('default');
-  const [supported, setSupported] = useState(false);
-
-  useEffect(() => {
-    const hasNotificationApi = 'Notification' in window;
-    const hasServiceWorker = 'serviceWorker' in navigator;
-    setSupported(hasNotificationApi || hasServiceWorker);
-    if (hasNotificationApi) {
-      setPermission(Notification.permission);
-    }
-  }, []);
+  const [permission, setPermission] = useState<NotificationPermission>(() =>
+    'Notification' in window ? Notification.permission : 'default'
+  );
+  const [supported] = useState(
+    () => 'Notification' in window || 'serviceWorker' in navigator
+  );
 
   const requestPermission = useCallback(async () => {
     if (!('Notification' in window)) {
