@@ -58,24 +58,6 @@ const AdminBusRequests = () => {
   const [assignSeatNumber, setAssignSeatNumber] = useState('');
   const [assigning, setAssigning] = useState(false);
 
-  useEffect(() => {
-    fetchData();
-
-    // Subscribe to changes
-    const channel = supabase
-      .channel('admin-bus-requests')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'bus_requests' },
-        () => fetchData()
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
   const fetchData = async () => {
     // Fetch buses
     const { data: busData } = await supabase
@@ -110,6 +92,24 @@ const AdminBusRequests = () => {
     }
     setLoading(false);
   };
+
+  useEffect(() => {
+    fetchData();
+
+    // Subscribe to changes
+    const channel = supabase
+      .channel('admin-bus-requests')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'bus_requests' },
+        () => fetchData()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const handleAssignClick = (request: BusRequest) => {
     setSelectedRequest(request);
