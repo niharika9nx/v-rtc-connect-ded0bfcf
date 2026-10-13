@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { errorMessage } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -38,9 +39,7 @@ interface UserProfile {
 const AdminUsers = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [students, setStudents] = useState<UserProfile[]>([]);
-  const [faculty, setFaculty] = useState<UserProfile[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [studentSearch, setStudentSearch] = useState('');
   const [facultySearch, setFacultySearch] = useState('');
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
@@ -49,33 +48,22 @@ const AdminUsers = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [activeTab, setActiveTab] = useState('students');
   const [busFilter, setBusFilter] = useState('all');
-  const [busOptions, setBusOptions] = useState<string[]>([]);
 
-  const fetchUsers = useCallback(async () => {
-    setLoading(true);
-    
-    // Fetch all profiles
-    const { data: profiles, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .in('role', ['student', 'faculty'])
-      .order('name');
+  const { data: users = [], isLoading: loading, error } = useQuery<UserProfile[]>({
+    queryKey: ['profiles_with_fee_status'],
+    queryFn: async () => {
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('role', ['student', 'faculty'])
+        .order('name');
 
-    if (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to load users',
-        variant: 'destructive',
-      });
-      setLoading(false);
-      return;
-    }
+      if (error) throw error;
+      if (!profiles || profiles.length === 0) return [];
 
-    if (profiles && profiles.length > 0) {
-      // Fetch current month fee status for all users
       const currentMonth = new Date().toLocaleString('default', { month: 'long' });
       const currentYear = new Date().getFullYear();
-      
+
       const { data: feeData } = await supabase
         .from('fee_history')
         .select('user_id, status')
@@ -85,7 +73,7 @@ const AdminUsers = () => {
 
       const feeMap = new Map(feeData?.map(f => [f.user_id, f.status]) || []);
 
-      const usersWithFeeStatus: UserProfile[] = profiles.map(p => ({
+      return profiles.map(p => ({
         id: p.id,
         name: p.name || '',
         role: p.role || '',
@@ -97,31 +85,33 @@ const AdminUsers = () => {
         bus_number: p.bus_number || undefined,
         seat_number: p.seat_number || undefined,
         feeStatus: (feeMap.get(p.id) as 'paid' | 'due') || 'none'
-      }));
+      })) as unknown as UserProfile[];
+    },
+  });
 
-      setStudents(usersWithFeeStatus.filter(p => p.role === 'student'));
-      setFaculty(usersWithFeeStatus.filter(p => p.role === 'faculty'));
-    }
-
-    setLoading(false);
-  }, [toast]);
-
-  useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
-
-  useEffect(() => {
-    const fetchBusOptions = async () => {
+  const { data: busOptions = [] } = useQuery<string[]>({
+    queryKey: ['bus_numbers'],
+    queryFn: async () => {
       const { data } = await supabase
         .from('bus_details')
         .select('bus_number')
         .order('bus_number');
-      if (data) {
-        setBusOptions(data.map(b => b.bus_number).filter(Boolean) as string[]);
-      }
-    };
-    fetchBusOptions();
-  }, []);
+      return (data || []).map(b => b.bus_number).filter(Boolean) as string[];
+    },
+  });
+
+  const students = users.filter(u => u.role === 'student');
+  const faculty = users.filter(u => u.role === 'faculty');
+
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to load users',
+        variant: 'destructive',
+      });
+    }
+  }, [error, toast]);
 
   const filteredStudents = students.filter(s => {
     const matchesSearch = s.name?.toLowerCase().includes(studentSearch.toLowerCase());
@@ -205,7 +195,7 @@ const AdminUsers = () => {
       });
 
       setSelectedUsers(new Set());
-      fetchUsers();
+      queryClient.invalidateQueries({ queryKey: ['profiles_with_fee_status'] });
     } catch (error) {
       console.error('Error deleting users:', error);
       toast({
