@@ -25,8 +25,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { formatTo12Hour, errorMessage } from '@/lib/utils';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import vishnuLogo from '@/assets/vishnu-logo.png';
 
 // College configuration - same as in SignupStudent
@@ -826,6 +824,9 @@ const AdminBusDashboard = () => {
       .in('user_id', profiles.map(p => p.id));
 
     const passIdMap = new Map(passData?.map(p => [p.user_id, p.buss_pass_id]) || []);
+
+    const { default: jsPDF } = await import('jspdf');
+    const { default: autoTable } = await import('jspdf-autotable');
 
     const doc = new jsPDF('landscape');
     

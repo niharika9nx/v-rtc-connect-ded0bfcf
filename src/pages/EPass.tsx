@@ -9,7 +9,6 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ArrowLeft, CreditCard, Upload, RefreshCw, ZoomIn, ZoomOut, Maximize2, X, Check, Trash2, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import heic2any from 'heic2any';
 import type { RealtimePostgresUpdatePayload } from '@supabase/supabase-js';
 import type * as DB from '@/lib/db-types';
 import { errorMessage } from '@/lib/utils';
@@ -42,6 +41,8 @@ const convertHeicToJpeg = async (
   try {
     onProgress?.('Converting HEIC to JPEG...');
     
+    const { default: heic2any } = await import('heic2any');
+
     // Use lower quality for much faster conversion - server AI handles OCR fine
     const convertedBlob = await heic2any({
       blob: file,

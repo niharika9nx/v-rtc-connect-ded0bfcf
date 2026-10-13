@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Bundle analysis output (rollup-plugin-visualizer)
+bundle-report.html
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
