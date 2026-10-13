@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -21,100 +22,91 @@ export const AlertNotifications = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const { supported, permission, requestPermission, sendAlertNotification } = useNotifications();
-  const [alerts, setAlerts] = useState<AlertNotification[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showPermissionPrompt, setShowPermissionPrompt] = useState(false);
-  const [passVerified, setPassVerified] = useState<boolean | null>(null);
+  const queryClient = useQueryClient();
+  const [permissionPromptDismissed, setPermissionPromptDismissed] = useState(false);
 
-  const checkPassVerification = useCallback(async () => {
-    if (!user) return;
+  const { data: passVerified = true } = useQuery({
+    queryKey: ['pass_verified', user?.id],
+    queryFn: async () => {
+      if (!user) return true;
+      const { data } = await supabase
+        .from('passes')
+        .select('verified')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      return data?.verified !== false;
+    },
+    enabled: !!user,
+  });
 
-    const { data } = await supabase
-      .from('passes')
-      .select('verified')
-      .eq('user_id', user.id)
-      .maybeSingle();
+  const { data: rawAlerts = [], isLoading: loading } = useQuery<AlertNotification[]>({
+    queryKey: ['alerts', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from('alerts')
+        .select('*')
+        .eq('user_id', user.id)
+        .in('status', ['pending', 'unread'])
+        .order('created_at', { ascending: false });
+      if (error) {
+        console.error('Error fetching alerts:', error);
+        throw error;
+      }
+      return (data || []).map(alert => ({
+        id: alert.id,
+        type: alert.type ?? '',
+        message: alert.message ?? '',
+        status: alert.status ?? '',
+        send_at: alert.send_at ?? '',
+        created_at: alert.created_at,
+      })) as AlertNotification[];
+    },
+    enabled: !!user,
+  });
 
-    setPassVerified(data?.verified !== false);
-  }, [user]);
+  const alerts = passVerified
+    ? rawAlerts
+    : rawAlerts.filter(alert => alert.type !== 'pass_renewal_reminder');
 
-  const fetchAlerts = useCallback(async () => {
-    if (!user) return;
+  const showPermissionPrompt =
+    !!user && supported && permission === 'default' && !permissionPromptDismissed;
 
-    // Recheck pass verification status on every fetch
-    await checkPassVerification();
-
-    const { data, error } = await supabase
-      .from('alerts')
-      .select('*')
-      .eq('user_id', user.id)
-      .in('status', ['pending', 'unread'])
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching alerts:', error);
-    } else {
-      // Filter out pass-related alerts if pass is fake (not verified)
-      const filteredAlerts = (data || [])
-        .filter(alert => {
-          // If pass is fake, hide pass renewal reminders
-          if (passVerified === false && alert.type === 'pass_renewal_reminder') {
-            return false;
-          }
-          return true;
-        })
-        .map(alert => ({
-          id: alert.id,
-          type: alert.type ?? '',
-          message: alert.message ?? '',
-          status: alert.status ?? '',
-          send_at: alert.send_at ?? '',
-          created_at: alert.created_at,
-        }));
-      setAlerts(filteredAlerts);
-    }
-    setLoading(false);
-  }, [user, passVerified, checkPassVerification]);
+  const refreshAlerts = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['pass_verified', user?.id] });
+    queryClient.invalidateQueries({ queryKey: ['alerts', user?.id] });
+  }, [queryClient, user?.id]);
 
   useEffect(() => {
-    if (user) {
-      // Check pass verification status first
-      checkPassVerification();
-      fetchAlerts();
+    if (!user) return;
 
-      // Check if we should show notification permission prompt
-      if (supported && permission === 'default') {
-        setShowPermissionPrompt(true);
-      }
+    // Set up real-time subscription for new alerts
+    const channel = supabase
+      .channel('alerts-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'alerts',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          refreshAlerts();
 
-      // Set up real-time subscription for new alerts
-      const channel = supabase
-        .channel('alerts-changes')
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'alerts',
-            filter: `user_id=eq.${user.id}`
-          },
-          (payload) => {
-            fetchAlerts();
-
-            // Send browser notification
-            const newAlert = payload.new as AlertNotification;
-            if (newAlert.message) {
-              sendAlertNotification(newAlert.message, newAlert.type);
-            }
+          // Send browser notification
+          const newAlert = payload.new as AlertNotification;
+          if (newAlert.message) {
+            sendAlertNotification(newAlert.message, newAlert.type);
           }
-        )
-        .subscribe();
+        }
+      )
+      .subscribe();
 
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }
-  }, [user, supported, permission, checkPassVerification, fetchAlerts, sendAlertNotification]);
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, refreshAlerts, sendAlertNotification]);
 
   const handleResponse = async (alertId: string, response: 'yes' | 'no') => {
     try {
@@ -132,7 +124,7 @@ export const AlertNotifications = () => {
       });
 
       // Refresh alerts
-      fetchAlerts();
+      refreshAlerts();
     } catch (error) {
       toast({
         title: 'Error',
@@ -160,13 +152,12 @@ export const AlertNotifications = () => {
         throw new Error('Unable to dismiss this alert (not found or not permitted).');
       }
 
-      // Immediately remove from local state for instant feedback
-      setAlerts(prev => prev.filter(a => a.id !== alertId));
-
       toast({
         title: 'Alert dismissed',
         description: 'The notification has been removed.',
       });
+
+      refreshAlerts();
     } catch (error) {
       console.error('Error dismissing alert:', error);
       toast({
@@ -178,14 +169,14 @@ export const AlertNotifications = () => {
   };
 
   const dismissPermissionPrompt = () => {
-    setShowPermissionPrompt(false);
+    setPermissionPromptDismissed(true);
     localStorage.setItem('vbus-notification-prompt-dismissed', 'true');
   };
 
   const handleEnableNotifications = async () => {
     const granted = await requestPermission();
     if (granted) {
-      setShowPermissionPrompt(false);
+      setPermissionPromptDismissed(true);
     }
   };
 
