@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -37,28 +38,29 @@ interface BusRequest {
 export const BusRequestStatus = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [requests, setRequests] = useState<BusRequest[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  const fetchRequests = useCallback(async () => {
-    if (!user) return;
-    
-    const { data, error } = await supabase
-      .from('bus_requests')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+  const { data: requests = [], isLoading: loading } = useQuery<BusRequest[]>({
+    queryKey: ['my_bus_requests', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from('bus_requests')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data || []) as BusRequest[];
+    },
+    enabled: !!user,
+  });
 
-    if (!error && data) {
-      setRequests(data as BusRequest[]);
-    }
-    setLoading(false);
-  }, [user]);
+  const fetchRequests = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['my_bus_requests', user?.id] });
+  }, [queryClient, user?.id]);
 
   useEffect(() => {
     if (user) {
-      fetchRequests();
-
       // Subscribe to changes
       const channel = supabase
         .channel('bus-requests-changes')
