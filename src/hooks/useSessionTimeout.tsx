@@ -10,7 +10,8 @@ const WARNING_TIME = 1 * 60 * 1000;
 export const useSessionTimeout = () => {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
-  const [showWarning, setShowWarning] = useState(false);
+  const [showWarningRaw, setShowWarningRaw] = useState(false);
+  const showWarning = showWarningRaw && !!user;
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const warningRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -23,11 +24,11 @@ export const useSessionTimeout = () => {
       clearTimeout(warningRef.current);
       warningRef.current = null;
     }
-    setShowWarning(false);
   }, []);
 
   const handleLogout = useCallback(async () => {
     clearTimers();
+    setShowWarningRaw(false);
     toast({
       title: 'Session Expired',
       description: 'You have been logged out due to inactivity.',
@@ -43,7 +44,7 @@ export const useSessionTimeout = () => {
 
     // Set warning timer
     warningRef.current = setTimeout(() => {
-      setShowWarning(true);
+      setShowWarningRaw(true);
       toast({
         title: 'Session Expiring Soon',
         description: 'Your session will expire in 1 minute due to inactivity.',
@@ -62,12 +63,12 @@ export const useSessionTimeout = () => {
       title: 'Session Extended',
       description: 'Your session has been extended.',
     });
+    setShowWarningRaw(false);
     resetTimer();
   }, [resetTimer, toast]);
 
   useEffect(() => {
     if (!user) {
-      clearTimers();
       return;
     }
 
