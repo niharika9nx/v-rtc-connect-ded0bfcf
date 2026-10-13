@@ -32,22 +32,18 @@ const Login = () => {
   const [resetEmail, setResetEmail] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
-  const [floatingBuses, setFloatingBuses] = useState<FloatingBus[]>([]);
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const { user } = useAuth();
-
-  // Create floating buses animation
-  useEffect(() => {
-    const buses: FloatingBus[] = Array.from({ length: 5 }, (_, i) => ({
+  const [floatingBuses] = useState<FloatingBus[]>(() =>
+    Array.from({ length: 5 }, (_, i) => ({
       id: i,
       x: Math.random() * 100,
       y: Math.random() * 100,
       speed: 20 + Math.random() * 30,
       delay: Math.random() * 5,
-    }));
-    setFloatingBuses(buses);
-  }, []);
+    }))
+  );
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const { user } = useAuth();
 
   // Redirect if already logged in
   useEffect(() => {
