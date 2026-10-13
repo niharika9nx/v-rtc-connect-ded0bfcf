@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,8 +40,38 @@ interface BusDetail {
 const AdminBuses = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [buses, setBuses] = useState<BusDetail[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+
+  const { data: buses = [], isLoading: loading, error } = useQuery<BusDetail[]>({
+    queryKey: ['bus_details'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('bus_details')
+        .select('*')
+        .order('bus_number');
+
+      if (error) throw error;
+
+      return (data || []).map((bus: DB.BusDetails) => ({
+        id: bus.ID,
+        bus_number: bus.bus_number,
+        route: bus.route,
+        departure_time: bus.departure_time,
+        arrival_time: bus.arrival_time,
+        capacity: bus.capacity,
+      })) as unknown as BusDetail[];
+    },
+  });
+
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to load buses',
+        variant: 'destructive',
+      });
+    }
+  }, [error, toast]);
   
   // Add bus dialog state
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -58,36 +89,6 @@ const AdminBuses = () => {
   const [busToDelete, setBusToDelete] = useState<BusDetail | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
-
-  const fetchBuses = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('bus_details')
-      .select('*')
-      .order('bus_number');
-
-    if (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to load buses',
-        variant: 'destructive',
-      });
-    } else {
-      const mappedData = (data || []).map((bus: DB.BusDetails) => ({
-        id: bus.ID,
-        bus_number: bus.bus_number,
-        route: bus.route,
-        departure_time: bus.departure_time,
-        arrival_time: bus.arrival_time,
-        capacity: bus.capacity,
-      }));
-      setBuses(mappedData as unknown as BusDetail[]);
-    }
-    setLoading(false);
-  }, [toast]);
-
-  useEffect(() => {
-    fetchBuses();
-  }, [fetchBuses]);
 
   const handleAddBus = async () => {
     if (!addForm.bus_number || !addForm.route) {
@@ -123,7 +124,7 @@ const AdminBuses = () => {
       });
       setShowAddDialog(false);
       setAddForm({ bus_number: '', route: '', departure_time: '', arrival_time: '', capacity: '' });
-      fetchBuses();
+      queryClient.invalidateQueries({ queryKey: ['bus_details'] });
     }
     setAdding(false);
   };
@@ -157,7 +158,7 @@ const AdminBuses = () => {
       });
       setShowDeleteDialog(false);
       setBusToDelete(null);
-      fetchBuses();
+      queryClient.invalidateQueries({ queryKey: ['bus_details'] });
     }
     setDeleting(false);
   };
