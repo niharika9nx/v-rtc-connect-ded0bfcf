@@ -20,7 +20,6 @@ import AdminBusDashboard from "./pages/AdminBusDashboard";
 import AdminUserProfile from "./pages/AdminUserProfile";
 import AdminBusRequests from "./pages/AdminBusRequests";
 import AdminUsers from "./pages/AdminUsers";
-import ExpiredPassLetter from "./pages/ExpiredPassLetter";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
@@ -69,14 +68,6 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['student', 'faculty']}>
                   <EPass />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/expired-pass-letter"
-              element={
-                <ProtectedRoute allowedRoles={['student', 'faculty']}>
-                  <ExpiredPassLetter />
                 </ProtectedRoute>
               }
             />
